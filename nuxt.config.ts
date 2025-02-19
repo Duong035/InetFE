@@ -14,7 +14,9 @@ export default defineNuxtConfig({
     'nuxtjs-naive-ui',
     "dayjs-nuxt",
   ],
-  
+  rules: {
+    "vue/no-v-model-argument": "off",
+  },
   css: ["@/assets/index.css"],
   vite: {
     plugins: [

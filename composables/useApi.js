@@ -15,6 +15,7 @@ const API_ENDPOINTS = {
     list_study_need: "/api/admin/list-study-needs",
     provinces: "/api/admin/provinces",
     districts: "/api/admin/districts",
+    branches: "/api/admin/branches",
   },
 }
 
@@ -172,6 +173,13 @@ class CMSManager {
   }
   async deleteStudyNeed(data) {
     return this.request.delete(`${API_ENDPOINTS.cms.study_need}/${data.id}`, data)
+  }
+  //__________________________________________________________________________________________
+
+
+  // Branches_________________________________________________________________________________
+  async getBranches(data) {
+    return this.request.get(API_ENDPOINTS.cms.branches, data)
   }
   //__________________________________________________________________________________________
 

@@ -1,18 +1,14 @@
 <script setup>
-import { ref, watch } from "vue";
+import { ref, watch, onMounted, reactive } from "vue";
 import { message } from "ant-design-vue";
-import { useRouter, useRoute } from "vue-router";
+import { useRoute } from "vue-router";
 
 const route = useRoute();
-const isLoading = ref(false);
 const dayjs = useDayjs();
-const shift = ref([]);
-const listChecked = ref([]);
-const { restAPI } = useApi();
+const isLoading = ref(false);
 const showSpin = ref(false);
-const props = defineProps({
-  needId: String,
-});
+const { restAPI } = useApi();
+const props = defineProps({ needId: String });
 const localNeedId = ref("");
 
 watch(
@@ -23,12 +19,33 @@ watch(
   { immediate: true },
 );
 
+const Brancharrey = ref([]);
+
+const loadBranch_id = async () => {
+  try {
+    const { data: resData } = await restAPI.cms.getBranches({});
+
+    if (resData.value?.status) {
+      Brancharrey.value = resData.value.data.map(({ id, Name }) => ({
+        id,
+        Name,
+      }));
+      console.log(Brancharrey.value);
+    } else {
+      message.error("Failed to load Branches!");
+      Brancharrey.value = [];
+    }
+  } catch (err) {
+    message.error("Error fetching Branches!");
+    console.error(err);
+    Brancharrey.value = [];
+  }
+};
+
 const formValue = reactive({
   student_id: null,
   id: null,
   branch_id: null,
-  curriculums: [],
-  // subjects: [],
   study_goals: null,
   teacher_requirements: null,
   is_online_form: null,
@@ -115,7 +132,11 @@ const handleSubmit = async (e) => {
     isLoading.value = false;
   }
 };
+onMounted(async () => {
+  await loadBranch_id();
+});
 </script>
+
 <template>
   <n-spin :show="showSpin">
     <n-form :model="formValue">
@@ -147,6 +168,15 @@ const handleSubmit = async (e) => {
                 v-model:value="formValue.teacher_requirements"
               />
             </n-form-item>
+          </n-gi>
+          <n-gi span="1 m:2">
+            <n-select
+              v-model:value="formValue.branch_id"
+              :options="Brancharrey"
+              label-field="Name"
+              value-field="id"
+              placeholder="Chọn chi nhánh"
+            />
           </n-gi>
           <n-gi>
             <n-form-item label="Hình thức học mong muốn" label-placement="left">
