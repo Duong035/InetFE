@@ -3,13 +3,19 @@ import { ref, watch, onMounted, reactive } from "vue";
 import { message } from "ant-design-vue";
 import { useRoute } from "vue-router";
 
+const emit = defineEmits(["apiSuccess"]);
 const route = useRoute();
 const dayjs = useDayjs();
 const isLoading = ref(false);
 const showSpin = ref(false);
 const { restAPI } = useApi();
-const props = defineProps({ needId: String });
+const props = defineProps({
+  needId: String, // Existing prop
+  branchId: String, // New prop for branch ID
+});
+
 const localNeedId = ref("");
+const localBranchId = ref("");
 
 watch(
   () => props.needId,
@@ -19,28 +25,13 @@ watch(
   { immediate: true },
 );
 
-const Brancharrey = ref([]);
-
-const loadBranch_id = async () => {
-  try {
-    const { data: resData } = await restAPI.cms.getBranches({});
-
-    if (resData.value?.status) {
-      Brancharrey.value = resData.value.data.map(({ id, Name }) => ({
-        id,
-        Name,
-      }));
-      console.log(Brancharrey.value);
-    } else {
-      message.error("Failed to load Branches!");
-      Brancharrey.value = [];
-    }
-  } catch (err) {
-    message.error("Error fetching Branches!");
-    console.error(err);
-    Brancharrey.value = [];
-  }
-};
+watch(
+  () => props.branchId,
+  (newVal) => {
+    localBranchId.value = newVal || "";
+  },
+  { immediate: true },
+);
 
 const formValue = reactive({
   student_id: null,
@@ -82,9 +73,7 @@ const handleSubmit = async (e) => {
   if (isLoading.value) return;
 
   const {
-    student_id,
     id,
-    branch_id,
     curriculums,
     study_goals,
     teacher_requirements,
@@ -92,10 +81,11 @@ const handleSubmit = async (e) => {
     is_offline_form,
     studying_start_date,
   } = formValue;
+  console.log(localBranchId);
   let body = {
     student_id: route.query.id || null,
     id,
-    branch_id,
+    branch_id: localBranchId.value,
     curriculums,
     study_goals,
     teacher_requirements,
@@ -105,7 +95,6 @@ const handleSubmit = async (e) => {
       ? dayjs(studying_start_date).toISOString()
       : null,
   };
-  console.log(body);
   try {
     if (localNeedId.value && String(localNeedId.value).trim() !== "") {
       const { data: resUpdate, error } = await restAPI.cms.updateStudyNeed({
@@ -115,7 +104,7 @@ const handleSubmit = async (e) => {
       if (resUpdate?.value?.status) {
         message.success("Cập nhật nhu cầu học tập thành công!");
       } else {
-        message.error(error.value.data.message);
+        message.error(error.value.data.error);
       }
     } else {
       const { data: resCreate, error } = await restAPI.cms.createStudyNeed({
@@ -123,8 +112,9 @@ const handleSubmit = async (e) => {
       });
       if (resCreate?.value?.status) {
         message.success("Tạo nhu cầu học tập thành công!");
+        emit("apiSuccess");
       } else {
-        message.error(error.value.data.message);
+        message.error(error.value.data.error);
       }
     }
   } catch {
@@ -132,9 +122,7 @@ const handleSubmit = async (e) => {
     isLoading.value = false;
   }
 };
-onMounted(async () => {
-  await loadBranch_id();
-});
+onMounted(async () => {});
 </script>
 
 <template>
@@ -169,15 +157,6 @@ onMounted(async () => {
               />
             </n-form-item>
           </n-gi>
-          <n-gi span="1 m:2">
-            <n-select
-              v-model:value="formValue.branch_id"
-              :options="Brancharrey"
-              label-field="Name"
-              value-field="id"
-              placeholder="Chọn chi nhánh"
-            />
-          </n-gi>
           <n-gi>
             <n-form-item label="Hình thức học mong muốn" label-placement="left">
               <n-space item-style="display: flex;">
@@ -207,10 +186,9 @@ onMounted(async () => {
           </n-gi>
 
           <n-gi span="1 m:2">
-            <DaotaoHocvienctSchedule
-              v-model:Shift="shift"
-              v-model:listChecked="listChecked"
-            />
+            <DaotaoHocvienctSchedule />
+            <!-- v-model:Shift="shift"
+              v-model:listChecked="listChecked" -->
           </n-gi>
           <n-gi span="1 m:2" class="mt-2">
             <n-form-item label="Ghi chú" path="note">
