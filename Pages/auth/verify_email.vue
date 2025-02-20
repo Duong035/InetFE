@@ -116,7 +116,20 @@ const handleSubmit = async (e) => {
     });
     if (resVerify.value?.status) {
       message.success("Xác nhận Email thành công!");
-      router.push("/Dashboard");
+      const first = sessionStorage.getItem("first_time");
+
+      if (first) {
+        router.push({
+          path: "newpass",
+          query: { email: route.query.email },
+        });
+        message.success(
+          "Học viên lần đầu đăng nhập! Thay đổi mật khẩu tài khoản!",
+        );
+      } else {
+        router.push("/Dashboard");
+        message.success("Đăng nhập thành công!");
+      }
     } else if (
       error.value.statusCode === 400 &&
       error?.value?.data?.message === "Failed 4"

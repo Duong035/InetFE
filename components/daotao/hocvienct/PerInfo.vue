@@ -157,6 +157,7 @@ if (formValue.id) {
   }
   showSpin.value = false;
 }
+
 const handleSubmit = async (e) => {
   if (isLoading.value) return;
   e.preventDefault();
@@ -165,7 +166,7 @@ const handleSubmit = async (e) => {
     formValue;
 
   if (address?.address?.length > 250) return;
-  const unit_id = localStorage.getItem("unit_id");
+  const unit_id = sessionStorage.getItem("unit_id");
 
   let body = {
     id,
@@ -213,8 +214,9 @@ const handleSubmit = async (e) => {
     isLoading.value = false;
   }
 };
+
 const loadProvinces = async () => {
-  if (optionsProvinces.loading) return; // Prevent multiple requests
+  if (optionsProvinces.loading) return;
 
   optionsProvinces.loading = true;
 
@@ -239,7 +241,6 @@ const loadProvinces = async () => {
         }
       });
 
-      // If no new data is received, stop loading more
       if (newProvinces.length === 0) {
         message.info("All provinces loaded.");
       }

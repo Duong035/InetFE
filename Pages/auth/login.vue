@@ -16,28 +16,30 @@ const password = ref("");
 const handleSubmit = async (e) => {
   if (isLoading.value) return;
   e.preventDefault();
-
   isLoading.value = true;
   const body = { email: email.value, password: password.value };
-  const source = "login";
+
   try {
     const { data: resVerify, error } = await restAPI.cms.login({
       body,
     });
     if (resVerify.value?.status) {
       const data = resVerify?.value?.data;
-      localStorage.setItem("role_id", data.role_id);
-      localStorage.setItem("auth_token", data.token);
+      sessionStorage.setItem("id", data.id);
+      sessionStorage.setItem("role_id", data.role_id);
+      sessionStorage.setItem("auth_token", data.token);
 
       message.success("Đăng nhập thành công!");
       router.push("/Dashboard");
     } else if (resVerify.value?.message === "Review your input password") {
       message.warning("Mật khẩu không chính xác");
     } else if (error.value.statusCode === 403) {
+      if (body.password === "aohvaklvnh")
+        sessionStorage.setItem("first_time", "true");
       message.success("Đăng nhập lần đầu, cần xác nhận email!");
       router.push({
         path: "verify_email",
-        query: { email: email.value, source },
+        query: { email: email.value },
       });
     } else if (error.value.statusCode === 500) {
       message.warning("Email không chính xác");

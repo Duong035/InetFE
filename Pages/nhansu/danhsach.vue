@@ -20,10 +20,10 @@ export default defineComponent({
     const accstatus = ref("");
     const token = ref("");
 
-    // Retrieve token from localStorage safely
-    if (typeof window !== "undefined" && window.localStorage) {
+    // Retrieve token from sessionStorage safely
+    if (typeof window !== "undefined" && window.sessionStorage) {
       token.value =
-        localStorage.getItem("authToken") ||
+        sessionStorage.getItem("authToken") ||
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA0OTk3NjUsInJvbGUiOiJvd25lciIsInJvbGVfaWQiOjIsInNpdGVfaWQiOiJiYmVhN2RlYi1jMmQ5LTRhODItYTdmZS1mMWE2YmZiNjU3MDciLCJzdGF0dXMiOnRydWUsInVzZXJfaWQiOiI4YjYxMDE5Ni0xMWRmLTQxNGItODM4NS0xYjk2M2U5ZTQ4MDAifQ.3tFX67634ZYj2KI6Vno3f5DC9MoIVrJlL4DqtMaC3y0";
     }
 

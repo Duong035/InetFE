@@ -81,7 +81,6 @@ const handleSubmit = async (e) => {
     is_offline_form,
     studying_start_date,
   } = formValue;
-  console.log(localBranchId);
   let body = {
     student_id: route.query.id || null,
     id,

@@ -14,6 +14,7 @@ const dropdowns = reactive<{ [key: string]: boolean }>({
 const { restAPI } = useApi();
 const route = useRoute();
 const isCollapsed = ref(false);
+const isLoading = ref(false);
 const activeDropdown = ref("canhan");
 const Nhucauarrey = ref<{ stt: number; Needid: string }[]>([]);
 function addNeed() {
@@ -23,28 +24,52 @@ function addNeed() {
   });
 }
 
-const Brancharrey = ref([]);
+const Brancharray = ref([]);
 const singleBranchId = ref("");
+
+const showModal = ref(false);
+const deleteTarget = ref<{ value: string | null; stt: number | null }>({
+  value: null,
+  stt: null,
+});
+
+const openDeleteModal = (value: string, stt: number) => {
+  if (!value) {
+    deleteNeed(value, stt);
+    return;
+  }
+  deleteTarget.value = { value, stt };
+  showModal.value = true;
+};
+
+const confirmDelete = async () => {
+  isLoading.value = true;
+  if (deleteTarget.value.value) {
+    await deleteNeed(deleteTarget.value.value, deleteTarget.value.stt!);
+  }
+  showModal.value = false;
+  isLoading.value = false;
+};
+
 const loadBranch_id = async () => {
   try {
     const { data: resData } = await restAPI.cms.getBranches({});
 
     if (resData.value?.status) {
-      Brancharrey.value = resData.value.data
+      Brancharray.value = resData.value.data
         .map(({ id, Name, address }) => ({
           id,
           display: `${Name}: ${address}`,
         }))
         .sort((a, b) => a.display.localeCompare(b.display));
-      console.log(Brancharrey.value);
     } else {
       message.error("Failed to load Branches!");
-      Brancharrey.value = [];
+      Brancharray.value = [];
     }
   } catch (err) {
     message.error("Error fetching Branches!");
     console.error(err);
-    Brancharrey.value = [];
+    Brancharray.value = [];
   }
 };
 
@@ -68,9 +93,6 @@ async function getNeed() {
     }));
     singleBranchId.value =
       Nhucauarrey.value.length > 0 ? Nhucauarrey.value[0].branch_id : null;
-    console.log(singleBranchId);
-
-    console.log(Nhucauarrey.value);
   } catch (error) {
     console.error("Error fetching need data:", error);
   }
@@ -300,7 +322,7 @@ onMounted(async () => {
                       <div class="flex items-center justify-between gap-4">
                         <n-select
                           v-model:value="singleBranchId"
-                          :options="Brancharrey"
+                          :options="Brancharray"
                           label-field="display"
                           value-field="id"
                           placeholder="Chọn chi nhánh"
@@ -347,7 +369,10 @@ onMounted(async () => {
                               >
                                 <p>Nhu cầu {{ item.stt }}: {{ item.Needid }}</p>
                                 <button
-                                  @click="deleteNeed(item.Needid, item.stt)"
+                                  @click.prevent="
+                                    openDeleteModal(item.Needid, item.stt)
+                                  "
+                                  :loading="isLoading"
                                   class="text-red-500 hover:text-red-700"
                                 >
                                   <i class="fas fa-trash-alt"></i>
@@ -458,5 +483,21 @@ onMounted(async () => {
         </nav>
       </div>
     </div>
+    <n-modal
+      v-model:show="showModal"
+      preset="card"
+      title="Xác nhận xóa"
+      closable
+      @close="showModal = false"
+      style="max-width: 450px; width: 90%; margin: 0 auto; text-align: center"
+    >
+      <p>Bạn có chắc chắn muốn xóa nhu cầu học tập này không?</p>
+      <template #footer>
+        <div class="flex justify-center gap-2">
+          <n-button @click="showModal = false">Hủy</n-button>
+          <n-button type="error" @click="confirmDelete">Xác nhận</n-button>
+        </div>
+      </template>
+    </n-modal>
   </div>
 </template>

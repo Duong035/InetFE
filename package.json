@@ -41,13 +41,14 @@
     "vue-router": "latest"
   },
   "devDependencies": {
-    "@nuxt/eslint-config": "^0.7.5",
+    "@nuxt/eslint-config": "^1.1.0",
     "@types/axios": "^0.9.36",
     "@typescript-eslint/eslint-plugin": "^8.20.0",
     "@typescript-eslint/parser": "^8.20.0",
-    "eslint": "^9.18.0",
+    "eslint": "^9.20.1",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
+    "eslint-plugin-vue": "^9.32.0",
     "naive-ui": "^2.41.0",
     "prettier": "^3.4.2",
     "prettier-plugin-tailwindcss": "^0.6.10",

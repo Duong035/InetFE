@@ -16,6 +16,7 @@ const API_ENDPOINTS = {
     provinces: "/api/admin/provinces",
     districts: "/api/admin/districts",
     branches: "/api/admin/branches",
+    staff: "/api/admin/users",
   },
 }
 
@@ -25,7 +26,7 @@ class Request {
     this.baseURL = "http://localhost:4000"
     const getToken = () => {
       if (typeof window !== "undefined") {
-        return localStorage.getItem("auth_token") || "";
+        return sessionStorage.getItem("auth_token") || "";
       }
       return "";
     };
@@ -176,6 +177,11 @@ class CMSManager {
   }
   //__________________________________________________________________________________________
 
+  // Staff____________________________________________________________________________________
+   async getStaff(data) {
+    return this.request.get(API_ENDPOINTS.cms.staff, data)
+  }
+  //__________________________________________________________________________________________
 
   // Branches_________________________________________________________________________________
   async getBranches(data) {

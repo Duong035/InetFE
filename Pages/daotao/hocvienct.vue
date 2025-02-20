@@ -74,10 +74,7 @@ export default defineComponent({
           defaultSortOrder: "ascend",
           sorter: "default",
         },
-        {
-          title: "Kế hoạch tuyển sinh",
-          key: "khts",
-        },
+
         {
           title: "Số môn học hoàn thành",
           key: "mhht",
@@ -96,52 +93,7 @@ export default defineComponent({
           defaultSortOrder: "ascend",
           sorter: "default",
         },
-        {
-          title: "Người chăm sóc",
-          key: "ncs",
-          defaultSortOrder: "ascend",
-          sorter: "default",
-        },
-        {
-          title: "Tình trạng",
-          key: "status",
-          render(row) {
-            let color = "";
-            let background = "";
-            switch (row.status) {
-              case "Đang học":
-                color = "#00974F";
-                background = "#F0FFF8";
-                break;
-              case "Chưa xếp lớp":
-                color = "#FF7A00";
-                background = "#FFF6E1";
-                break;
-              case "Bảo lưu":
-                color = "#4D6FA8";
-                background = "#ECF1F9";
-                break;
-              default:
-                color = "gray";
-            }
-            return h(
-              "span",
-              {
-                style: {
-                  padding: "5px 10px",
-                  borderRadius: "10px",
-                  color,
-                  background,
-                },
-              },
-              row.status,
-            );
-          },
-          defaultFilterOptionValues: ["Đang học", "Chưa xếp lớp", "Bảo lưu"],
-          filter(value, row) {
-            return row.status.includes(value as string);
-          },
-        },
+
         {
           title: "Trạng thái tài khoản",
           key: "accstatus",
@@ -248,12 +200,10 @@ export default defineComponent({
             id: item.id || "N/A",
             stt: index + 1,
             tthv: item.full_name || "N/A",
-            khts: item.khts || "N/A",
             mhht: item.mhht || "N/A",
             mdxl: item.mdxl || "N/A",
             ncn: item.updated_at ? item.updated_at.split("T")[0] : "N/A",
-            ncs: item.ncs || "N/A",
-            status: item.accstatus || "N/A",
+
             accstatus:
               item.status === 2
                 ? "Hoạt động"
@@ -275,9 +225,6 @@ export default defineComponent({
     const selectedId = computed(() => selectedRows.value.map((row) => row.id));
 
     const getSelected = async (value: number) => {
-      console.log(selectedRows);
-      console.log(selectedId);
-
       let successCount = 0;
       let errorCount = 0;
       const status = value;
@@ -404,12 +351,10 @@ interface RowData {
   id: string;
   stt: number;
   tthv: string;
-  khts: string;
   mhht: string;
   mdxl: string;
   ncn: string;
-  ncs: string;
-  status: string;
+
   accstatus: string;
 }
 const actionMenu = [
@@ -602,7 +547,7 @@ const actionMenu = [
                 :single-line="false"
                 :columns="columns"
                 :data="data"
-                :scroll-x="1800"
+                :scroll-x="1000"
                 :pagination="pagination"
                 :row-key="rowKey"
                 @update:checked-row-keys="handleCheck"

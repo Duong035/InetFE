@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { reactive, ref, watch } from "vue";
 import { NModal } from "naive-ui";
+import { reactive, ref, watch } from "vue";
 
 const dropdowns = reactive<{ [key: string]: boolean }>({
   coban: true,
@@ -86,8 +86,8 @@ watch(isModalVisible, (newValue) => {
               :class="[
                 'pr-3 text-[8px] text-[#133D85]',
                 activeDropdown === 'coban'
-                  ? 'fa-solchapterfa-circle text-[#133D85]'
-                  : 'fa-solchapterfa-circle-dot text-[#4D6FA8]',
+                  ? 'fa-solid fa-circle text-[#133D85]'
+                  : 'fa-solid fa-circle-dot text-[#4D6FA8]',
               ]"
             ></i>
             Thông tin cơ bản
@@ -105,8 +105,8 @@ watch(isModalVisible, (newValue) => {
               :class="[
                 'pr-3 text-[8px]',
                 activeDropdown.startsWith('noidung')
-                  ? 'fa-solchapterfa-circle text-[#133D85]'
-                  : 'fa-solchapterfa-circle-dot text-[#4D6FA8]',
+                  ? 'fa-solid fa-circle text-[#133D85]'
+                  : 'fa-solid fa-circle-dot text-[#4D6FA8]',
               ]"
             ></i>
             Nội dung bài giảng
@@ -124,8 +124,8 @@ watch(isModalVisible, (newValue) => {
               :class="[
                 'pr-3 text-[8px]',
                 activeDropdown === 'chungchi'
-                  ? 'fa-solchapterfa-circle text-[#133D85]'
-                  : 'fa-solchapterfa-circle-dot text-[#4D6FA8]',
+                  ? 'fa-solid fa-circle text-[#133D85]'
+                  : 'fa-solid fa-circle-dot text-[#4D6FA8]',
               ]"
             ></i>
             Chứng chỉ
@@ -143,8 +143,8 @@ watch(isModalVisible, (newValue) => {
               :class="[
                 'pr-3 text-[8px]',
                 activeDropdown === 'caidat'
-                  ? 'fa-solchapterfa-circle text-[#133D85]'
-                  : 'fa-solchapterfa-circle-dot text-[#4D6FA8]',
+                  ? 'fa-solid fa-circle text-[#133D85]'
+                  : 'fa-solid fa-circle-dot text-[#4D6FA8]',
               ]"
             ></i
             >Cài đặt
@@ -292,9 +292,9 @@ watch(isModalVisible, (newValue) => {
                           <n-form>
                             <n-grid cols="2" :x-gap="20">
                               <n-gi>
-                                <h class="text-2xl font-bold text-[#133D85]">
+                                <h1 class="text-2xl font-bold text-[#133D85]">
                                   Thêm chương mới
-                                </h>
+                                </h1>
                                 <div class="mt-5"></div>
                               </n-gi>
                               <n-gi span="2">
