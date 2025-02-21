@@ -223,7 +223,7 @@ export default defineComponent({
           if (resUpdate?.value?.status) {
             message.success("Cập nhật danh mục thành công!");
           } else {
-            message.error(error.value.data.error);
+            message.warning("Đã tồn tại danh mục với tên tương tự!");
           }
         } else {
           const { data: resCreate, error } = await restAPI.cms.createCategory({

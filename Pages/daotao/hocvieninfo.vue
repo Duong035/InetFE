@@ -298,8 +298,7 @@ onMounted(async () => {
                 @click="toggleDropdown('nhucau')"
                 :class="[
                   'flex cursor-pointer items-center justify-between px-4 py-2.5',
-
-                  activeDropdown === 'nhucau'
+                  activeDropdown.startsWith('nhucau')
                     ? 'rounded-3xl bg-gray-200 text-[#133D85]'
                     : 'text-gray-600',
                 ]"

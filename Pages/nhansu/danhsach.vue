@@ -35,7 +35,7 @@ export default defineComponent({
         console.log("Token used:", token.value);
 
         const response = await axios.get(
-          "http://localhost:4000/api/admin/users",
+          "http://localhost:3000/api/admin/users",
           {
             headers: {
               Authorization: `Bearer ${token.value}`,
@@ -73,7 +73,7 @@ export default defineComponent({
     const editUser = async (row: UserData) => {
       try {
         const response = await axios.get(
-          `http://localhost:4000/api/admin/users/${row.id}`,
+          `http://localhost:3000/api/admin/users/${row.id}`,
           {
             headers: { Authorization: `Bearer ${token.value}` },
           },
@@ -92,7 +92,7 @@ export default defineComponent({
       try {
         console.log("Updating user data:", editUserData.value);
         await axios.put(
-          `http://localhost:4000/api/admin/users/${editUserData.value.id}`,
+          `http://localhost:3000/api/admin/users/${editUserData.value.id}`,
           editUserData.value,
           { headers: { Authorization: `Bearer ${token.value}` } },
         );
@@ -111,7 +111,7 @@ export default defineComponent({
       try {
         console.log(`Deleting user with ID: ${row.id}`);
         const response = await axios.delete(
-          `http://localhost:4000/api/admin/users`,
+          `http://localhost:3000/api/admin/users`,
           {
             headers: { Authorization: `Bearer ${token.value}` },
             data: { ids: [row.id] },

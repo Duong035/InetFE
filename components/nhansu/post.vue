@@ -160,7 +160,7 @@ export default defineComponent({
         const valid = await formRef.value.validate();
         if (valid) {
           const response = await axios.post(
-            "http://localhost:4000/api/admin/users",
+            "http://localhost:3000/api/admin/users",
             body,
             {
               headers: {

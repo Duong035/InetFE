@@ -21,32 +21,18 @@ const Staffarray = ref([]);
 const Categoryarray = ref([]);
 const formValue = reactive({
   img: null,
-  color: "Sáng",
-  id: "123456",
-  name: "Toán",
-  catagory: "b0fb5670-e49f-4aec-8bf1-0585944f028b",
-  teacher: "MrBeen",
-  days: "20",
-  type: "Trả phí",
-  price: "200.000",
-  discount: "10",
-  description: "lorem",
-  description2: "lorem",
-  description3: "lorem",
-  state: 2,
-  // img: null,
-  // color: null,
-  // id: null,
-  // name: null,
-  // catagory: null,
-  // teacher: null,
-  // days: null,
-  // type: null,
-  // price: null,
-  // discount: null,
-  // description: null,
-  // description2: null,
-  // state: null,
+  color: null,
+  id: null,
+  name: null,
+  catagory: null,
+  teacher: null,
+  days: null,
+  type: null,
+  price: null,
+  discount: null,
+  description: null,
+  description2: null,
+  state: null,
 });
 const displayPrice = computed(() =>
   formValue.type === "Miễn phí" ? "0" : formValue.price,
@@ -59,11 +45,6 @@ const options = [
   { label: "Tối", value: "Tối" },
 ];
 
-const optionsStatus = [
-  { label: "Khối A", value: "Khối A" },
-  { label: "Khối B", value: "Khối B" },
-  { label: "Khối C", value: "Khối C" },
-];
 const loadTeacher = async () => {
   try {
     const { data: resData } = await restAPI.cms.getStaff({});
