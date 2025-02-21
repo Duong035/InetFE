@@ -17,17 +17,14 @@ const railStyle = ({ focused, checked }) => {
 const { restAPI } = useApi();
 const isLoading = ref(false);
 const showSpin = ref(false);
-const checkedValue = ref(null);
-const handleChange = (e) => {
-  checkedValue.value = e.target.value;
-};
 const Staffarray = ref([]);
+const Categoryarray = ref([]);
 const formValue = reactive({
   img: null,
   color: "Sáng",
   id: "123456",
   name: "Toán",
-  catagory: "Khối A",
+  catagory: "b0fb5670-e49f-4aec-8bf1-0585944f028b",
   teacher: "MrBeen",
   days: "20",
   type: "Trả phí",
@@ -63,10 +60,9 @@ const options = [
 ];
 
 const optionsStatus = [
-  { label: "Đang học", value: "1" },
-  { label: "Bảo lưu", value: "2" },
-  { label: "Chưa xếp lớp", value: "3" },
-  { label: "6", value: "6" },
+  { label: "Khối A", value: "Khối A" },
+  { label: "Khối B", value: "Khối B" },
+  { label: "Khối C", value: "Khối C" },
 ];
 const loadTeacher = async () => {
   try {
@@ -89,55 +85,88 @@ const loadTeacher = async () => {
   }
 };
 
+const loadCategory = async () => {
+  try {
+    const { data: resData, error } = await restAPI.cms.getCategories({});
+    if (resData.value?.status) {
+      Categoryarray.value = resData.value.data
+        .map(({ id, name }) => ({
+          id,
+          name,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      message.error("Failed to load categorys!");
+      Categoryarray.value = [];
+    }
+  } catch (err) {
+    message.error("Error fetching categorys!");
+    console.error(err);
+    Categoryarray.value = [];
+  }
+};
+
 const handleSubmit = async (e) => {
   if (isLoading.value) return;
   e.preventDefault();
 
-  const { id, name, gender, dob, email, phone, address, status, type } =
-    formValue;
-
-  if (address?.address?.length > 250) return;
-  const unit_id = sessionStorage.getItem("unit_id");
+  const {
+    img,
+    color,
+    id,
+    name,
+    catagory,
+    teacher,
+    days,
+    type,
+    price,
+    discount,
+    description,
+    description2,
+    state,
+  } = formValue;
 
   let body = {
+    img,
+    color,
     id,
-    full_name: name,
-    gender,
-    dob: dayjs(dob).isValid() ? dayjs(dob).toISOString() : null,
-    email,
-    phone,
-    province_id: Number(address.province),
-    district_id: Number(address.district),
-    address: address.address,
-    status,
-    type: Number(type),
-    password: "aohvaklvnh",
+    name,
+    catagory,
+    teacher,
+    days,
+    type,
+    price: type === "Miễn phí" ? 0 : price,
+    discount: type === "Miễn phí" ? 0 : discount,
+    description,
+    description2,
+    state,
   };
 
   try {
-    await formRef.value?.validate();
-    if (id) {
-      const { data: resUpdate, error } = await restAPI.cms.updateStudent({
-        id,
-        body,
-      });
-      if (resUpdate?.value?.status) {
-        message.success("Cập nhật thông tin học viên thành công!");
-      } else {
-        message.error(error.value.data.message);
-      }
-    } else {
-      const { data: resCreate, error } = await restAPI.cms.createStudent({
-        body,
-      });
-      if (resCreate?.value?.status) {
-        message.success("Tạo học viên thành công!");
-        const newId = resCreate.value.data;
-        router.push({ path: window.location.pathname, query: { id: newId } });
-      } else {
-        message.error(error.value.data.message);
-      }
-    }
+    console.log(body);
+    // await formRef.value?.validate();
+    // if (id) {
+    //   const { data: resUpdate, error } = await restAPI.cms.updateStudent({
+    //     id,
+    //     body,
+    //   });
+    //   if (resUpdate?.value?.status) {
+    //     message.success("Cập nhật thông tin học viên thành công!");
+    //   } else {
+    //     message.error(error.value.data.message);
+    //   }
+    // } else {
+    //   const { data: resCreate, error } = await restAPI.cms.createStudent({
+    //     body,
+    //   });
+    //   if (resCreate?.value?.status) {
+    //     message.success("Tạo học viên thành công!");
+    //     const newId = resCreate.value.data;
+    //     router.push({ path: window.location.pathname, query: { id: newId } });
+    //   } else {
+    //     message.error(error.value.data.message);
+    //   }
+    // }
   } catch (err) {
     message.error("Vui lòng kiểm tra lại thông tin!");
     console.error("API error:", err);
@@ -148,6 +177,7 @@ const handleSubmit = async (e) => {
 onMounted(async () => {
   await nextTick();
   loadTeacher();
+  loadCategory();
 });
 </script>
 
@@ -214,7 +244,9 @@ onMounted(async () => {
             <n-form-item label="Danh mục" path="cata">
               <n-select
                 v-model:value="formValue.catagory"
-                :options="optionsStatus"
+                :options="Categoryarray"
+                label-field="name"
+                value-field="id"
                 placeholder="Chọn danh mục"
               />
             </n-form-item>
@@ -309,7 +341,12 @@ onMounted(async () => {
           </n-gi>
           <n-gi span="3"></n-gi>
           <n-gi class="pt-2">
-            <n-button round type="info" class="h-12 w-52 rounded-2xl text-lg">
+            <n-button
+              round
+              type="info"
+              class="h-12 w-52 rounded-2xl text-lg"
+              @click.prevent="handleSubmit"
+            >
               Lưu
             </n-button>
           </n-gi>

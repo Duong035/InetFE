@@ -6,6 +6,9 @@ import Components from 'unplugin-vue-components/vite'
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
+  devServer: {
+    port: 4000
+  },
   modules: [
     '@nuxtjs/tailwindcss',
     '@nuxt/image',

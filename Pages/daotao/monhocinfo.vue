@@ -359,7 +359,7 @@ watch(isModalVisible, (newValue) => {
                                   round
                                   type="info"
                                   class="h-12 w-full rounded-2xl text-lg"
-                                  @click="handleAddSubject"
+                                  @click.prevent="handleAddSubject"
                                 >
                                   Lưu
                                 </n-button>

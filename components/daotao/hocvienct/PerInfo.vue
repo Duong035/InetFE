@@ -124,7 +124,6 @@ if (formValue.id) {
   const { data: resData } = await restAPI.cms.getStudentDetail({
     id: formValue.id,
   });
-  console.log(resData.value);
   if (resData.value?.status) {
     const data = resData.value?.data?.entry;
     formValue.name = data?.full_name;
@@ -180,7 +179,6 @@ const handleSubmit = async (e) => {
     address: address.address,
     status,
     type: Number(type),
-    password: "aohvaklvnh",
   };
 
   try {

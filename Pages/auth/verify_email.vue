@@ -202,7 +202,7 @@ onBeforeUnmount(() => {
           <n-button
             type="info"
             class="h-[40px] w-full rounded-xl text-base font-medium"
-            @click="handleSubmit"
+            @click.prevent="handleSubmit"
           >
             Xác nhận
           </n-button>

@@ -328,7 +328,7 @@ export default defineComponent({
                   <n-button
                     type="info"
                     class="mr-5 h-12 w-48 rounded-2xl text-lg"
-                    @click="handleSubmit"
+                    @click.prevent="handleSubmit"
                   >
                     Lưu
                   </n-button>

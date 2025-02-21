@@ -109,6 +109,8 @@ function createColumns(): DataTableColumns<RowData> {
       title: "STT",
       key: "stt",
       titleAlign: "center",
+      defaultSortOrder: "ascend",
+      sorter: "default",
     },
     {
       title: "Môn học",
@@ -214,7 +216,11 @@ function createColumns(): DataTableColumns<RowData> {
             {
               size: "small",
               quaternary: true,
-              style: { backgroundColor: "transparent", color: "red" },
+              style: {
+                backgroundColor: "transparent",
+                color: "red",
+                onClick: () => openDeleteModal(),
+              },
             },
             { default: () => h("i", { class: "fa-solid fa-trash" }) },
           ),
@@ -303,7 +309,7 @@ const data = ref<RowData[]>([
 </script>
 
 <template>
-  <div class="flex h-full w-full overflow-auto rounded-2xl bg-gray-50">
+  <div class="flex h-full w-full overflow-auto rounded-2xl bg-white">
     <!-- Main Content -->
     <div class="flex-1">
       <!-- Content Area -->
@@ -379,5 +385,21 @@ const data = ref<RowData[]>([
         </n-grid>
       </div>
     </div>
+    <n-modal
+      v-model:show="showModal"
+      preset="card"
+      title="Xác nhận xóa"
+      closable
+      @close="showModal = false"
+      style="max-width: 450px; width: 90%; margin: 0 auto; text-align: center"
+    >
+      <p>Bạn có chắc chắn muốn xóa nhu cầu học tập này không?</p>
+      <template #footer>
+        <div class="flex justify-center gap-2">
+          <n-button @click="showModal = false">Hủy</n-button>
+          <n-button type="error" @click="confirmDelete">Xác nhận</n-button>
+        </div>
+      </template>
+    </n-modal>
   </div>
 </template>

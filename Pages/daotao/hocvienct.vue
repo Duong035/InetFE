@@ -12,7 +12,6 @@ import {
 import { NButton, NDataTable, NDropdown } from "naive-ui";
 import { useRouter } from "vue-router";
 import { message } from "ant-design-vue";
-import useApi from "../../composables/useApi";
 
 export default defineComponent({
   setup() {
