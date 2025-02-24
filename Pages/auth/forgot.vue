@@ -15,7 +15,6 @@ async function goToForgot() {
 
   isLoading.value = true;
   const emailValue = email.value;
-  const source = "forgot";
 
   const {
     data: resendResp,
@@ -28,13 +27,13 @@ async function goToForgot() {
     message.success("Mã Otp đã được gửi tới email!");
     router.push({
       path: "verify_email",
-      query: { email: emailValue, source },
+      query: { email: emailValue },
     });
   } else if (error.value.statusCode === 400) {
     message.success("Mã Otp đã được gửi tới email!");
     router.push({
       path: "verify_email",
-      query: { email: emailValue, source },
+      query: { email: emailValue },
     });
   } else {
     message.warning("Email không chính xác!");

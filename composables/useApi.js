@@ -15,16 +15,21 @@ const API_ENDPOINTS = {
     list_study_need: "/api/admin/list-study-needs",
     provinces: "/api/admin/provinces",
     districts: "/api/admin/districts",
+    branches: "/api/admin/branches",
+    staff: "/api/admin/users",
+    category: "/api/admin/category",
+    categories: "/api/admin/categories",
+    subjects: "/api/admin/subjects",
   },
 }
 
 class Request {
   constructor() {
     const route = useRoute()
-    this.baseURL = "http://localhost:4000"
+    this.baseURL = "http://localhost:3000"
     const getToken = () => {
       if (typeof window !== "undefined") {
-        return localStorage.getItem("auth_token") || "";
+        return sessionStorage.getItem("auth_token") || "";
       }
       return "";
     };
@@ -172,6 +177,43 @@ class CMSManager {
   }
   async deleteStudyNeed(data) {
     return this.request.delete(`${API_ENDPOINTS.cms.study_need}/${data.id}`, data)
+  }
+  //__________________________________________________________________________________________
+
+  // Staff____________________________________________________________________________________
+   async getStaff(data) {
+    return this.request.get(API_ENDPOINTS.cms.staff, data)
+  }
+  //__________________________________________________________________________________________
+
+  // Branches_________________________________________________________________________________
+  async getBranches(data) {
+    return this.request.get(API_ENDPOINTS.cms.branches, data)
+  }
+  //__________________________________________________________________________________________
+
+
+  // Category_________________________________________________________________________________
+  async getCategories(data) {
+    return this.request.get(API_ENDPOINTS.cms.category, data)
+  }
+  async getCategoryDetail(data) {
+    return this.request.get(`${API_ENDPOINTS.cms.category}/${data.id}`, data)
+  }
+  async createCategory(data) {
+    return this.request.post(API_ENDPOINTS.cms.category, data)
+  }
+  async deleteCategory(data) {
+    return this.request.delete(`${API_ENDPOINTS.cms.category}/${data.id}`, data)
+  }
+  async updateCategory(data) {
+    return this.request.patch(`${API_ENDPOINTS.cms.category}/${data.id}`, data)
+  }
+  //__________________________________________________________________________________________
+
+  // Subjects_________________________________________________________________________________
+  async getSubjects(data) {
+    return this.request.get(API_ENDPOINTS.cms.subjects, data)
   }
   //__________________________________________________________________________________________
 

@@ -160,11 +160,11 @@ export default defineComponent({
         const valid = await formRef.value.validate();
         if (valid) {
           const response = await axios.post(
-            "http://localhost:4000/api/admin/users",
+            "http://localhost:3000/api/admin/users",
             body,
             {
               headers: {
-                Authorization: `Bearer ${localStorage.getItem("authToken") || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA0OTk3NjUsInJvbGUiOiJvd25lciIsInJvbGVfaWQiOjIsInNpdGVfaWQiOiJiYmVhN2RlYi1jMmQ5LTRhODItYTdmZS1mMWE2YmZiNjU3MDciLCJzdGF0dXMiOnRydWUsInVzZXJfaWQiOiI4YjYxMDE5Ni0xMWRmLTQxNGItODM4NS0xYjk2M2U5ZTQ4MDAifQ.3tFX67634ZYj2KI6Vno3f5DC9MoIVrJlL4DqtMaC3y0"}`,
+                Authorization: `Bearer ${sessionStorage.getItem("authToken") || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA0OTk3NjUsInJvbGUiOiJvd25lciIsInJvbGVfaWQiOjIsInNpdGVfaWQiOiJiYmVhN2RlYi1jMmQ5LTRhODItYTdmZS1mMWE2YmZiNjU3MDciLCJzdGF0dXMiOnRydWUsInVzZXJfaWQiOiI4YjYxMDE5Ni0xMWRmLTQxNGItODM4NS0xYjk2M2U5ZTQ4MDAifQ.3tFX67634ZYj2KI6Vno3f5DC9MoIVrJlL4DqtMaC3y0"}`,
               },
             },
           );
@@ -328,7 +328,7 @@ export default defineComponent({
                   <n-button
                     type="info"
                     class="mr-5 h-12 w-48 rounded-2xl text-lg"
-                    @click="handleSubmit"
+                    @click.prevent="handleSubmit"
                   >
                     Lưu
                   </n-button>

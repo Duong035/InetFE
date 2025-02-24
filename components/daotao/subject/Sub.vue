@@ -1,11 +1,37 @@
 <script lang="ts">
 import type { DataTableColumns, DataTableRowKey } from "naive-ui";
-import { defineComponent, ref, h, reactive, computed } from "vue";
+import { defineComponent, ref, h, reactive, computed, onMounted } from "vue";
 import { NButton, NDataTable, NDropdown } from "naive-ui";
-import { onMounted } from "vue";
+import axios from "axios";
+
+// Định nghĩa interface cho dữ liệu bảng
+interface RowData {
+  id: string;
+  stt: number;
+  monhoc: string;
+  danhmuc: string;
+  hocphi: string;
+  sobuoi: string;
+  solop: string;
+  chuaxep: string;
+  date: string;
+  status: string;
+}
+
+const actionMenu = [
+  {
+    title: "Xem học viên chưa xếp lớp",
+    key: "Xem học viên chưa xếp lớp",
+  },
+  {
+    title: "Xem danh sách môn học",
+    key: "Xem danh sách môn học",
+  },
+];
 
 export default defineComponent({
   setup() {
+    // Cấu hình phân trang
     const paginationReactive = reactive({
       page: 1,
       pageSize: 5,
@@ -20,26 +46,124 @@ export default defineComponent({
         paginationReactive.page = 1;
       },
     });
+
     const delModal = ref(false);
+    const data = ref<RowData[]>([]);
     const checkedRowKeysRef = ref<DataTableRowKey[]>([]);
     const dataTableInstRef = ref<InstanceType<typeof NDataTable> | null>(null);
     const Danhmuclist = ref("");
     const Status = ref("");
+    const token = ref("");
+    const loading = ref(false);
+
+    // Retrieve token from localStorage safely
+    if (typeof window !== "undefined" && window.localStorage) {
+      token.value =
+        localStorage.getItem("authToken") ||
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA4MjU2MzEsInJvbGUiOiJvd25lciIsInJvbGVfaWQiOjIsInNpdGVfaWQiOiIwYjc4YjA5Yi0wOGQ0LTRiYTYtODc2Yy04NDZmMDYwMmU1ZWYiLCJzdGF0dXMiOnRydWUsInVzZXJfaWQiOiI5OWMzZGE0My1jNWRmLTQ1ZGYtODk0ZS1hODg0NDgwNzAxYTAifQ.ehgQDrm2XIVXqIDXR7KGqx1QvznSz4WDd-A2-0qkpgc";
+    }
+    // Mảng chứa dữ liệu bảng
+
     function filterStatus() {
       if (dataTableInstRef.value) {
         return dataTableInstRef.value.filter(null);
       }
     }
+
+    // Lấy dữ liệu subjects từ API và chuyển đổi sang RowData
+    async function fetchData() {
+      loading.value = true;
+      try {
+        console.log("Fetching users...");
+        console.log("Token used:", token.value);
+        const response = await axios.get(
+          "http://localhost:3000/api/admin/subjects",
+          {
+            headers: {
+              Authorization: `Bearer ${token.value}`,
+            },
+          },
+        );
+        const subjects = response.data.data.subjects;
+        data.value = subjects.map((subject: any, index: number) => ({
+          id: subject.id,
+          stt: index + 1,
+          monhoc: subject.name,
+          danhmuc: subject.category ? subject.category.name : "",
+          hocphi: subject.origin_fee.toString(),
+          sobuoi: subject.total_lessons.toString(),
+          solop: subject.class_total.toString(),
+          chuaxep: subject.student_pendings.toString(),
+          date: subject.created_at,
+          status: subject.is_active ? "Hoạt động" : "Không hoạt động",
+        }));
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    }
+
     onMounted(() => {
       filterStatus();
+      fetchData();
     });
+
+    // Hàm cập nhật dữ liệu (Edit)
+    const editRow = async (row: RowData) => {
+      const newName = prompt("Nhập tên môn học mới:", row.monhoc);
+      if (newName !== null && newName !== row.monhoc) {
+        try {
+          const response = await axios.put(
+            `http://localhost:3000/api/admin/subjects/${row.id}`,
+            { name: newName },
+            {
+              headers: {
+                Authorization: `Bearer ${token.value}`,
+              },
+            },
+          );
+          // Cập nhật lại dữ liệu trong mảng cục bộ
+          const index = data.value.findIndex(
+            (subject) => subject.id === row.id,
+          );
+          if (index !== -1) {
+            data.value[index].monhoc = newName;
+          }
+          console.log("Môn học đã được cập nhật:", response.data);
+        } catch (error) {
+          console.error("Lỗi cập nhật môn học:", error);
+        }
+      }
+    };
+
+    // Hàm xóa dữ liệu (Delete)
+    const deleteSub = async (row: RowData) => {
+      if (confirm("Bạn có chắc chắn muốn xóa môn học này không?")) {
+        try {
+          const response = await axios.delete(
+            `http://localhost:3000/api/admin/subject`,
+            {
+              headers: {
+                Authorization: `Bearer ${token.value}`,
+              },
+              data: { id: row.id },
+            },
+          );
+          data.value = data.value.filter((subject) => subject.id !== row.id);
+          console.log("Môn học đã được xóa:", response.data);
+        } catch (error) {
+          console.error("Lỗi xóa môn học:", error);
+        }
+      }
+    };
+    // Tạo các cột của bảng, truyền editRow và deleteSub vào hàm createColumns
+    const columns = createColumns(editRow, deleteSub);
 
     return {
       delModal,
       Status,
       Danhmuclist,
       data,
-      columns: createColumns(),
+      columns,
       dataTableInst: dataTableInstRef,
       checkedRowKeys: checkedRowKeysRef,
       pagination: paginationReactive,
@@ -80,7 +204,6 @@ export default defineComponent({
           label: "Thiết kế đồ họa",
           value: "Thiết kế đồ họa",
         },
-
         {
           label: "Công nghệ thông tin",
           value: "Công nghệ thông tin",
@@ -103,7 +226,12 @@ export default defineComponent({
     };
   },
 });
-function createColumns(): DataTableColumns<RowData> {
+
+// Hàm tạo cột cho n-data-table, nhận hai hàm editRow và deleteSub từ setup
+function createColumns(
+  editRow: (row: RowData) => void,
+  deleteSub: (row: RowData) => void,
+): DataTableColumns<RowData> {
   return [
     {
       title: "STT",
@@ -183,12 +311,11 @@ function createColumns(): DataTableColumns<RowData> {
           row.status,
         );
       },
-      defaultFilterOptionValues: ["Hoạt động", "Dừng hoạt động"],
+      defaultFilterOptionValues: ["Hoạt động", "Không hoạt động"],
       filter(value, row) {
         return row.status.includes(value as string);
       },
     },
-
     {
       title: "Action",
       key: "actions",
@@ -215,91 +342,32 @@ function createColumns(): DataTableColumns<RowData> {
               size: "small",
               quaternary: true,
               style: { backgroundColor: "transparent", color: "red" },
+              onclick: () => deleteSub(row),
             },
             { default: () => h("i", { class: "fa-solid fa-trash" }) },
           ),
-          h(
-            NDropdown,
-            {
-              trigger: "click",
-              options: actionMenu,
-              quaternary: true,
-              style: { color: "gray" },
-              onSelect(key) {
-                if (key === "Xem học viên chưa xếp lớp") {
-                  this.editRow(row);
-                } else if (key === "Xem danh sách môn học") {
-                  this.deleteRow(row);
-                }
-              },
-            },
-            { default: () => h("i", { class: "fa-solid fa-ellipsis-v" }) },
-          ),
+          // h(
+          //   NDropdown,
+          //   {
+          //     trigger: "click",
+          //     options: actionMenu,
+          //     quaternary: true,
+          //     style: { color: "gray" },
+          //     onSelect(key) {
+          //       if (key === "Xem học viên chưa xếp lớp") {
+          //         editRow(row);
+          //       } else if (key === "Xem danh sách môn học") {
+          //         deleteSub(row);
+          //       }
+          //     },
+          //   },
+          //   { default: () => h("i", { class: "fa-solid fa-ellipsis-v" }) },
+          // ),
         ]);
       },
     },
   ];
 }
-interface RowData {
-  id: string;
-  stt: number;
-  monhoc: string;
-  danhmuc: string;
-  hocphi: string;
-  sobuoi: string;
-  solop: string;
-  chuaxep: string;
-  date: string;
-  status: string;
-}
-const actionMenu = [
-  {
-    title: "Xếp lớp",
-    key: "Xep",
-  },
-  {
-    title: "Dừng hoạt động",
-    key: "Stop",
-  },
-];
-const data = ref<RowData[]>([
-  {
-    id: "1",
-    stt: 1,
-    monhoc: "MH2412345-Thiết kế cơ bản",
-    danhmuc: "Thiết kế đồ họa",
-    hocphi: "2.000.000",
-    sobuoi: "12",
-    solop: "11",
-    chuaxep: "10",
-    date: "25/10/2024",
-    status: "Hoạt động",
-  },
-  {
-    id: "1",
-    stt: 2,
-    monhoc: "MH2412345-Thiết kế cơ bản",
-    danhmuc: "Thiết kế đồ họa",
-    hocphi: "1.000.000",
-    sobuoi: "12",
-    solop: "11",
-    chuaxep: "10",
-    date: "25/10/2024",
-    status: "Hoạt động",
-  },
-  {
-    id: "1",
-    stt: 3,
-    monhoc: "MH2412345-Thiết kế cơ bản",
-    danhmuc: "Công nghệ thông tin",
-    hocphi: "1.000.000",
-    sobuoi: "12",
-    solop: "11",
-    chuaxep: "10",
-    date: "25/10/2024",
-    status: "Không hoạt động",
-  },
-]);
 </script>
 
 <template>
@@ -345,7 +413,7 @@ const data = ref<RowData[]>([
                     filterStatus();
                   })()
                 "
-                placeholder="Tất cả  trạng thái"
+                placeholder="Tất cả trạng thái"
               />
             </n-form-item>
           </n-gi>

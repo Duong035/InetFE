@@ -7,6 +7,7 @@ const activeTab = ref("");
 
 onMounted(() => {
   activeTab.value = "HomNay";
+  sessionStorage.removeItem("first_time");
 });
 </script>
 

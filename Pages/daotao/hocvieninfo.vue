@@ -14,6 +14,7 @@ const dropdowns = reactive<{ [key: string]: boolean }>({
 const { restAPI } = useApi();
 const route = useRoute();
 const isCollapsed = ref(false);
+const isLoading = ref(false);
 const activeDropdown = ref("canhan");
 const Nhucauarrey = ref<{ stt: number; Needid: string }[]>([]);
 function addNeed() {
@@ -23,6 +24,55 @@ function addNeed() {
   });
 }
 
+const Brancharray = ref([]);
+const singleBranchId = ref("");
+
+const showModal = ref(false);
+const deleteTarget = ref<{ value: string | null; stt: number | null }>({
+  value: null,
+  stt: null,
+});
+
+const openDeleteModal = (value: string, stt: number) => {
+  if (!value) {
+    deleteNeed(value, stt);
+    return;
+  }
+  deleteTarget.value = { value, stt };
+  showModal.value = true;
+};
+
+const confirmDelete = async () => {
+  isLoading.value = true;
+  if (deleteTarget.value.value) {
+    await deleteNeed(deleteTarget.value.value, deleteTarget.value.stt!);
+  }
+  showModal.value = false;
+  isLoading.value = false;
+};
+
+const loadBranch_id = async () => {
+  try {
+    const { data: resData } = await restAPI.cms.getBranches({});
+
+    if (resData.value?.status) {
+      Brancharray.value = resData.value.data
+        .map(({ id, Name, address }) => ({
+          id,
+          display: `${Name}: ${address}`,
+        }))
+        .sort((a, b) => a.display.localeCompare(b.display));
+    } else {
+      message.error("Failed to load Branches!");
+      Brancharray.value = [];
+    }
+  } catch (err) {
+    message.error("Error fetching Branches!");
+    console.error(err);
+    Brancharray.value = [];
+  }
+};
+
 async function getNeed() {
   const stu_id = route.query.id;
 
@@ -31,22 +81,34 @@ async function getNeed() {
   try {
     const { data: resData } = await restAPI.cms.listStudyNeed();
 
-    const idArray = resData.value.data
-      .filter((item) => item.student_id === stu_id)
-      .map((item) => item.id);
+    const filteredData = resData.value.data.filter(
+      (item) => item.student_id === stu_id,
+    );
 
-    Nhucauarrey.value = idArray.map((id, index) => ({
+    Nhucauarrey.value = filteredData.map((item, index) => ({
       stt: index + 1,
-      Needid: id,
+      Needid: item.id,
+      student_id: item.student_id, // Include student_id
+      branch_id: item.branch_id, // Include branch_id
     }));
+    singleBranchId.value =
+      Nhucauarrey.value.length > 0 ? Nhucauarrey.value[0].branch_id : null;
   } catch (error) {
     console.error("Error fetching need data:", error);
   }
 }
 
 async function deleteNeed(value: string, st: number) {
-  //get NeedId from array
-  console.log(value);
+  // Check if value is empty
+  if (!value) {
+    Nhucauarrey.value = Nhucauarrey.value
+      .filter((i) => i.stt !== st)
+      .map((item, index) => ({
+        ...item,
+        stt: index + 1,
+      }));
+    return;
+  }
   const { data: delData, error } = await restAPI.cms.deleteStudyNeed({
     id: value,
   });
@@ -63,14 +125,6 @@ async function deleteNeed(value: string, st: number) {
   }
 }
 
-function deleteItem(value: number) {
-  Nhucauarrey.value = Nhucauarrey.value
-    .filter((i) => i.stt !== value)
-    .map((item, index) => ({
-      ...item,
-      stt: index + 1,
-    }));
-}
 const toggleDropdown = (menu: string) => {
   if (menu.startsWith("nhucau-")) {
     if (activeDropdown.value === menu) {
@@ -98,6 +152,7 @@ const toggleDropdown = (menu: string) => {
 onMounted(async () => {
   await nextTick();
   getNeed();
+  loadBranch_id();
 });
 </script>
 <template>
@@ -128,7 +183,7 @@ onMounted(async () => {
             @click="toggleDropdown('nhucau')"
             :class="[
               'relative flex cursor-pointer items-center py-3 pl-3 pr-10',
-              activeDropdown === 'nhucau'
+              activeDropdown.startsWith('nhucau')
                 ? '-mr-10 bg-gray-50 pr-0 text-[#133D85]'
                 : 'text-[#4D6FA8]',
             ]"
@@ -136,7 +191,7 @@ onMounted(async () => {
             <i
               :class="[
                 'pr-3 text-[8px] text-[#133D85]',
-                activeDropdown === 'nhucau'
+                activeDropdown.startsWith('nhucau')
                   ? 'fa-solid fa-circle text-[#133D85]'
                   : 'fa-solid fa-circle-dot text-[#4D6FA8]',
               ]"
@@ -243,8 +298,7 @@ onMounted(async () => {
                 @click="toggleDropdown('nhucau')"
                 :class="[
                   'flex cursor-pointer items-center justify-between px-4 py-2.5',
-
-                  activeDropdown === 'nhucau'
+                  activeDropdown.startsWith('nhucau')
                     ? 'rounded-3xl bg-gray-200 text-[#133D85]'
                     : 'text-gray-600',
                 ]"
@@ -264,15 +318,32 @@ onMounted(async () => {
                 <li>
                   <div class="w-ful h-full" v-if="!isCollapsed">
                     <div class="px5 mt-5">
-                      <n-button
-                        round
-                        type="info"
-                        class="h-12 w-48 rounded-2xl text-xl"
-                        @click="addNeed"
-                      >
-                        Thêm mới
-                        <i class="fa-solid fa-plus ml-3"></i>
-                      </n-button>
+                      <div class="flex items-center justify-between gap-4">
+                        <n-select
+                          v-model:value="singleBranchId"
+                          :options="Brancharray"
+                          label-field="display"
+                          value-field="id"
+                          placeholder="Chọn chi nhánh"
+                          :disabled="
+                            Nhucauarrey.some(
+                              (item) =>
+                                item.Needid !== null &&
+                                item.Needid !== undefined,
+                            )
+                          "
+                        />
+                        <n-button
+                          round
+                          type="info"
+                          class="h-12 w-48 rounded-2xl text-xl"
+                          @click="addNeed"
+                          :disabled="!singleBranchId"
+                        >
+                          Thêm mới
+                          <i class="fa-solid fa-plus ml-3"></i>
+                        </n-button>
+                      </div>
                       <div v-for="item in Nhucauarrey" :key="item.stt">
                         <div>
                           <li
@@ -297,7 +368,10 @@ onMounted(async () => {
                               >
                                 <p>Nhu cầu {{ item.stt }}: {{ item.Needid }}</p>
                                 <button
-                                  @click="deleteNeed(item.Needid, item.stt)"
+                                  @click.prevent="
+                                    openDeleteModal(item.Needid, item.stt)
+                                  "
+                                  :loading="isLoading"
                                   class="text-red-500 hover:text-red-700"
                                 >
                                   <i class="fas fa-trash-alt"></i>
@@ -314,7 +388,11 @@ onMounted(async () => {
                             <div
                               class="rounded-b-2xl border-[4px] border-gray-200"
                             >
-                              <DaotaoHocvienctNeed :needId="item.Needid" />
+                              <DaotaoHocvienctNeed
+                                :needId="item.Needid"
+                                :branchId="singleBranchId"
+                                @apiSuccess="getNeed"
+                              />
                             </div>
                           </div>
                         </div>
@@ -404,5 +482,21 @@ onMounted(async () => {
         </nav>
       </div>
     </div>
+    <n-modal
+      v-model:show="showModal"
+      preset="card"
+      title="Xác nhận xóa"
+      closable
+      @close="showModal = false"
+      style="max-width: 450px; width: 90%; margin: 0 auto; text-align: center"
+    >
+      <p>Bạn có chắc chắn muốn xóa nhu cầu học tập này không?</p>
+      <template #footer>
+        <div class="flex justify-center gap-2">
+          <n-button @click="showModal = false">Hủy</n-button>
+          <n-button type="error" @click="confirmDelete">Xác nhận</n-button>
+        </div>
+      </template>
+    </n-modal>
   </div>
 </template>

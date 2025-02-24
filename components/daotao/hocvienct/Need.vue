@@ -1,19 +1,22 @@
 <script setup>
-import { ref, watch } from "vue";
+import { ref, watch, onMounted, reactive, nextTick } from "vue";
 import { message } from "ant-design-vue";
-import { useRouter, useRoute } from "vue-router";
+import { useRoute } from "vue-router";
 
+const emit = defineEmits(["apiSuccess"]);
 const route = useRoute();
-const isLoading = ref(false);
 const dayjs = useDayjs();
-const shift = ref([]);
-const listChecked = ref([]);
-const { restAPI } = useApi();
+const isLoading = ref(false);
 const showSpin = ref(false);
+const { restAPI } = useApi();
 const props = defineProps({
-  needId: String,
+  needId: String, // Existing prop
+  branchId: String, // New prop for branch ID
 });
+
 const localNeedId = ref("");
+const localBranchId = ref("");
+const Subjectarray = ref([]);
 
 watch(
   () => props.needId,
@@ -23,17 +26,24 @@ watch(
   { immediate: true },
 );
 
+watch(
+  () => props.branchId,
+  (newVal) => {
+    localBranchId.value = newVal || "";
+  },
+  { immediate: true },
+);
+
 const formValue = reactive({
   student_id: null,
   id: null,
   branch_id: null,
-  curriculums: [],
-  // subjects: [],
   study_goals: null,
   teacher_requirements: null,
   is_online_form: null,
   is_offline_form: null,
   studying_start_date: null,
+  subject_ids: [],
 });
 
 if (localNeedId.value && localNeedId.value !== "") {
@@ -47,6 +57,12 @@ if (localNeedId.value && localNeedId.value !== "") {
     formValue.id = data.id || null;
     formValue.branch_id = data.branch_id || null;
     formValue.study_goals = data.study_goals || null;
+    formValue.subject_ids = Array.isArray(data.subject_ids)
+      ? data.subject_ids
+      : data.subject_ids
+        ? [data.subject_ids]
+        : [];
+    console.log(formValue.subject_ids);
     formValue.teacher_requirements = data.teacher_requirements || null;
     formValue.is_online_form = Boolean(data.is_online_form);
     formValue.is_offline_form = Boolean(data.is_offline_form);
@@ -61,29 +77,51 @@ if (localNeedId.value && localNeedId.value !== "") {
   showSpin.value = false;
 }
 
+const loadSubjects = async () => {
+  try {
+    const { data: resData, error } = await restAPI.cms.getSubjects({});
+    const rawData = toRaw(resData.value)?.data;
+    if (resData.value?.status) {
+      Subjectarray.value = rawData.subjects
+        .map(({ id, name }) => ({
+          id,
+          name,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      message.error("Failed to load subjects!");
+      Subjectarray.value = [];
+    }
+  } catch (err) {
+    message.error("Error fetching subjects!");
+    console.error(err);
+    Subjectarray.value = [];
+  }
+};
+
 const handleSubmit = async (e) => {
   if (isLoading.value) return;
 
   const {
-    student_id,
     id,
-    branch_id,
     curriculums,
     study_goals,
     teacher_requirements,
     is_online_form,
     is_offline_form,
     studying_start_date,
+    subject_ids,
   } = formValue;
   let body = {
     student_id: route.query.id || null,
     id,
-    branch_id,
+    branch_id: localBranchId.value,
     curriculums,
     study_goals,
     teacher_requirements,
     is_online_form,
     is_offline_form,
+    subject_ids: Array.isArray(subject_ids) ? subject_ids : [subject_ids],
     studying_start_date: dayjs(studying_start_date).isValid()
       ? dayjs(studying_start_date).toISOString()
       : null,
@@ -98,7 +136,7 @@ const handleSubmit = async (e) => {
       if (resUpdate?.value?.status) {
         message.success("Cập nhật nhu cầu học tập thành công!");
       } else {
-        message.error(error.value.data.message);
+        message.error(error.value.data.error);
       }
     } else {
       const { data: resCreate, error } = await restAPI.cms.createStudyNeed({
@@ -106,8 +144,9 @@ const handleSubmit = async (e) => {
       });
       if (resCreate?.value?.status) {
         message.success("Tạo nhu cầu học tập thành công!");
+        emit("apiSuccess");
       } else {
-        message.error(error.value.data.message);
+        message.error(error.value.data.error);
       }
     }
   } catch {
@@ -115,20 +154,25 @@ const handleSubmit = async (e) => {
     isLoading.value = false;
   }
 };
+onMounted(async () => {
+  await nextTick();
+  loadSubjects();
+});
 </script>
+
 <template>
   <n-spin :show="showSpin">
     <n-form :model="formValue">
       <div class="w-full rounded-b-2xl bg-white py-5 pl-5 pr-6">
         <n-grid :x-gap="30" cols="1 m:2" responsive="screen">
           <n-gi span="1 m:2">
-            <n-form-item
-              label="Chương trình học, môn học *"
-              label-placement="left"
-            >
+            <n-form-item label="Môn học *" label-placement="left">
               <n-select
                 placeholder="Chọn môn học"
-                v-model:value="formValue.subjects"
+                v-model:value="formValue.subject_ids"
+                :options="Subjectarray"
+                label-field="name"
+                value-field="id"
               />
             </n-form-item>
           </n-gi>
@@ -177,10 +221,9 @@ const handleSubmit = async (e) => {
           </n-gi>
 
           <n-gi span="1 m:2">
-            <DaotaoHocvienctSchedule
-              v-model:Shift="shift"
-              v-model:listChecked="listChecked"
-            />
+            <DaotaoHocvienctSchedule />
+            <!-- v-model:Shift="shift"
+              v-model:listChecked="listChecked" -->
           </n-gi>
           <n-gi span="1 m:2" class="mt-2">
             <n-form-item label="Ghi chú" path="note">
@@ -192,7 +235,7 @@ const handleSubmit = async (e) => {
               round
               type="info"
               class="h-12 w-52 rounded-2xl text-lg"
-              @click="handleSubmit"
+              @click.prevent="handleSubmit"
               :loading="isLoading"
             >
               Lưu

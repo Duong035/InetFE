@@ -31,7 +31,7 @@ async function loadData() {
     await restAPI.cms.getUnitInformation();
   if (res?.value?.status) {
     const data = res?.value?.data;
-    localStorage.setItem("unit_id", data.id);
+    sessionStorage.setItem("unit_id", data.id);
     formParams.id = data.id;
     formParams.email = data.email;
     formParams.phone = data.phone;
