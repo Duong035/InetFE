@@ -1,5 +1,4 @@
 <script setup>
-import { message } from "ant-design-vue";
 import { ref, reactive, onMounted, nextTick, computed } from "vue";
 import { useRoute } from "vue-router";
 
@@ -14,6 +13,7 @@ const railStyle = ({ focused, checked }) => {
   return style;
 };
 
+const message = useMessage();
 const { restAPI } = useApi();
 const isLoading = ref(false);
 const showSpin = ref(false);
@@ -34,12 +34,23 @@ const formValue = reactive({
   description2: null,
   state: null,
 });
-const displayPrice = computed(() =>
-  formValue.type === "Miễn phí" ? "0" : formValue.price,
-);
-const displayDiscount = computed(() =>
-  formValue.type === "Miễn phí" ? "0" : formValue.discount,
-);
+const displayPrice = computed({
+  get: () => (formValue.type === "Miễn phí" ? "0" : formValue.price),
+  set: (value) => {
+    if (formValue.type !== "Miễn phí") {
+      formValue.price = value;
+    }
+  },
+});
+
+const displayDiscount = computed({
+  get: () => (formValue.type === "Miễn phí" ? "0" : formValue.discount),
+  set: (value) => {
+    if (formValue.type !== "Miễn phí") {
+      formValue.discount = value;
+    }
+  },
+});
 const options = [
   { label: "Sáng", value: "Sáng" },
   { label: "Tối", value: "Tối" },

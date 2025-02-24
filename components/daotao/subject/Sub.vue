@@ -3,9 +3,10 @@ import type { DataTableColumns, DataTableRowKey } from "naive-ui";
 import { defineComponent, ref, h, reactive, computed, onMounted } from "vue";
 import { NButton, NDataTable, NDropdown } from "naive-ui";
 import axios from "axios";
-
+import dayjs from "dayjs";
 // Định nghĩa interface cho dữ liệu bảng
 interface RowData {
+  created_at: string;
   id: string;
   stt: number;
   monhoc: string;
@@ -110,11 +111,12 @@ export default defineComponent({
     // Hàm cập nhật dữ liệu (Edit)
     const editRow = async (row: RowData) => {
       const newName = prompt("Nhập tên môn học mới:", row.monhoc);
+
       if (newName !== null && newName !== row.monhoc) {
         try {
-          const response = await axios.put(
-            `http://localhost:3000/api/admin/subjects/${row.id}`,
-            { name: newName },
+          const response = await axios.patch(
+            `http://localhost:3000/api/admin/subject`,
+            { id: row.id, name: newName },
             {
               headers: {
                 Authorization: `Bearer ${token.value}`,
@@ -276,9 +278,12 @@ function createColumns(
     },
     {
       title: "Ngày tạo",
-      key: "date",
+      key: "created_at",
       defaultSortOrder: "ascend",
       sorter: "default",
+      render(row) {
+        return dayjs(row.created_at).format("DD-MM-YYYY");
+      },
     },
     {
       title: "Trạng thái",
@@ -328,6 +333,7 @@ function createColumns(
               size: "small",
               quaternary: true,
               style: { backgroundColor: "transparent", color: "green" },
+              onclick: () => editRow(row),
             },
             {
               default: () =>

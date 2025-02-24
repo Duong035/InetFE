@@ -11,11 +11,9 @@ export default defineNuxtConfig({
   },
   modules: [
     '@nuxtjs/tailwindcss',
-    '@nuxt/image',
-    '@nuxtjs/google-fonts',
-    '@nuxt/icon',
     'nuxtjs-naive-ui',
     "dayjs-nuxt",
+    "@pinia/nuxt",
   ],
   
   css: ["@/assets/index.css"],

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { reactive, ref, onMounted, nextTick } from "vue";
 import { useRoute } from "vue-router";
-import { message } from "ant-design-vue";
 
 const dropdowns = reactive<{ [key: string]: boolean }>({
   canhan: true,
@@ -11,6 +10,7 @@ const dropdowns = reactive<{ [key: string]: boolean }>({
   chamsoc: false,
 });
 
+const message = useMessage();
 const { restAPI } = useApi();
 const route = useRoute();
 const isCollapsed = ref(false);

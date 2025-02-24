@@ -19,7 +19,7 @@ const API_ENDPOINTS = {
     staff: "/api/admin/users",
     category: "/api/admin/category",
     categories: "/api/admin/categories",
-    subjects: "/api/admin/subjects",
+    subjects: "/api/admin/subject/all",
   },
 }
 

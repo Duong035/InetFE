@@ -1,7 +1,7 @@
 <script setup>
 import { reactive, ref } from "vue";
-import { message } from "ant-design-vue";
 
+const message = useMessage();
 const formParams = reactive({
   id: null,
   email: null,

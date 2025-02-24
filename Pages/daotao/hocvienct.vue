@@ -11,10 +11,10 @@ import {
 } from "vue";
 import { NButton, NDataTable, NDropdown } from "naive-ui";
 import { useRouter } from "vue-router";
-import { message } from "ant-design-vue";
 
 export default defineComponent({
   setup() {
+    const message = useMessage();
     const paginationReactive = reactive({
       page: 1,
       pageSize: 9,
@@ -29,14 +29,16 @@ export default defineComponent({
         paginationReactive.page = 1;
       },
     });
+    const dayjs = useDayjs();
     const { restAPI } = useApi();
     const router = useRouter();
-    const delModal = ref(false);
-    const Ticked = ref([]);
     const checkedRowKeysRef = ref<DataTableRowKey[]>([]);
     const dataTableInstRef = ref<InstanceType<typeof NDataTable> | null>(null);
     const activeItem = ref("Tất cả trạng thái");
     const accountStatus = ref("");
+
+    const delModal = ref(false);
+    const deleteTarget = ref<{ id: string } | null>(null);
     function filterStatus() {
       if (dataTableInstRef.value) {
         return dataTableInstRef.value.filter(null);
@@ -91,6 +93,9 @@ export default defineComponent({
           key: "ncn",
           defaultSortOrder: "ascend",
           sorter: "default",
+          render(row) {
+            return dayjs(row.ncn).format("DD-MM-YYYY");
+          },
         },
 
         {
@@ -156,6 +161,7 @@ export default defineComponent({
                   size: "small",
                   quaternary: true,
                   style: { backgroundColor: "transparent", color: "red" },
+                  onClick: () => openDeleteModal("single", row.id),
                 },
                 { default: () => h("i", { class: "fa-solid fa-trash" }) },
               ),
@@ -170,7 +176,6 @@ export default defineComponent({
                     if (key === "Xếp lớp") {
                       edit(row);
                     } else if (key === "Dừng hoạt động") {
-                      deleteRow(row);
                     }
                   },
                 },
@@ -184,6 +189,8 @@ export default defineComponent({
     const data = ref<RowData[]>([]);
 
     const loadData = async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       try {
         const { data: resData, error } = await restAPI.cms.getStudents();
 
@@ -223,7 +230,7 @@ export default defineComponent({
     const selectedRows = ref<RowData[]>([]);
     const selectedId = computed(() => selectedRows.value.map((row) => row.id));
 
-    const getSelected = async (value: number) => {
+    const massEdit = async (value: number) => {
       let successCount = 0;
       let errorCount = 0;
       const status = value;
@@ -268,7 +275,96 @@ export default defineComponent({
 
       return selectedId.value;
     };
+
+    const showDeleteModal = ref(false);
+    const deleteType = ref("single"); // 'single' or 'mass'
+    const isDeleting = ref(false);
+    const deleteId = ref("");
+
+    const openDeleteModal = (type: string, id = "") => {
+      deleteType.value = type;
+      deleteId.value = id;
+      showDeleteModal.value = true;
+    };
+
+    const confirmDelete = async () => {
+      isDeleting.value = true;
+      if (deleteType.value === "single") {
+        await deleteSingleItem(deleteId.value);
+      } else {
+        await deleteMultipleItems();
+      }
+      isDeleting.value = false;
+      showDeleteModal.value = false;
+    };
+
+    const deleteSingleItem = async (id: string) => {
+      try {
+        const body = { ids: [id] };
+        const { data: resdel, error } = await restAPI.cms.deleteStudents({
+          body,
+        });
+
+        if (resdel?.value?.status) {
+          message.success("Xóa học viên thành công!");
+          await loadData(); // Refresh the data
+        } else {
+          const errorCode = error.value?.data?.error;
+          const errorMessage =
+            ERROR_CODES[errorCode as keyof typeof ERROR_CODES] ||
+            resdel?.value?.message ||
+            "Đã xảy ra lỗi, vui lòng thử lại!";
+
+          message.warning(errorMessage);
+        }
+      } catch (err) {
+        message.error("Lỗi khi xóa học viên.");
+      } finally {
+        isDeleting.value = false;
+        delModal.value = false;
+        deleteTarget.value = null;
+      }
+    };
+
+    const deleteMultipleItems = async () => {
+      let successCount = 0;
+      let errorCount = 0;
+      let body = { ids: selectedId.value };
+
+      try {
+        const { data: resdel, error } = await restAPI.cms.deleteStudents({
+          body,
+        });
+
+        if (resdel?.value?.status) {
+          successCount = body.ids.length;
+          message.success(`Xóa thành công ${successCount} học viên!`);
+        } else {
+          errorCount = body.ids.length;
+          const errorCode = error?.value?.data?.error;
+          const errorMessage =
+            ERROR_CODES[errorCode as keyof typeof ERROR_CODES] ||
+            resdel?.value?.message ||
+            "Đã xảy ra lỗi, vui lòng thử lại!";
+          message.warning(errorMessage);
+        }
+      } catch (err) {
+        errorCount = body.ids.length;
+        message.error(
+          `Lỗi xóa ${errorCount} học viên: ${(err as Error).message}`,
+        );
+      }
+
+      loadData();
+    };
+
     return {
+      isDeleting,
+      deleteTarget,
+      showDeleteModal,
+      deleteType,
+      confirmDelete,
+      openDeleteModal,
       edit,
       delModal,
       activeItem,
@@ -277,29 +373,41 @@ export default defineComponent({
       columns: createColumns(),
       dataTableInst: dataTableInstRef,
       checkedRowKeys: checkedRowKeysRef,
-      getSelected,
+      massEdit,
       pagination: paginationReactive,
+      // filterStatus() {
+      //   if (dataTableInstRef.value) {
+      //     if (activeItem.value === "Tất cả trạng thái") {
+      //       if (accountStatus.value == "All") {
+      //         dataTableInstRef.value.filter(null);
+      //       } else {
+      //         dataTableInstRef.value.filter({
+      //           accstatus: [accountStatus.value || ""],
+      //         });
+      //       }
+      //     } else {
+      //       if (accountStatus.value == "All") {
+      //         dataTableInstRef.value.filter({
+      //           status: [activeItem.value || ""],
+      //         });
+      //       } else {
+      //         dataTableInstRef.value.filter({
+      //           status: [activeItem.value || ""],
+      //           accstatus: [accountStatus.value || ""],
+      //         });
+      //       }
+      //     }
+      //   }
+      // },
+
       filterStatus() {
         if (dataTableInstRef.value) {
-          if (activeItem.value === "Tất cả trạng thái") {
-            if (accountStatus.value == "All") {
-              dataTableInstRef.value.filter(null);
-            } else {
-              dataTableInstRef.value.filter({
-                accstatus: [accountStatus.value || ""],
-              });
-            }
+          if (accountStatus.value == "All") {
+            dataTableInstRef.value.filter(null);
           } else {
-            if (accountStatus.value == "All") {
-              dataTableInstRef.value.filter({
-                status: [activeItem.value || ""],
-              });
-            } else {
-              dataTableInstRef.value.filter({
-                status: [activeItem.value || ""],
-                accstatus: [accountStatus.value || ""],
-              });
-            }
+            dataTableInstRef.value.filter({
+              accstatus: [accountStatus.value || ""],
+            });
           }
         }
       },
@@ -386,7 +494,7 @@ const actionMenu = [
               <i class="fa-solid fa-plus ml-1 px-2"></i>
             </n-button>
           </div>
-          <div>
+          <!-- <div>
             <nav>
               <ul class="mt-5 flex flex-row gap-5 text-xl text-gray-400">
                 <li class="cursor-pointer duration-75 hover:text-blue-500">
@@ -459,7 +567,7 @@ const actionMenu = [
                 </li>
               </ul>
             </nav>
-          </div>
+          </div> -->
 
           <n-grid
             class="min-h-fit w-full"
@@ -504,17 +612,21 @@ const actionMenu = [
               >
                 <n-gi span="1 m:2" class="flex-cols-3 flex gap-x-10">
                   <n-form-item>
-                    <n-button type="info" @click="getSelected(1)">
+                    <n-button type="info" @click="massEdit(1)">
                       Dừng hoạt động
                     </n-button>
                   </n-form-item>
                   <n-form-item>
-                    <n-button type="info" @click="getSelected(2)">
+                    <n-button type="info" @click="massEdit(2)">
                       Hoạt động
                     </n-button>
                   </n-form-item>
                   <n-form-item>
-                    <n-button type="error" ghost>
+                    <n-button
+                      type="error"
+                      ghost
+                      @click="openDeleteModal('multiple')"
+                    >
                       <i class="fa-solid fa-trash mr-1"></i>
                       Xóa lựa chọn
                     </n-button>
@@ -556,5 +668,26 @@ const actionMenu = [
         </n-card>
       </div>
     </div>
+    <n-modal v-model:show="showDeleteModal">
+      <n-card
+        title="Xác nhận xóa"
+        closable
+        @close="showDeleteModal = false"
+        style="width: 400px"
+      >
+        <p v-if="deleteType === 'single'">
+          Bạn có chắc chắn muốn xóa học viên này không?
+        </p>
+        <p v-else>Bạn có chắc chắn muốn xóa các học viên đã chọn không?</p>
+        <template #footer>
+          <n-space justify="end">
+            <n-button @click="showDeleteModal = false">Hủy</n-button>
+            <n-button type="error" @click="confirmDelete" :loading="isDeleting">
+              Xóa
+            </n-button>
+          </n-space>
+        </template>
+      </n-card>
+    </n-modal>
   </div>
 </template>

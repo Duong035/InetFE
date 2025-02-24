@@ -1,11 +1,12 @@
 <script setup>
 import { useRoute, useRouter } from "vue-router";
-import { message } from "ant-design-vue";
 import { definePageMeta } from "#imports";
 
 definePageMeta({
   layout: "form",
 });
+
+const message = useMessage();
 const route = useRoute();
 const router = useRouter();
 const { restAPI } = useApi();

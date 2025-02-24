@@ -1,12 +1,13 @@
 <script setup>
 import { useRouter } from "vue-router";
 import { ref } from "vue";
-import { message } from "ant-design-vue";
+import { useMessage } from "naive-ui";
 
 definePageMeta({
   layout: "form",
 });
 
+const message = useMessage();
 const { restAPI } = useApi();
 const router = useRouter();
 const isLoading = ref(false);
@@ -20,9 +21,8 @@ const handleSubmit = async (e) => {
   const body = { email: email.value, password: password.value };
 
   try {
-    const { data: resVerify, error } = await restAPI.cms.login({
-      body,
-    });
+    const { data: resVerify, error } = await restAPI.cms.login({ body });
+
     if (resVerify.value?.status) {
       const data = resVerify?.value?.data;
       sessionStorage.setItem("id", data.id);
@@ -31,21 +31,18 @@ const handleSubmit = async (e) => {
 
       message.success("Đăng nhập thành công!");
       router.push("/Dashboard");
-    } else if (resVerify.value?.message === "Review your input password") {
-      message.warning("Mật khẩu không chính xác");
-    } else if (error.value.statusCode === 403) {
-      if (body.password === "aohvaklvnh")
-        sessionStorage.setItem("first_time", "true");
-      message.success("Đăng nhập lần đầu, cần xác nhận email!");
-      router.push({
-        path: "verify_email",
-        query: { email: email.value },
-      });
-    } else if (error.value.statusCode === 500) {
-      message.warning("Email không chính xác");
+    } else {
+      const errorCode = error.value.data.error;
+      const errorMessage =
+        ERROR_CODES[errorCode] ||
+        resVerify.value?.message ||
+        "Đã xảy ra lỗi, vui lòng thử lại!";
+
+      message.warning(errorMessage);
     }
   } catch (error) {
     console.log(error);
+    message.error("Lỗi không xác định, vui lòng thử lại!");
   } finally {
     isLoading.value = false;
   }

@@ -1,14 +1,16 @@
 <script setup>
-import { ref, watch, onMounted, reactive, nextTick } from "vue";
-import { message } from "ant-design-vue";
+import { ref, watch, onMounted, reactive, nextTick, toRaw } from "vue";
 import { useRoute } from "vue-router";
 
+const message = useMessage();
 const emit = defineEmits(["apiSuccess"]);
 const route = useRoute();
 const dayjs = useDayjs();
 const isLoading = ref(false);
 const showSpin = ref(false);
 const { restAPI } = useApi();
+const singleSubId = ref("");
+
 const props = defineProps({
   needId: String, // Existing prop
   branchId: String, // New prop for branch ID
@@ -70,7 +72,13 @@ if (localNeedId.value && localNeedId.value !== "") {
       ? new Date(data.studying_start_date).getTime()
       : null;
   } else {
-    console.warn("No matching data found for localNeedId:", localNeedId.value);
+    const errorCode = error.value.data.error;
+    const errorMessage =
+      ERROR_CODES[errorCode] ||
+      resVerify.value?.message ||
+      "Đã xảy ra lỗi, vui lòng thử lại!";
+
+    message.warning(errorMessage);
   }
   showSpin.value = false;
 } else {
@@ -79,15 +87,17 @@ if (localNeedId.value && localNeedId.value !== "") {
 
 const loadSubjects = async () => {
   try {
-    const { data: resData, error } = await restAPI.cms.getSubjects({});
-    const rawData = toRaw(resData.value)?.data;
-    if (resData.value?.status) {
-      Subjectarray.value = rawData.subjects
+    const response = await restAPI.cms.getSubjects({});
+    const rawData = toRaw(response.data.value.data);
+    if (response.status) {
+      Subjectarray.value = rawData
         .map(({ id, name }) => ({
           id,
           name,
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
+      singleSubId.value =
+        Subjectarray.value.length > 0 ? Subjectarray.value[0].branch_id : null;
     } else {
       message.error("Failed to load subjects!");
       Subjectarray.value = [];
@@ -126,7 +136,6 @@ const handleSubmit = async (e) => {
       ? dayjs(studying_start_date).toISOString()
       : null,
   };
-  console.log(body);
   try {
     if (localNeedId.value && String(localNeedId.value).trim() !== "") {
       const { data: resUpdate, error } = await restAPI.cms.updateStudyNeed({
@@ -136,7 +145,13 @@ const handleSubmit = async (e) => {
       if (resUpdate?.value?.status) {
         message.success("Cập nhật nhu cầu học tập thành công!");
       } else {
-        message.error(error.value.data.error);
+        const errorCode = error.value.data.error;
+        const errorMessage =
+          ERROR_CODES[errorCode] ||
+          resUpdate.value?.message ||
+          "Đã xảy ra lỗi, vui lòng thử lại!";
+
+        message.warning(errorMessage);
       }
     } else {
       const { data: resCreate, error } = await restAPI.cms.createStudyNeed({
@@ -146,7 +161,13 @@ const handleSubmit = async (e) => {
         message.success("Tạo nhu cầu học tập thành công!");
         emit("apiSuccess");
       } else {
-        message.error(error.value.data.error);
+        const errorCode = error.value.data.error;
+        const errorMessage =
+          ERROR_CODES[errorCode] ||
+          resCreate.value?.message ||
+          "Đã xảy ra lỗi, vui lòng thử lại!";
+
+        message.warning(errorMessage);
       }
     }
   } catch {
@@ -169,7 +190,7 @@ onMounted(async () => {
             <n-form-item label="Môn học *" label-placement="left">
               <n-select
                 placeholder="Chọn môn học"
-                v-model:value="formValue.subject_ids"
+                v-model:value="singleSubId"
                 :options="Subjectarray"
                 label-field="name"
                 value-field="id"

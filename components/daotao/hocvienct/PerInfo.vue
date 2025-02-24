@@ -1,5 +1,4 @@
 <script setup>
-import { message } from "ant-design-vue";
 import { ref, reactive } from "vue";
 import { useRouter, useRoute } from "vue-router";
 
@@ -13,6 +12,7 @@ const railStyle = ({ focused, checked }) => {
   }
   return style;
 };
+const message = useMessage();
 const dayjs = useDayjs();
 const route = useRoute();
 const router = useRouter();

@@ -6,7 +6,14 @@
   </div>
 </template>
 
-<script setup></script>
+<script setup>
+try {
+  const $message = useMessage();
+  if (typeof window !== "undefined") {
+    window["$message"] = $message;
+  }
+} catch (error) {}
+</script>
 
 <style scoped>
 .hero {
