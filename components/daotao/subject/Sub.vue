@@ -4,6 +4,10 @@ import { defineComponent, ref, h, reactive, computed, onMounted } from "vue";
 import { NButton, NDataTable, NDropdown } from "naive-ui";
 import axios from "axios";
 import dayjs from "dayjs";
+<<<<<<< HEAD
+=======
+
+>>>>>>> 385560701fa49c550ce04a8b71e41d128d3957ac
 // Định nghĩa interface cho dữ liệu bảng
 interface RowData {
   created_at: string;
@@ -56,6 +60,7 @@ export default defineComponent({
     const Status = ref("");
     const token = ref("");
     const loading = ref(false);
+    const danhmucoptions = ref([{ label: "Tất cả danh mục", value: "All" }]);
 
     // Retrieve token from localStorage safely
     if (typeof window !== "undefined" && window.localStorage) {
@@ -98,6 +103,22 @@ export default defineComponent({
           date: subject.created_at,
           status: subject.is_active ? "Hoạt động" : "Không hoạt động",
         }));
+
+        // get category from subjects
+        const categorySet = new Set<string>();
+        subjects.forEach((subject: any) => {
+          if (subject.category && subject.category.name) {
+            categorySet.add(subject.category.name);
+          }
+        });
+        // Cập nhật lại danh sách option cho danhmucoptions
+        danhmucoptions.value = [
+          { label: "Tất cả danh mục", value: "All" },
+          ...Array.from(categorySet).map((name) => ({
+            label: name,
+            value: name,
+          })),
+        ];
       } catch (error) {
         console.error("Error fetching data:", error);
       }
@@ -123,7 +144,7 @@ export default defineComponent({
               },
             },
           );
-          // Cập nhật lại dữ liệu trong mảng cục bộ
+          // Cập nhật dữ liệu trong mảng
           const index = data.value.findIndex(
             (subject) => subject.id === row.id,
           );
@@ -197,20 +218,7 @@ export default defineComponent({
       handleCheck(rowKeys: DataTableRowKey[]) {
         checkedRowKeysRef.value = rowKeys;
       },
-      danhmucoptions: [
-        {
-          label: "Tất cả danh mục",
-          value: "All",
-        },
-        {
-          label: "Thiết kế đồ họa",
-          value: "Thiết kế đồ họa",
-        },
-        {
-          label: "Công nghệ thông tin",
-          value: "Công nghệ thông tin",
-        },
-      ],
+      danhmucoptions,
       statusoptions: [
         {
           label: "All",
@@ -352,23 +360,23 @@ function createColumns(
             },
             { default: () => h("i", { class: "fa-solid fa-trash" }) },
           ),
-          // h(
-          //   NDropdown,
-          //   {
-          //     trigger: "click",
-          //     options: actionMenu,
-          //     quaternary: true,
-          //     style: { color: "gray" },
-          //     onSelect(key) {
-          //       if (key === "Xem học viên chưa xếp lớp") {
-          //         editRow(row);
-          //       } else if (key === "Xem danh sách môn học") {
-          //         deleteSub(row);
-          //       }
-          //     },
-          //   },
-          //   { default: () => h("i", { class: "fa-solid fa-ellipsis-v" }) },
-          // ),
+          h(
+            NDropdown,
+            {
+              trigger: "click",
+              options: actionMenu,
+              quaternary: true,
+              style: { color: "gray" },
+              onSelect(key) {
+                if (key === "Xem học viên chưa xếp lớp") {
+                  editRow(row);
+                } else if (key === "Xem danh sách môn học") {
+                  deleteSub(row);
+                }
+              },
+            },
+            { default: () => h("i", { class: "fa-solid fa-ellipsis-v" }) },
+          ),
         ]);
       },
     },
