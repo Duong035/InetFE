@@ -117,8 +117,6 @@ const rules = reactive({
   },
 });
 
-let canNotUpdateFields = [];
-
 if (formValue.id) {
   showSpin.value = true;
   const { data: resData } = await restAPI.cms.getStudentDetail({
@@ -138,7 +136,6 @@ if (formValue.id) {
     formValue.branch_id = data?.branch_id;
     optionsDistricts.params.province = data?.province_id;
     formValue.status = data?.status;
-    canNotUpdateFields = resData.value?.data?.can_not_update || [];
     if (data?.province?.id > 20) {
       optionsProvinces.default = data.province;
       optionsProvinces.data.push({

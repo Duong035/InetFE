@@ -9,7 +9,6 @@ const dayjs = useDayjs();
 const isLoading = ref(false);
 const showSpin = ref(false);
 const { restAPI } = useApi();
-const singleSubId = ref("");
 
 const props = defineProps({
   needId: String, // Existing prop
@@ -38,14 +37,24 @@ watch(
 
 const formValue = reactive({
   student_id: null,
-  id: null,
   branch_id: null,
   study_goals: null,
   teacher_requirements: null,
   is_online_form: null,
   is_offline_form: null,
-  studying_start_date: null,
-  subject_ids: [],
+  // studying_start_date: null,
+  subject_ids: [], // Ensuring it's always an array
+  time_slots: [
+    {
+      start_time: null,
+      end_time: null,
+    },
+  ],
+  short_shifts: [
+    {
+      day_of_week: [],
+    },
+  ],
 });
 
 if (localNeedId.value && localNeedId.value !== "") {
@@ -60,17 +69,15 @@ if (localNeedId.value && localNeedId.value !== "") {
     formValue.branch_id = data.branch_id || null;
     formValue.study_goals = data.study_goals || null;
     formValue.subject_ids = Array.isArray(data.subject_ids)
-      ? data.subject_ids
-      : data.subject_ids
-        ? [data.subject_ids]
-        : [];
+      ? data.subject_ids[0]
+      : data.subject_ids;
     console.log(formValue.subject_ids);
     formValue.teacher_requirements = data.teacher_requirements || null;
     formValue.is_online_form = Boolean(data.is_online_form);
     formValue.is_offline_form = Boolean(data.is_offline_form);
-    formValue.studying_start_date = data.studying_start_date
-      ? new Date(data.studying_start_date).getTime()
-      : null;
+    // formValue.studying_start_date = data.studying_start_date
+    //   ? new Date(data.studying_start_date).getTime()
+    //   : null;
   } else {
     const errorCode = error.value.data.error;
     const errorMessage =
@@ -96,8 +103,6 @@ const loadSubjects = async () => {
           name,
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
-      singleSubId.value =
-        Subjectarray.value.length > 0 ? Subjectarray.value[0].branch_id : null;
     } else {
       message.error("Failed to load subjects!");
       Subjectarray.value = [];
@@ -119,7 +124,7 @@ const handleSubmit = async (e) => {
     teacher_requirements,
     is_online_form,
     is_offline_form,
-    studying_start_date,
+    // studying_start_date,
     subject_ids,
   } = formValue;
   let body = {
@@ -132,9 +137,9 @@ const handleSubmit = async (e) => {
     is_online_form,
     is_offline_form,
     subject_ids: Array.isArray(subject_ids) ? subject_ids : [subject_ids],
-    studying_start_date: dayjs(studying_start_date).isValid()
-      ? dayjs(studying_start_date).toISOString()
-      : null,
+    // studying_start_date: dayjs(studying_start_date).isValid()
+    //   ? dayjs(studying_start_date).toISOString()
+    //   : null,
   };
   try {
     if (localNeedId.value && String(localNeedId.value).trim() !== "") {
@@ -190,7 +195,7 @@ onMounted(async () => {
             <n-form-item label="Môn học *" label-placement="left">
               <n-select
                 placeholder="Chọn môn học"
-                v-model:value="singleSubId"
+                v-model:value="formValue.subject_ids"
                 :options="Subjectarray"
                 label-field="name"
                 value-field="id"
@@ -228,21 +233,11 @@ onMounted(async () => {
             </n-form-item>
           </n-gi>
           <n-gi></n-gi>
-          <n-gi>
-            <n-form-item
-              label="Ngày mong muốn bắt đầu học:"
-              label-placement="left"
-            >
-              <n-date-picker
-                v-model:value="formValue.studying_start_date"
-                type="date"
-                placeholder="Chọn ngày"
-              />
-            </n-form-item>
-          </n-gi>
-
           <n-gi span="1 m:2">
-            <DaotaoHocvienctSchedule />
+            <DaotaoHocvienctSchedule
+              v-model:timeSlots="formValue.time_slots"
+              v-model:shortShifts="formValue.short_shifts"
+            />
             <!-- v-model:Shift="shift"
               v-model:listChecked="listChecked" -->
           </n-gi>

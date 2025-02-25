@@ -35,18 +35,18 @@ const formValue = reactive({
   state: null,
 });
 const displayPrice = computed({
-  get: () => (formValue.type === "Miễn phí" ? "0" : formValue.price),
+  get: () => (formValue.type === "1" ? "0" : formValue.price),
   set: (value) => {
-    if (formValue.type !== "Miễn phí") {
+    if (formValue.type !== "1") {
       formValue.price = value;
     }
   },
 });
 
 const displayDiscount = computed({
-  get: () => (formValue.type === "Miễn phí" ? "0" : formValue.discount),
+  get: () => (formValue.type === "1" ? "0" : formValue.discount),
   set: (value) => {
-    if (formValue.type !== "Miễn phí") {
+    if (formValue.type !== "1") {
       formValue.discount = value;
     }
   },
@@ -126,7 +126,7 @@ const handleSubmit = async (e) => {
     catagory,
     teacher,
     days,
-    type,
+    type: Number(type),
     price: type === "Miễn phí" ? 0 : price,
     discount: type === "Miễn phí" ? 0 : discount,
     description,
@@ -266,8 +266,8 @@ onMounted(async () => {
             <n-form-item label="Học phí" path="session">
               <n-radio-group v-model:value="formValue.type">
                 <n-space>
-                  <n-radio value="Miễn phí"> Miễn phí </n-radio>
-                  <n-radio value="Trả phí"> Trả phí </n-radio>
+                  <n-radio value="1"> Miễn phí </n-radio>
+                  <n-radio value="2"> Trả phí </n-radio>
                 </n-space>
               </n-radio-group>
             </n-form-item>
@@ -278,7 +278,7 @@ onMounted(async () => {
               <n-input
                 v-model:value="displayPrice"
                 placeholder="0"
-                :disabled="formValue.type === 'Miễn phí'"
+                :disabled="formValue.type === '1'"
               />
             </n-form-item>
           </n-gi>
@@ -287,7 +287,7 @@ onMounted(async () => {
               <n-input
                 v-model:value="displayDiscount"
                 placeholder="Nhập giá"
-                :disabled="formValue.type === 'Miễn phí'"
+                :disabled="formValue.type === '1'"
               />
             </n-form-item>
           </n-gi>

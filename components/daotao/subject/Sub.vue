@@ -4,11 +4,7 @@ import { defineComponent, ref, h, reactive, computed, onMounted } from "vue";
 import { NButton, NDataTable, NDropdown } from "naive-ui";
 import axios from "axios";
 import dayjs from "dayjs";
-<<<<<<< HEAD
-=======
 
->>>>>>> 385560701fa49c550ce04a8b71e41d128d3957ac
-// Định nghĩa interface cho dữ liệu bảng
 interface RowData {
   created_at: string;
   id: string;
