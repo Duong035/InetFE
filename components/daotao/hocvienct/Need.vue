@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch, onMounted, reactive, nextTick, toRaw } from "vue";
 import { useRoute } from "vue-router";
-
+import Schedule from "@/components/daotao/hocvienct/Schedule.vue";
 const message = useMessage();
 const emit = defineEmits(["apiSuccess"]);
 const route = useRoute();
@@ -11,13 +11,20 @@ const showSpin = ref(false);
 const { restAPI } = useApi();
 
 const props = defineProps({
-  needId: String, // Existing prop
-  branchId: String, // New prop for branch ID
+  needId: String,
+  branchId: String,
 });
 
 const localNeedId = ref("");
 const localBranchId = ref("");
 const Subjectarray = ref([]);
+const scheduleRef = ref(null);
+
+const submitSchedule = async () => {
+  if (scheduleRef.value && scheduleRef.value.scheduleSubmit) {
+    await scheduleRef.value.scheduleSubmit();
+  }
+};
 
 watch(
   () => props.needId,
@@ -42,7 +49,7 @@ const formValue = reactive({
   teacher_requirements: null,
   is_online_form: null,
   is_offline_form: null,
-  // studying_start_date: null,
+  studying_start_date: "",
   subject_ids: [], // Ensuring it's always an array
   time_slots: [
     {
@@ -71,13 +78,12 @@ if (localNeedId.value && localNeedId.value !== "") {
     formValue.subject_ids = Array.isArray(data.subject_ids)
       ? data.subject_ids[0]
       : data.subject_ids;
-    console.log(formValue.subject_ids);
     formValue.teacher_requirements = data.teacher_requirements || null;
     formValue.is_online_form = Boolean(data.is_online_form);
     formValue.is_offline_form = Boolean(data.is_offline_form);
-    // formValue.studying_start_date = data.studying_start_date
-    //   ? new Date(data.studying_start_date).getTime()
-    //   : null;
+    formValue.studying_start_date = data.studying_start_date;
+    formValue.time_slots = data.time_slots || null;
+    formValue.short_shifts = data.short_shifts || null;
   } else {
     const errorCode = error.value.data.error;
     const errorMessage =
@@ -88,6 +94,7 @@ if (localNeedId.value && localNeedId.value !== "") {
     message.warning(errorMessage);
   }
   showSpin.value = false;
+  console.log(formValue);
 } else {
   showSpin.value = false;
 }
@@ -113,10 +120,30 @@ const loadSubjects = async () => {
     Subjectarray.value = [];
   }
 };
-
+const formatShortShifts = (shortShiftsObj) => {
+  return Object.entries(shortShiftsObj).map(([sessionId, days]) => ({
+    work_session_id: `${sessionId.padStart(8, "0")}-0000-0000-0000-000000000000`,
+    day_of_week: days,
+  }));
+};
+const formatDate = (timestamp) => {
+  return timestamp
+    ? dayjs(timestamp).format("YYYY-MM-DDTHH:mm:ss.SSS+07:00")
+    : null;
+};
 const handleSubmit = async (e) => {
   if (isLoading.value) return;
-
+  await submitSchedule();
+  const formattedTimeSlots = Object.values(formValue.time_slots).map(
+    ({ start, end }) => {
+      const startTime = dayjs(start).format("YYYY-MM-DDTHH:mm:ss.SSS+07:00"); // Explicit offset
+      const endTime = dayjs(end).format("YYYY-MM-DDTHH:mm:ss.SSS+07:00");
+      return {
+        start_time: startTime,
+        end_time: endTime,
+      };
+    },
+  );
   const {
     id,
     curriculums,
@@ -125,7 +152,9 @@ const handleSubmit = async (e) => {
     is_online_form,
     is_offline_form,
     // studying_start_date,
+    short_shifts,
     subject_ids,
+    studying_start_date,
   } = formValue;
   let body = {
     student_id: route.query.id || null,
@@ -137,10 +166,11 @@ const handleSubmit = async (e) => {
     is_online_form,
     is_offline_form,
     subject_ids: Array.isArray(subject_ids) ? subject_ids : [subject_ids],
-    // studying_start_date: dayjs(studying_start_date).isValid()
-    //   ? dayjs(studying_start_date).toISOString()
-    //   : null,
+    time_slots: formattedTimeSlots,
+    short_shifts: formatShortShifts(short_shifts),
+    studying_start_date: formatDate(studying_start_date),
   };
+  console.log(body);
   try {
     if (localNeedId.value && String(localNeedId.value).trim() !== "") {
       const { data: resUpdate, error } = await restAPI.cms.updateStudyNeed({
@@ -235,6 +265,8 @@ onMounted(async () => {
           <n-gi></n-gi>
           <n-gi span="1 m:2">
             <DaotaoHocvienctSchedule
+              ref="scheduleRef"
+              v-model:studying_start_date="formValue.studying_start_date"
               v-model:timeSlots="formValue.time_slots"
               v-model:shortShifts="formValue.short_shifts"
             />

@@ -1,14 +1,32 @@
 <script setup>
 import { ref, computed, watch } from "vue";
+import dayjs from "dayjs";
 const props = defineProps(["timeSlots", "shortShifts"]);
 const emit = defineEmits(["update:timeSlots", "update:shortShifts"]);
 const listChecked = ref([]);
+const listCheckedShifts = ref([]);
+
 const shift = ref([
   {
-    id: 1,
+    id: 0,
     name: "Sáng",
-    start: "6", // Default start time for Sáng
-    end: "12", // Default end time for Sáng
+    start: "6",
+    end: "12",
+    session: [
+      { value: 1, checked: false },
+      { value: 2, checked: false },
+      { value: 3, checked: false },
+      { value: 4, checked: false },
+      { value: 5, checked: false },
+      { value: 6, checked: false },
+      { value: 0, checked: false },
+    ],
+  },
+  {
+    id: 1,
+    name: "Chiều",
+    start: "12",
+    end: "18",
     session: [
       { value: 1, checked: false },
       { value: 2, checked: false },
@@ -21,24 +39,9 @@ const shift = ref([
   },
   {
     id: 2,
-    name: "Chiều",
-    start: "12", // Default start time for Chiều
-    end: "18", // Default end time for Chiều
-    session: [
-      { value: 1, checked: false },
-      { value: 2, checked: false },
-      { value: 3, checked: false },
-      { value: 4, checked: false },
-      { value: 5, checked: false },
-      { value: 6, checked: false },
-      { value: 0, checked: false },
-    ],
-  },
-  {
-    id: 3,
     name: "Tối",
-    start: "18", // Default start time for Tối
-    end: "23", // Default end time for Tối
+    start: "18",
+    end: "23",
     session: [
       { value: 1, checked: false },
       { value: 2, checked: false },
@@ -73,104 +76,93 @@ const getEndHours = computed(() => {
   }, {});
 });
 
-// watch(
-//   () => props.timeSlots,
-//   (newTimeSlots) => {
-//     shift.value.forEach((s, index) => {
-//       if (newTimeSlots[index]) {
-//         s.start = newTimeSlots[index].start_time;
-//         s.end = newTimeSlots[index].end_time;
-//       }
-//     });
-//   },
-//   { deep: true, immediate: true },
-// );
+const getDisabledMinutes = (selectedHour, shiftId, isEndPicker = false) => {
+  const shiftData = shift.value.find((s) => s.id === shiftId);
+  if (!shiftData) return [];
 
-// watch(
-//   shift,
-//   (newShifts) => {
-//     const updatedTimeSlots = newShifts.map((s) => ({
-//       start_time: s.start,
-//       end_time: s.end,
-//     }));
-//     emit("update:timeSlots", updatedTimeSlots);
-//   },
-//   { deep: true },
-// );
+  const allMinutes = Array.from({ length: 60 }, (_, i) => i);
+  const lastHour = isEndPicker
+    ? Number(shiftData.end)
+    : Number(shiftData.end) - 1;
+  if (selectedHour === lastHour) {
+    return allMinutes.filter((minute) => minute !== 0);
+  }
 
-// watch(
-//   () => props.shortShifts,
-//   (newShortShifts) => {
-//     shift.value.forEach((s) => {
-//       s.session.forEach((day) => {
-//         day.checked = newShortShifts.some((shortShift) =>
-//           shortShift.day_of_week.includes(day.value),
-//         );
-//       });
-//     });
-//   },
-//   { deep: true, immediate: true },
-// );
+  return [];
+};
 
-// Emit updates to Need.vue when checkboxes change
-// const updateShortShifts = () => {
-//   const updatedShortShifts = shift.value.map((s) => ({
-//     day_of_week: s.session.filter((day) => day.checked).map((day) => day.value),
-//   }));
-//   emit("update:shortShifts", updatedShortShifts);
-// };
-
-// Handle checkboxes
-
-function handleDayCheckboxChange(day, checked) {
-  const isChecked = listChecked.value[day];
-  console.log("Checkbox State for", day, ":", isChecked);
+const handleCheckedDay = (day, checked) => {
   shift.value.forEach((s) => {
-    s.session.forEach((sessionDay) => {
-      if (sessionDay.value === day) {
-        sessionDay.checked = false;
-      }
-    });
+    const dayElement = s.session.find((element) => element.value === day);
+    if (dayElement) {
+      dayElement.checked = checked;
+    }
   });
-  // updateShortShifts();
+
   const found = daysOfWeek.value.find((e) => e.value === day);
   if (found) {
-    found.checked = isChecked;
+    found.checked = checked;
   }
-  console.log(found);
-  console.log(listChecked);
+  listChecked.value[day] = checked;
   if (checked) {
-    if (!listChecked.value[day]) listChecked.value[day] = [];
-    listChecked.value[day] = shift.value.map((s) => s.id);
+    listCheckedShifts.value[day] = shift.value.map((s) => s.id);
   } else {
-    listChecked.value[day] = [];
+    listCheckedShifts.value[day] = [];
   }
-}
+};
 
 const handleCheckedValue = (day, checked, id) => {
-  const found = daysOfWeek.value.find((e) => e.value === day);
-  console.log(found);
-  if (checked) {
-    if (!listChecked.value[day]) listChecked.value[day] = [];
-    if (!listChecked.value[day].includes(id)) {
-      listChecked.value[day].push(id);
-    }
-    //   if (listChecked.value[day].length === shift.value.length) {
-    //     found.checked = true;
-    //   }
-    // } else {
-    //   listChecked.value[day] = listChecked.value[day].filter((e) => e !== id);
-    //   if (found.checked) {
-    //     found.checked = false;
-    //   }
+  if (!Array.isArray(listCheckedShifts.value[day])) {
+    listCheckedShifts.value[day] = [];
   }
-  console.log(listChecked);
+
+  if (checked) {
+    if (!listCheckedShifts.value[day].includes(id)) {
+      listCheckedShifts.value[day].push(id);
+    }
+  } else {
+    listCheckedShifts.value[day] = listCheckedShifts.value[day].filter(
+      (e) => e !== id,
+    );
+
+    if (listCheckedShifts.value[day].length === 0) {
+      delete listCheckedShifts.value[day];
+    }
+  }
+
+  const found = daysOfWeek.value.find((e) => e.value === day);
+  if (found) {
+    found.checked = listCheckedShifts.value[day]?.length === shift.value.length;
+  }
+};
+
+const selectedTimes = ref(
+  shift.value.map(() => ({
+    start: null,
+    end: null,
+  })),
+);
+
+const updateSelectedTime = (index, type, value) => {
+  if (!selectedTimes.value[index]) return;
+  selectedTimes.value[index][type] = value ? formatTime(value) : "Invalid Date";
+};
+
+const formatTime = (time) => {
+  if (!time) return null;
+  return dayjs(time).format("DD-MM-YYYYTHH:mm:ss");
+};
+
+const handleSubmit = async (e) => {
+  console.log(listCheckedShifts.value);
+  console.log(selectedTimes);
+  console.log("Time Slots:", props.timeSlots);
 };
 </script>
 
 <template>
   <n-grid :cols="11" :y-gap="16">
-    <n-gi :span="11">
+    <n-gi :span="7">
       <n-form-item
         label="Ngày mong muốn bắt đầu học:"
         label-placement="left"
@@ -179,12 +171,22 @@ const handleCheckedValue = (day, checked, id) => {
         <n-date-picker type="date" placeholder="Chọn ngày" />
       </n-form-item>
     </n-gi>
+    <n-gi :span="4">
+      <n-button
+        round
+        type="info"
+        class="h-12 w-52 rounded-2xl text-lg"
+        @click.prevent="handleSubmit"
+      >
+        Lưu
+      </n-button>
+    </n-gi>
     <n-gi :span="4" class="font-500 mr-8 text-[#133D85]">Lịch trống:</n-gi>
     <n-gi v-for="day in daysOfWeek" :key="day.value">
       <n-checkbox
         :label="day.label"
         v-model:checked="listChecked[day.value]"
-        @update:checked="handleDayCheckboxChange(day.value)"
+        @update:checked="(checked) => handleCheckedDay(day.value, checked)"
       />
     </n-gi>
     <template v-for="s in shift" :key="s">
@@ -210,6 +212,7 @@ const handleCheckedValue = (day, checked, id) => {
                 (minute, hour) =>
                   getDisabledMinutes(hour, s.id, false).includes(minute)
               "
+              @update:value="(val) => updateSelectedTime(s.id, 'start', val)"
             />
             <n-time-picker
               v-model="s.end"
@@ -219,6 +222,7 @@ const handleCheckedValue = (day, checked, id) => {
                 (minute, hour) =>
                   getDisabledMinutes(hour, s.id, true).includes(minute)
               "
+              @update:value="(val) => updateSelectedTime(s.id, 'end', val)"
             />
           </n-input-group>
         </n-flex>
