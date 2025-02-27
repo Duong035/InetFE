@@ -103,6 +103,7 @@ if (localNeedId.value && localNeedId.value !== "") {
     message.warning(errorMessage);
   }
   showSpin.value = false;
+  console.log(formValue);
 } else {
   showSpin.value = false;
 }

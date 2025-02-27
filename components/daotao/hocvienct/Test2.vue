@@ -1,24 +1,40 @@
 <script setup>
-import { ref, computed, watch, defineExpose, onMounted } from "vue";
+import {
+  ref,
+  computed,
+  watch,
+  defineExpose,
+  onMounted,
+  watchEffect,
+} from "vue";
 import dayjs from "dayjs";
-import { NTimePicker } from "naive-ui";
-
-const props = defineProps(["timeSlots", "shortShifts", "studying_start_date"]);
+// const props = defineProps(["timeSlots", "shortShifts", "studying_start_date"]);
+const props = defineProps({
+  studying_start_date: String,
+  timeSlots: Array,
+  shortShifts: Array,
+  localBranchId: [String, Number],
+  stt: [Number],
+  queryId: [String],
+});
 const emit = defineEmits([
   "update:timeSlots",
   "update:shortShifts",
   "update:studying_start_date",
 ]);
+
+const { restAPI } = useApi();
 const listChecked = ref([]);
 const listCheckedShifts = ref([]);
-const selectedTimes = ref({});
-
+const shifts = ref([]);
 const shift = ref([
   {
     id: 0,
     name: "Sáng",
     start: "6",
     end: "12",
+    start_time: "",
+    end_time: "",
     session: [
       { value: 1, checked: false },
       { value: 2, checked: false },
@@ -34,6 +50,8 @@ const shift = ref([
     name: "Chiều",
     start: "12",
     end: "18",
+    start_time: "",
+    end_time: "",
     session: [
       { value: 1, checked: false },
       { value: 2, checked: false },
@@ -49,6 +67,8 @@ const shift = ref([
     name: "Tối",
     start: "18",
     end: "23",
+    start_time: "",
+    end_time: "",
     session: [
       { value: 1, checked: false },
       { value: 2, checked: false },
@@ -230,10 +250,11 @@ const handleCheckedValue = (day, checked, id) => {
   }
 };
 
+const selectedTimes = ref({});
+
 const updateSelectedTime = (index, type, value) => {
   if (!selectedTimes.value[index]) return;
   selectedTimes.value[index][type] = value ? formatTime(value) : "Invalid Date";
-  console.log(selectedTimes);
 };
 
 const formatTime = (time) => {
@@ -242,6 +263,19 @@ const formatTime = (time) => {
 };
 
 const scheduleSubmit = async (e) => {
+  for (const s of shift.value) {
+    let body = {
+      title: `${props.queryId}_${props.stt}_${s.id}`,
+      branch_id: props.localBranchId,
+      start_time: "2024-06-09T18:00:00.000Z",
+      end_time: "2024-06-09T18:00:00.000Z",
+      is_active: true,
+    };
+    await restAPI.cms.createShift({
+      body,
+    });
+  }
+  await listShifts();
   const validTimeSlots = Object.entries(selectedTimes.value).reduce(
     (acc, [shiftId, t]) => {
       if (
@@ -250,7 +284,14 @@ const scheduleSubmit = async (e) => {
         t.start !== "Invalid Date" &&
         t.end !== "Invalid Date"
       ) {
-        acc[shiftId] = { start: t.start, end: t.end };
+        let work_id = `${props.queryId}_${props.stt}_${shiftId}`;
+
+        const matchingShift = shifts.value.find((s) => s.title === work_id);
+        acc[shiftId] = {
+          start: t.start,
+          end: t.end,
+          work_session_id: matchingShift.id,
+        };
       }
       return acc;
     },
@@ -275,7 +316,7 @@ const scheduleSubmit = async (e) => {
     return acc;
   }, {});
   emit("update:shortShifts", filteredValidWork);
-  emit("update:studying_start_date", selectedDate.value);
+  emit("update:studying_start_date", selectedDate.value?.toISOString());
 };
 
 watch(
@@ -321,12 +362,14 @@ defineExpose({
   scheduleSubmit,
 });
 
-const selectedDate = ref(props.studying_start_date || null);
+const selectedDate = ref(
+  props.studying_start_date ? new Date(props.studying_start_date) : null,
+);
 
 watch(
   () => props.studying_start_date,
   (newDate) => {
-    selectedDate.value = newDate;
+    selectedDate.value = newDate ? new Date(newDate) : null;
   },
 );
 
@@ -335,29 +378,76 @@ const disablePastDates = (timestamp) => {
   return timestamp < today;
 };
 
-const formatHM = (time) => {
-  // Parse the ISO string into a Date object
-  const date = new Date(time);
-  // Format the time in "HH:mm" format (24-hour format)
-  return date.toLocaleTimeString([], {
+function formatHM(dateTimeString) {
+  const date = new Date(dateTimeString);
+  return new Intl.DateTimeFormat("en-GB", {
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
-  });
-};
-onMounted(() => {
-  props.timeSlots.forEach((timeSlot, index) => {
-    // Format the start and end times to HH:mm format
-    const formattedStart = formatHM(timeSlot.start_time);
-    const formattedEnd = formatHM(timeSlot.end_time);
+    hourCycle: "h23",
+  }).format(date);
+}
 
-    // Initialize selectedTimes for each shift based on the index
-    selectedTimes.value[index] = {
-      start: formattedStart,
-      end: formattedEnd,
-    };
+const listShifts = async () => {
+  const { data } = await restAPI.cms.getShift({});
+  shifts.value = data.value.data.data;
+};
+
+onMounted(async () => {
+  if (!props.timeSlots || props.timeSlots.length === 0) {
+    selectedTimes.value = [{ start: null, end: null }];
+    return;
+  }
+
+  selectedTimes.value = props.timeSlots
+    .map((timeSlot) => ({
+      start: timeSlot.start_time ? formatHM(timeSlot.start_time) : null,
+      end: timeSlot.end_time ? formatHM(timeSlot.end_time) : null,
+    }))
+    .sort((a, b) => (a.start > b.start ? 1 : -1));
+  console.log(selectedTimes);
+
+  shift.value.forEach((s, index) => {
+    if (selectedTimes.value[index]) {
+      s.start_time = selectedTimes.value[index].start || s.start_time;
+      s.end_time = selectedTimes.value[index].end || s.end_time;
+    }
   });
-  console.log(toRaw(selectedTimes.value)[0].end);
+
+  console.log("Updated Shift:", shift.value);
+
+  await listShifts();
+});
+
+const parseTime = (timeString) => {
+  if (!timeString || timeString.trim() === "") return null;
+  const [hours, minutes] = timeString.split(":").map(Number);
+  const date = new Date();
+  date.setHours(hours, minutes, 0, 0);
+  return date;
+};
+
+const shiftTimes = ref(
+  Object.fromEntries(
+    shift.value.map((s) => [
+      s.id,
+      {
+        start: parseTime(s.start_time),
+        end: parseTime(s.end_time),
+      },
+    ]),
+  ),
+);
+
+watchEffect(() => {
+  shiftTimes.value = Object.fromEntries(
+    shift.value.map((s) => [
+      s.id,
+      {
+        start: parseTime(s.start_time),
+        end: parseTime(s.end_time),
+      },
+    ]),
+  );
 });
 </script>
 
@@ -396,13 +486,13 @@ onMounted(() => {
               arrowClass: '!bg-white',
             }"
             :line-clamp="2"
-            >{{ s.name + ":" + s.id }}
+            >{{ s.name + ":" }}
           </n-ellipsis>
           <n-input-group
             class="rounded-15px -ml-5 mr-3 w-fit shrink-0 bg-white"
           >
             <n-time-picker
-              v-model="s.start"
+              v-model:value="shiftTimes[s.id].start"
               format="HH:mm"
               :hours="getStartHours[s.id] || []"
               :is-minute-disabled="
@@ -412,7 +502,7 @@ onMounted(() => {
               @update:value="(val) => updateSelectedTime(s.id, 'start', val)"
             />
             <n-time-picker
-              v-model="s.end"
+              v-model:value="shiftTimes[s.id].end"
               format="HH:mm"
               :hours="getEndHours[s.id] || []"
               :is-minute-disabled="
@@ -420,7 +510,7 @@ onMounted(() => {
                   getDisabledMinutes(hour, s.id, true).includes(minute)
               "
               @update:value="(val) => updateSelectedTime(s.id, 'end', val)"
-              :disabled="!s.start"
+              :disabled="!selectedTimes[s.id]?.start"
             />
           </n-input-group>
         </n-flex>
