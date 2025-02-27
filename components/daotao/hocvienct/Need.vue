@@ -9,16 +9,23 @@ const dayjs = useDayjs();
 const isLoading = ref(false);
 const showSpin = ref(false);
 const { restAPI } = useApi();
+const shifts = ref([]);
 
+const listShifts = async () => {
+  const { data } = await restAPI.cms.getShift({});
+  shifts.value = data.value.data.data;
+};
 const props = defineProps({
   needId: String,
   branchId: String,
+  stt: Number,
 });
 
 const localNeedId = ref("");
 const localBranchId = ref("");
 const Subjectarray = ref([]);
 const scheduleRef = ref(null);
+const queryId = route.query.id;
 
 const submitSchedule = async () => {
   if (scheduleRef.value && scheduleRef.value.scheduleSubmit) {
@@ -53,12 +60,14 @@ const formValue = reactive({
   subject_ids: [], // Ensuring it's always an array
   time_slots: [
     {
+      work_session_id: null,
       start_time: null,
       end_time: null,
     },
   ],
   short_shifts: [
     {
+      work_session_id: null,
       day_of_week: [],
     },
   ],
@@ -94,7 +103,6 @@ if (localNeedId.value && localNeedId.value !== "") {
     message.warning(errorMessage);
   }
   showSpin.value = false;
-  console.log(formValue);
 } else {
   showSpin.value = false;
 }
@@ -120,30 +128,39 @@ const loadSubjects = async () => {
     Subjectarray.value = [];
   }
 };
-const formatShortShifts = (shortShiftsObj) => {
-  return Object.entries(shortShiftsObj).map(([sessionId, days]) => ({
-    work_session_id: `${sessionId.padStart(8, "0")}-0000-0000-0000-000000000000`,
-    day_of_week: days,
-  }));
-};
+
 const formatDate = (timestamp) => {
   return timestamp
     ? dayjs(timestamp).format("YYYY-MM-DDTHH:mm:ss.SSS+07:00")
     : null;
 };
+
+const formatShortShifts = async (shortShiftsObj) => {
+  await listShifts();
+  return Object.entries(shortShiftsObj).map(([sessionId, days]) => {
+    const work_id = `${queryId}_${props.stt}_${sessionId}`;
+    const matchingShift = shifts.value.find((s) => s.title === work_id);
+
+    return {
+      work_session_id: matchingShift ? matchingShift.id : null,
+      day_of_week: days,
+    };
+  });
+};
+
 const handleSubmit = async (e) => {
   if (isLoading.value) return;
   await submitSchedule();
+
+  // Format time slots properly
   const formattedTimeSlots = Object.values(formValue.time_slots).map(
-    ({ start, end }) => {
-      const startTime = dayjs(start).format("YYYY-MM-DDTHH:mm:ss.SSS+07:00"); // Explicit offset
-      const endTime = dayjs(end).format("YYYY-MM-DDTHH:mm:ss.SSS+07:00");
-      return {
-        start_time: startTime,
-        end_time: endTime,
-      };
-    },
+    ({ start, end, work_session_id }) => ({
+      start_time: dayjs(start).format("YYYY-MM-DDTHH:mm:ss.SSS+07:00"),
+      end_time: dayjs(end).format("YYYY-MM-DDTHH:mm:ss.SSS+07:00"),
+      work_session_id,
+    }),
   );
+
   const {
     id,
     curriculums,
@@ -151,11 +168,15 @@ const handleSubmit = async (e) => {
     teacher_requirements,
     is_online_form,
     is_offline_form,
-    // studying_start_date,
     short_shifts,
     subject_ids,
     studying_start_date,
   } = formValue;
+
+  // 🔹 FIX: Await formatShortShifts() before adding it to the body
+  const formattedShortShifts = await formatShortShifts(short_shifts);
+  console.log("Formatted Short Shifts:", formattedShortShifts); // Debugging
+
   let body = {
     student_id: route.query.id || null,
     id,
@@ -167,10 +188,12 @@ const handleSubmit = async (e) => {
     is_offline_form,
     subject_ids: Array.isArray(subject_ids) ? subject_ids : [subject_ids],
     time_slots: formattedTimeSlots,
-    short_shifts: formatShortShifts(short_shifts),
+    short_shifts: formattedShortShifts, // 🔹 FIXED!
     studying_start_date: formatDate(studying_start_date),
   };
-  console.log(body);
+
+  console.log("Final Payload:", body); // Debugging to confirm it's correct
+
   try {
     if (localNeedId.value && String(localNeedId.value).trim() !== "") {
       const { data: resUpdate, error } = await restAPI.cms.updateStudyNeed({
@@ -180,12 +203,10 @@ const handleSubmit = async (e) => {
       if (resUpdate?.value?.status) {
         message.success("Cập nhật nhu cầu học tập thành công!");
       } else {
-        const errorCode = error.value.data.error;
         const errorMessage =
-          ERROR_CODES[errorCode] ||
+          ERROR_CODES[error.value.data.error] ||
           resUpdate.value?.message ||
           "Đã xảy ra lỗi, vui lòng thử lại!";
-
         message.warning(errorMessage);
       }
     } else {
@@ -196,20 +217,20 @@ const handleSubmit = async (e) => {
         message.success("Tạo nhu cầu học tập thành công!");
         emit("apiSuccess");
       } else {
-        const errorCode = error.value.data.error;
         const errorMessage =
-          ERROR_CODES[errorCode] ||
+          ERROR_CODES[error.value.data.error] ||
           resCreate.value?.message ||
           "Đã xảy ra lỗi, vui lòng thử lại!";
-
         message.warning(errorMessage);
       }
     }
-  } catch {
+  } catch (err) {
+    console.error("Submission error:", err);
   } finally {
     isLoading.value = false;
   }
 };
+
 onMounted(async () => {
   await nextTick();
   loadSubjects();
@@ -269,9 +290,10 @@ onMounted(async () => {
               v-model:studying_start_date="formValue.studying_start_date"
               v-model:timeSlots="formValue.time_slots"
               v-model:shortShifts="formValue.short_shifts"
+              :localBranchId="localBranchId"
+              :stt="props.stt"
+              :queryId="queryId"
             />
-            <!-- v-model:Shift="shift"
-              v-model:listChecked="listChecked" -->
           </n-gi>
           <n-gi span="1 m:2" class="mt-2">
             <n-form-item label="Ghi chú" path="note">

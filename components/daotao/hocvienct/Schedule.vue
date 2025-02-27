@@ -1,15 +1,25 @@
 <script setup>
 import { ref, computed, watch, defineExpose, onMounted } from "vue";
 import dayjs from "dayjs";
-const props = defineProps(["timeSlots", "shortShifts", "studying_start_date"]);
+// const props = defineProps(["timeSlots", "shortShifts", "studying_start_date"]);
+const props = defineProps({
+  studying_start_date: String, // or whatever type it is
+  timeSlots: Array,
+  shortShifts: Array,
+  localBranchId: [String, Number],
+  stt: [Number],
+  queryId: [String],
+});
 const emit = defineEmits([
   "update:timeSlots",
   "update:shortShifts",
   "update:studying_start_date",
 ]);
+
+const { restAPI } = useApi();
 const listChecked = ref([]);
 const listCheckedShifts = ref([]);
-
+const shifts = ref([]);
 const shift = ref([
   {
     id: 0,
@@ -232,7 +242,6 @@ const selectedTimes = ref({});
 const updateSelectedTime = (index, type, value) => {
   if (!selectedTimes.value[index]) return;
   selectedTimes.value[index][type] = value ? formatTime(value) : "Invalid Date";
-  console.log(selectedTimes);
 };
 
 const formatTime = (time) => {
@@ -241,6 +250,19 @@ const formatTime = (time) => {
 };
 
 const scheduleSubmit = async (e) => {
+  for (const s of shift.value) {
+    let body = {
+      title: `${props.queryId}_${props.stt}_${s.id}`,
+      branch_id: props.localBranchId,
+      start_time: "2024-06-09T18:00:00.000Z",
+      end_time: "2024-06-09T18:00:00.000Z",
+      is_active: true,
+    };
+    await restAPI.cms.createShift({
+      body,
+    });
+  }
+  await listShifts();
   const validTimeSlots = Object.entries(selectedTimes.value).reduce(
     (acc, [shiftId, t]) => {
       if (
@@ -249,7 +271,14 @@ const scheduleSubmit = async (e) => {
         t.start !== "Invalid Date" &&
         t.end !== "Invalid Date"
       ) {
-        acc[shiftId] = { start: t.start, end: t.end };
+        let work_id = `${props.queryId}_${props.stt}_${shiftId}`;
+
+        const matchingShift = shifts.value.find((s) => s.title === work_id);
+        acc[shiftId] = {
+          start: t.start,
+          end: t.end,
+          work_session_id: matchingShift.id,
+        };
       }
       return acc;
     },
@@ -335,28 +364,36 @@ const disablePastDates = (timestamp) => {
 };
 
 const formatHM = (time) => {
-  // Parse the ISO string into a Date object
   const date = new Date(time);
-  // Format the time in "HH:mm" format (24-hour format)
   return date.toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
   });
 };
-onMounted(() => {
-  props.timeSlots.forEach((timeSlot, index) => {
-    // Format the start and end times to HH:mm format
-    const formattedStart = formatHM(timeSlot.start_time);
-    const formattedEnd = formatHM(timeSlot.end_time);
+const listShifts = async () => {
+  const { data } = await restAPI.cms.getShift({});
+  shifts.value = data.value.data.data;
+};
+onMounted(async () => {
+  if (!props.timeSlots || props.timeSlots.length === 0) {
+    selectedTimes.value = [{ start: null, end: null }];
+    return;
+  }
 
-    // Initialize selectedTimes for each shift based on the index
+  props.timeSlots.forEach((timeSlot, index) => {
+    const formattedStart = timeSlot.start_time
+      ? formatHM(timeSlot.start_time)
+      : null;
+    const formattedEnd = timeSlot.end_time ? formatHM(timeSlot.end_time) : null;
+
     selectedTimes.value[index] = {
       start: formattedStart,
       end: formattedEnd,
     };
   });
-  console.log(toRaw(selectedTimes.value)[0].end);
+
+  await listShifts();
 });
 </script>
 

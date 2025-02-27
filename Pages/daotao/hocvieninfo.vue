@@ -16,6 +16,11 @@ const route = useRoute();
 const isCollapsed = ref(false);
 const isLoading = ref(false);
 const activeDropdown = ref("canhan");
+const shifts = ref([]);
+const listShifts = async () => {
+  const { data } = await restAPI.cms.getShift({});
+  shifts.value = data.value.data.data;
+};
 const Nhucauarrey = ref<{ stt: number; Needid: string }[]>([]);
 function addNeed() {
   Nhucauarrey.value.push({
@@ -99,7 +104,6 @@ async function getNeed() {
 }
 
 async function deleteNeed(value: string, st: number) {
-  // Check if value is empty
   if (!value) {
     Nhucauarrey.value = Nhucauarrey.value
       .filter((i) => i.stt !== st)
@@ -122,6 +126,21 @@ async function deleteNeed(value: string, st: number) {
       }));
   } else {
     message.error(error.value.data.message);
+  }
+  const queryId = route.query.id;
+  await listShifts();
+  console.log(shifts);
+
+  const work_id_prefix = `${queryId}_${st}_`;
+  const matchingShiftIds = shifts.value
+    .filter((s) => s.title.startsWith(work_id_prefix))
+    .map((s) => s.id);
+  for (const id of matchingShiftIds) {
+    try {
+      await restAPI.cms.deleteShift({ id });
+    } catch (error) {
+      console.error(`Failed to delete shift with ID: ${id}`, error);
+    }
   }
 }
 
@@ -389,6 +408,7 @@ onMounted(async () => {
                               class="rounded-b-2xl border-[4px] border-gray-200"
                             >
                               <DaotaoHocvienctNeed
+                                :stt="item.stt"
                                 :needId="item.Needid"
                                 :branchId="singleBranchId"
                                 @apiSuccess="getNeed"

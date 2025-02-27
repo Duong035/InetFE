@@ -20,6 +20,8 @@ const API_ENDPOINTS = {
     category: "/api/admin/category",
     categories: "/api/admin/categories",
     subjects: "/api/admin/subject/all",
+    shift: "/api/admin/work-session",
+    shifts: "/api/admin/work-sessions",
   },
 }
 
@@ -216,6 +218,25 @@ class CMSManager {
     return this.request.get(API_ENDPOINTS.cms.subjects, data)
   }
   //__________________________________________________________________________________________
+
+  // Shift____________________________________________________________________________________
+  async getShift(data) {
+    return this.request.get(API_ENDPOINTS.cms.shifts, data)
+  }
+  async getShiftDetail(data) {
+    return this.request.get(API_ENDPOINTS.cms.shift, data)
+  }
+  async createShift(data) {
+    return this.request.post(API_ENDPOINTS.cms.shift, data)
+  }
+  async updateShift(data) {
+    return this.request.patch(API_ENDPOINTS.cms.shift, data)
+  }
+  async deleteShift(data) {
+    return this.request.delete(`${API_ENDPOINTS.cms.shift}/${data.id}`, data)
+  }
+  //__________________________________________________________________________________________
+
 
   //administrative - Đơn vị hành chính________________________________________________________
   async getProvinces(data) {
