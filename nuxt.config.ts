@@ -13,7 +13,18 @@ export default defineNuxtConfig({
     '@nuxtjs/tailwindcss',
     'nuxtjs-naive-ui',
     "dayjs-nuxt",
-    "@pinia/nuxt",
+    [
+      "@pinia/nuxt",
+      {
+        autoImports: [
+          // automatically imports `usePinia()`
+          "defineStore",
+          // automatically imports `usePinia()` as `usePiniaStore()`
+          ["defineStore", "definePiniaStore"],
+        ],
+      },
+    ],
+    '@pinia/nuxt',
   ],
   
   css: ["@/assets/index.css"],

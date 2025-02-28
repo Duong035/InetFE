@@ -7,17 +7,6 @@ export default defineComponent({
   setup() {
     const message = useMessage();
 
-    const railStyle = ({ focused, checked }) => {
-      const style = {};
-      if (checked) {
-        style.background = "#2080f0";
-        if (focused) {
-          style.boxShadow = "0 0 0 2px #2080f0";
-        }
-      }
-      return style;
-    };
-
     interface RowData {
       id: string;
       danhmuc: string;
@@ -218,7 +207,7 @@ export default defineComponent({
       danhmucstate.value = "info";
     }
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (e: Event) => {
       if (isLoading.value) return;
 
       const { name, thumbnail, description, is_active } = formValue;
@@ -274,7 +263,7 @@ export default defineComponent({
       danhmucId.value = value.id;
       handleDelete(danhmucId.value);
     }
-    const handleDelete = async (e) => {
+    const handleDelete = async (e: string) => {
       if (isLoading.value) return;
 
       try {
@@ -306,7 +295,6 @@ export default defineComponent({
     });
 
     return {
-      railStyle,
       danhmucstate,
       isLoading,
       danhmucId,
@@ -449,7 +437,6 @@ export default defineComponent({
                     v-model:value="formValue.is_active"
                     :unchecked-value="false"
                     :checked-value="true"
-                    :rail-style="railStyle"
                   />
                 </n-form-item>
               </n-gi>

@@ -22,6 +22,7 @@ const API_ENDPOINTS = {
     subjects: "/api/admin/subject/all",
     shift: "/api/admin/work-session",
     shifts: "/api/admin/work-sessions",
+    classes: "/api/admin/classes",
   },
 }
 
@@ -246,6 +247,9 @@ class CMSManager {
     return this.request.get(API_ENDPOINTS.cms.districts, data)
   }
   //__________________________________________________________________________________________
+  async getClasses(data) {
+    return this.request.get(API_ENDPOINTS.cms.classes, data);
+  }
 
 }
 

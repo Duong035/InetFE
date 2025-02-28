@@ -1,11 +1,13 @@
 <script setup>
 import { useRoute, useRouter } from "vue-router";
 import { definePageMeta } from "#imports";
+import { useUserStore } from "@/stores/userStore";
 
 definePageMeta({
   layout: "form",
 });
 
+const userStore = useUserStore();
 const message = useMessage();
 const route = useRoute();
 const router = useRouter();
@@ -128,6 +130,10 @@ const handleSubmit = async (e) => {
           "Học viên lần đầu đăng nhập! Thay đổi mật khẩu tài khoản!",
         );
       } else {
+        //
+        //let body= get sessionStorage data
+        await restAPI.cms.login({ body });
+        //userStore
         router.push("/Dashboard");
         message.success("Đăng nhập thành công!");
       }
@@ -153,6 +159,9 @@ const handleSubmit = async (e) => {
 };
 
 onMounted(() => {
+  if (route.query.userInfo) {
+    const userInfo = JSON.parse(decodeURIComponent(route.query.userInfo));
+  }
   startTimer();
   window.addEventListener("keyup", handleKeyup);
 });

@@ -2,42 +2,91 @@
 import { useRouter } from "vue-router";
 import { ref } from "vue";
 import { useMessage } from "naive-ui";
-
+import { useUserStore } from "~~/stores/userStore";
 definePageMeta({
   layout: "form",
 });
-
+const router = useRouter();
+const userStore = useUserStore();
 const message = useMessage();
 const { restAPI } = useApi();
-const router = useRouter();
 const isLoading = ref(false);
 const email = ref("");
 const password = ref("");
+
+function filterPermissions(permissions) {
+  return permissions.reduce((acc, level0) => {
+    if (level0.checked) {
+      acc.push(level0);
+    } else {
+      const filteredLevel1 = level0.listLevel1?.reduce((subAcc, level1) => {
+        if (level1.checked) {
+          subAcc.push(level1);
+        } else {
+          const filteredLevel2 = level1.listLevel2?.filter(
+            (level2) => level2.checked,
+          );
+          if (filteredLevel2 && filteredLevel2.length > 0) {
+            subAcc.push({ ...level1, listLevel2: filteredLevel2 });
+          }
+        }
+        return subAcc;
+      }, []);
+      if (filteredLevel1 && filteredLevel1.length > 0) {
+        acc.push({ ...level0, listLevel1: filteredLevel1 });
+      }
+    }
+    return acc;
+  }, []);
+}
 
 const handleSubmit = async (e) => {
   if (isLoading.value) return;
   e.preventDefault();
   isLoading.value = true;
   const body = { email: email.value, password: password.value };
-
+  sessionStorage.setItem("loginfo", JSON.stringify(body));
   try {
     const { data: resVerify, error } = await restAPI.cms.login({ body });
 
     if (resVerify.value?.status) {
-      const data = resVerify?.value?.data;
-      sessionStorage.setItem("id", data.id);
-      sessionStorage.setItem("role_id", data.role_id);
-      sessionStorage.setItem("auth_token", data.token);
-
-      message.success("Đăng nhập thành công!");
-      router.push("/Dashboard");
+      const userInfo = resVerify.value?.data;
+      nextTick(async () => {
+        if (
+          userInfo?.permission_grp &&
+          (userInfo?.role_id === 3 || userInfo?.role_id === 4)
+        ) {
+          const filteredPermissions = filterPermissions(
+            userInfo?.permission_grp?.tags,
+          );
+          userStore.setPermissions(
+            userInfo?.permission_grp?.select_all,
+            filteredPermissions,
+          );
+        }
+        if (userInfo?.role_id === 1 || userInfo?.role_id === 2)
+          userStore.setPermissions(true, []);
+        delete userInfo.permission_grp;
+        userStore.login(userInfo);
+        message.success("Đăng nhập thành công!");
+      });
+      return navigateTo("/dashboard");
     } else {
       const errorCode = error.value.data.error;
       const errorMessage =
         ERROR_CODES[errorCode] ||
         resVerify.value?.message ||
         "Đã xảy ra lỗi, vui lòng thử lại!";
-
+      if (errorCode == 2008) {
+        // if (body.password === "aohvaklvnh")
+        // sessionStorage.setItem("first_time", "true");
+        router.push({
+          path: "verify_email",
+          query: {
+            email: email.value,
+          },
+        });
+      }
       message.warning(errorMessage);
     }
   } catch (error) {

@@ -174,9 +174,8 @@ const handleSubmit = async (e) => {
     studying_start_date,
   } = formValue;
 
-  // 🔹 FIX: Await formatShortShifts() before adding it to the body
   const formattedShortShifts = await formatShortShifts(short_shifts);
-  console.log("Formatted Short Shifts:", formattedShortShifts); // Debugging
+  console.log("Formatted Short Shifts:", formattedShortShifts);
 
   let body = {
     student_id: route.query.id || null,
@@ -189,11 +188,11 @@ const handleSubmit = async (e) => {
     is_offline_form,
     subject_ids: Array.isArray(subject_ids) ? subject_ids : [subject_ids],
     time_slots: formattedTimeSlots,
-    short_shifts: formattedShortShifts, // 🔹 FIXED!
+    short_shifts: formattedShortShifts,
     studying_start_date: formatDate(studying_start_date),
   };
 
-  console.log("Final Payload:", body); // Debugging to confirm it's correct
+  console.log("Final Payload:", body);
 
   try {
     if (localNeedId.value && String(localNeedId.value).trim() !== "") {
@@ -294,6 +293,7 @@ onMounted(async () => {
               :localBranchId="localBranchId"
               :stt="props.stt"
               :queryId="queryId"
+              :NeedId="localNeedId"
             />
           </n-gi>
           <n-gi span="1 m:2" class="mt-2">
