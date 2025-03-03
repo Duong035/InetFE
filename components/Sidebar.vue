@@ -391,6 +391,30 @@ onUnmounted(() => {
             </li>
             <li>
               <NuxtLink
+                to="../nhansu/phanquyen"
+                class="block px-2 py-1 hover:text-blue-500"
+                :class="[
+                  'block px-2 py-1 hover:text-blue-500',
+                  activeItem === 'phanquyen'
+                    ? 'font-semibold text-blue-500'
+                    : '',
+                ]"
+                @click="setActive('phanquyen', 'nhansu')"
+              >
+                <i
+                  :class="[
+                    'fa-2xs mr-5',
+                    activeItem === 'phanquyen'
+                      ? 'fas fa-circle'
+                      : 'fas fa-circle-dot',
+                  ]"
+                >
+                </i>
+                Phân Quyền
+              </NuxtLink>
+            </li>
+            <li>
+              <NuxtLink
                 to="/dashboard"
                 class="block px-2 py-1 hover:text-blue-500"
                 :class="[

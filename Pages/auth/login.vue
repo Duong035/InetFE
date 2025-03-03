@@ -78,8 +78,10 @@ const handleSubmit = async (e) => {
         resVerify.value?.message ||
         "Đã xảy ra lỗi, vui lòng thử lại!";
       if (errorCode == 2008) {
-        // if (body.password === "aohvaklvnh")
-        // sessionStorage.setItem("first_time", "true");
+        if (body.password === "aohvaklvnh") {
+          console.log(body.password);
+          sessionStorage.setItem("first_time", "true");
+        }
         router.push({
           path: "verify_email",
           query: {

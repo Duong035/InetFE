@@ -23,6 +23,8 @@ const API_ENDPOINTS = {
     shift: "/api/admin/work-session",
     shifts: "/api/admin/work-sessions",
     classes: "/api/admin/classes",
+    permissionGroup: "/api/admin/permission-grp",
+    permissionTag: "/api/admin/permission-tags",
   },
 }
 
@@ -30,14 +32,7 @@ class Request {
   constructor() {
     const route = useRoute()
     this.baseURL = "http://localhost:3000"
-    const getToken = () => {
-      if (typeof window !== "undefined") {
-        return sessionStorage.getItem("auth_token") || "";
-      }
-      return "";
-    };
-    
-    this.accessToken = `Bearer ${getToken()}`;
+    this.accessToken = `Bearer ${useUserStore()?.userInfo?.token}`
     this.headers = {}
     this.handleFetch = {
       onRequest() {},
@@ -247,9 +242,25 @@ class CMSManager {
     return this.request.get(API_ENDPOINTS.cms.districts, data)
   }
   //__________________________________________________________________________________________
+
+  //Classes___________________________________________________________________________________
   async getClasses(data) {
     return this.request.get(API_ENDPOINTS.cms.classes, data);
   }
+  //__________________________________________________________________________________________
+
+  // Permissions groups_______________________________________________________________________
+  async getPermissionGroups(data) {
+    return this.request.get(API_ENDPOINTS.cms.permissionGroup, data)
+  }
+  //__________________________________________________________________________________________
+
+
+  // Permissions tags_________________________________________________________________________
+  async getPermissionTags(data) {
+    return this.request.get(API_ENDPOINTS.cms.permissionTag, data)
+  }
+  //__________________________________________________________________________________________
 
 }
 

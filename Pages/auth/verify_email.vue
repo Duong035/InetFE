@@ -104,6 +104,32 @@ async function resendOtp() {
   isSending.value = false;
 }
 
+function filterPermissions(permissions) {
+  return permissions.reduce((acc, level0) => {
+    if (level0.checked) {
+      acc.push(level0);
+    } else {
+      const filteredLevel1 = level0.listLevel1?.reduce((subAcc, level1) => {
+        if (level1.checked) {
+          subAcc.push(level1);
+        } else {
+          const filteredLevel2 = level1.listLevel2?.filter(
+            (level2) => level2.checked,
+          );
+          if (filteredLevel2 && filteredLevel2.length > 0) {
+            subAcc.push({ ...level1, listLevel2: filteredLevel2 });
+          }
+        }
+        return subAcc;
+      }, []);
+      if (filteredLevel1 && filteredLevel1.length > 0) {
+        acc.push({ ...level0, listLevel1: filteredLevel1 });
+      }
+    }
+    return acc;
+  }, []);
+}
+
 const handleSubmit = async (e) => {
   if (isLoading.value) return;
   e.preventDefault();
@@ -119,9 +145,7 @@ const handleSubmit = async (e) => {
     });
     if (resVerify.value?.status) {
       message.success("Xác nhận Email thành công!");
-      const first = sessionStorage.getItem("first_time");
-
-      if (first) {
+      if (sessionStorage.getItem("first_time") === "true") {
         router.push({
           path: "newpass",
           query: { email: route.query.email },
@@ -130,12 +154,32 @@ const handleSubmit = async (e) => {
           "Học viên lần đầu đăng nhập! Thay đổi mật khẩu tài khoản!",
         );
       } else {
-        //
-        //let body= get sessionStorage data
-        await restAPI.cms.login({ body });
-        //userStore
-        router.push("/Dashboard");
-        message.success("Đăng nhập thành công!");
+        let body = sessionStorage.getItem("loginfo");
+        const { data: resVerify, error } = await restAPI.cms.login({ body });
+
+        if (resVerify.value?.status) {
+          const userInfo = resVerify.value?.data;
+          nextTick(async () => {
+            if (
+              userInfo?.permission_grp &&
+              (userInfo?.role_id === 3 || userInfo?.role_id === 4)
+            ) {
+              const filteredPermissions = filterPermissions(
+                userInfo?.permission_grp?.tags,
+              );
+              userStore.setPermissions(
+                userInfo?.permission_grp?.select_all,
+                filteredPermissions,
+              );
+            }
+            if (userInfo?.role_id === 1 || userInfo?.role_id === 2)
+              userStore.setPermissions(true, []);
+            delete userInfo.permission_grp;
+            userStore.login(userInfo);
+            message.success("Đăng nhập thành công!");
+          });
+          return navigateTo("/dashboard");
+        }
       }
     } else if (
       error.value.statusCode === 400 &&
