@@ -4,9 +4,8 @@ import { reactive, ref } from "vue";
 const dropdowns = reactive<{ [key: string]: boolean }>({
   coban: true,
   noidung: false,
-  chungchi: false,
-  caidat: false,
-  chamsoc: false,
+  xeplich: false,
+  danhsach: false,
 });
 const isCollapsed = ref(false);
 const activeDropdown = ref("coban");
@@ -104,10 +103,10 @@ const toggleDropdown = (menu: string) => {
             Nội dung bài giảng
           </li>
           <li
-            @click="toggleDropdown('chungchi')"
+            @click="toggleDropdown('xeplich')"
             :class="[
               'relative flex cursor-pointer items-center py-3 pl-3 pr-10',
-              activeDropdown === 'chungchi'
+              activeDropdown === 'xeplich'
                 ? '-mr-4 bg-gray-50 pr-0 text-[#133D85]'
                 : 'text-[#4D6FA8]',
             ]"
@@ -115,18 +114,18 @@ const toggleDropdown = (menu: string) => {
             <i
               :class="[
                 'pr-3 text-[8px]',
-                activeDropdown === 'chungchi'
+                activeDropdown === 'xeplich'
                   ? 'fa-solchapterfa-circle text-[#133D85]'
                   : 'fa-solchapterfa-circle-dot text-[#4D6FA8]',
               ]"
             ></i>
-            Chứng chỉ
+            Xếp lịch học
           </li>
           <li
-            @click="toggleDropdown('caidat')"
+            @click="toggleDropdown('danhsach')"
             :class="[
               'relative flex cursor-pointer items-center py-3 pl-3 pr-10',
-              activeDropdown === 'caidat'
+              activeDropdown === 'danhsach'
                 ? '-mr-4 bg-gray-50 pr-0 text-[#133D85]'
                 : 'text-[#4D6FA8]',
             ]"
@@ -134,12 +133,12 @@ const toggleDropdown = (menu: string) => {
             <i
               :class="[
                 'pr-3 text-[8px]',
-                activeDropdown === 'caidat'
+                activeDropdown === 'danhsach'
                   ? 'fa-solchapterfa-circle text-[#133D85]'
                   : 'fa-solchapterfa-circle-dot text-[#4D6FA8]',
               ]"
             ></i
-            >Cài đặt
+            >Danh sách học viên
           </li>
         </ul>
       </nav>
@@ -174,7 +173,7 @@ const toggleDropdown = (menu: string) => {
               <ul v-if="dropdowns.coban" class="w-ful h-full">
                 <li>
                   <div class="w-ful h-full" v-if="!isCollapsed">
-                    <DaotaoMonhocmoiClassInfo />
+                    <DaotaoLophocNewclass />
                   </div>
                 </li>
               </ul>
@@ -274,27 +273,27 @@ const toggleDropdown = (menu: string) => {
             </li>
             <li class="rounded-2xl text-[#133D85]">
               <div
-                @click="toggleDropdown('chungchi')"
+                @click="toggleDropdown('xeplich')"
                 :class="[
                   'flex cursor-pointer items-center justify-between px-4 py-2.5',
 
-                  activeDropdown === 'chungchi'
+                  activeDropdown === 'xeplich'
                     ? 'rounded-3xl bg-gray-300 text-[#133D85]'
                     : 'rounded-3xl bg-gray-200 text-gray-600',
                 ]"
               >
                 <span class="flex items-center">
-                  <div v-if="!isCollapsed">Chứng chỉ</div>
+                  <div v-if="!isCollapsed">Xếp lịch học</div>
                 </span>
                 <i
                   :class="
-                    dropdowns.chungchi
+                    dropdowns.xeplich
                       ? 'fas fa-chevron-up'
                       : 'fas fa-chevron-down'
                   "
                 ></i>
               </div>
-              <ul v-if="dropdowns.chungchi" class="w-ful h-full">
+              <ul v-if="dropdowns.xeplich" class="w-ful h-full">
                 <li>
                   <div class="w-ful h-full" v-if="!isCollapsed">
                     <DaotaoHocvienctClass />
@@ -304,21 +303,21 @@ const toggleDropdown = (menu: string) => {
             </li>
             <li class="rounded-2xl text-[#133D85]">
               <div
-                @click="toggleDropdown('caidat')"
+                @click="toggleDropdown('danhsach')"
                 :class="[
                   'flex cursor-pointer items-center justify-between px-4 py-2.5',
 
-                  activeDropdown === 'caidat'
+                  activeDropdown === 'danhsach'
                     ? 'rounded-3xl bg-gray-300 text-[#133D85]'
                     : 'rounded-3xl bg-gray-200 text-gray-600',
                 ]"
               >
                 <span class="flex items-center">
-                  <div v-if="!isCollapsed">Cài đặt</div>
+                  <div v-if="!isCollapsed">danh sách học viên</div>
                 </span>
                 <i
                   :class="
-                    dropdowns.caidat
+                    dropdowns.danhsach
                       ? 'fas fa-chevron-up'
                       : 'fas fa-chevron-down'
                   "

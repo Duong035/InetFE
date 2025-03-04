@@ -5,7 +5,7 @@ import dayjs from "dayjs";
 
 const formValue = ref({
   image: "",
-  studyMode: "",
+  studyMode: null as Number | null,
   subjects: "",
   classCode: "",
   className: "",
@@ -44,9 +44,9 @@ const handleSubmit = async () => {
       group_url: "",
     };
 
-    console.log("Payload gửi lên API:", JSON.stringify(payload, null, 2));
+    console.log("Payload gửi lên API:", payload);
 
-    const { error } = await restAPI.cms.createClass(payload);
+    const { data: resData, error } = await restAPI.cms.createClass({ payload });
 
     if (error?.value) {
       message.error(error?.value?.data?.message || "Lỗi khi tạo lớp học");
@@ -58,7 +58,7 @@ const handleSubmit = async () => {
     // Reset form sau khi gửi thành công
     formValue.value = {
       image: "",
-      studyMode: "",
+      studyMode: null,
       subjects: "",
       classCode: "",
       className: "",
@@ -155,9 +155,9 @@ onMounted(async () => {
         <!-- Hình thức học -->
         <n-form-item label="Hình thức học *" class="flex-1">
           <n-radio-group v-model:value="formValue.studyMode">
-            <n-radio label="offline" value="1">Học offline</n-radio>
-            <n-radio label="online" value="2">Học online</n-radio>
-            <n-radio label="hybrid" value="3">Học hybrid</n-radio>
+            <n-radio :value="1">Học offline</n-radio>
+            <n-radio :value="2">Học online</n-radio>
+            <n-radio :value="3">Học hybrid</n-radio>
           </n-radio-group>
         </n-form-item>
       </div>

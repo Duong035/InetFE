@@ -1,3 +1,4 @@
+import User from "~/Pages/user.vue";
 
 const API_ENDPOINTS = {
   cms: {
@@ -22,6 +23,7 @@ const API_ENDPOINTS = {
     subjects: "/api/admin/subject/all",
     shift: "/api/admin/work-session",
     shifts: "/api/admin/work-sessions",
+    subjects: "/api/admin/subjects",
     classes: "/api/admin/classes",
     permissionGroup: "/api/admin/permission-grp",
     permissionTag: "/api/admin/permission-tags",
@@ -42,23 +44,40 @@ class Request {
       onResponse() {},
       onResponseError({ _, response }) {
         if (response._data?.error === 6039) {
-          const numberOfLectures = Number(response._data?.message)
-
-          if (isNaN(numberOfLectures)) return window["$message"].error("Unknown error")
 
           if (numberOfLectures > 0) return window["$message"].error(t(response._data?.error, { numberOfLectures: response._data?.message }))
+          const numberOfLectures = Number(response._data?.message);
 
-          if (numberOfLectures < 0) return window["$message"].error(t("lectures.exceeded", { numberOfLectures: response._data?.message * -1 }))
+          if (isNaN(numberOfLectures))
+            return window["$message"].error("Unknown error");
+
+          if (numberOfLectures > 0)
+            return window["$message"].error(
+              t(response._data?.error, {
+                numberOfLectures: response._data?.message,
+              }),
+            );
+
+          if (numberOfLectures < 0)
+            return window["$message"].error(
+              t("lectures.exceeded", {
+                numberOfLectures: response._data?.message * -1,
+              }),
+            );
         }
-        if (route.path.includes("profile")) return
-        if (response._data?.error === 2008) return
-        else window["$message"].error(ERROR_CODES[response._data?.error] || response._data?.message)
+        if (route.path.includes("profile")) return;
+        if (response._data?.error === 2008) return;
+        else
+          window["$message"].error(
+            ERROR_CODES[response._data?.error] || response._data?.message,
+          );
 
-        console.error("Response error: ", response._data?.message)
+        console.error("Response error: ", response._data?.message);
 
-        if (response.status == 401 || response._data?.error === 6101) return navigateTo(window["$loginUrl"], { external: true })
+        if (response.status == 401 || response._data?.error === 6101)
+          return navigateTo(window["$loginUrl"], { external: true });
       },
-    }
+    };
   }
 
   fetch(url, method, options) {
@@ -66,7 +85,7 @@ class Request {
       "Content-type": "application/json",
       Authorization: this.accessToken,
     };
-  
+
     return useFetch(url, {
       baseURL: this.baseURL,
       method,
@@ -81,172 +100,169 @@ class Request {
   }
 
   get(url, options) {
-    return this.fetch(url, "GET", options)
+    return this.fetch(url, "GET", options);
   }
   post(url, options) {
-    return this.fetch(url, "POST", options)
+    return this.fetch(url, "POST", options);
   }
   put(url, options) {
-    return this.fetch(url, "PUT", options)
+    return this.fetch(url, "PUT", options);
   }
   patch(url, options) {
-    return this.fetch(url, "PATCH", options)
+    return this.fetch(url, "PATCH", options);
   }
   delete(url, options) {
-    return this.fetch(url, "DELETE", options)
+    return this.fetch(url, "DELETE", options);
   }
-
-
 }
 
 class CMSManager {
   constructor(request) {
-    this.request = request
+    this.request = request;
   }
   // Auth_____________________________________________________________________________________
   async login(data) {
-    return this.request.post(API_ENDPOINTS.cms.login, data)
+    return this.request.post(API_ENDPOINTS.cms.login, data);
   }
 
   async adminLogin(data) {
-    return this.request.post(API_ENDPOINTS.cms.admin_login, data)
+    return this.request.post(API_ENDPOINTS.cms.admin_login, data);
   }
 
   async forgotPassword(data) {
-    return this.request.post(API_ENDPOINTS.cms.forgot_password, data)
+    return this.request.post(API_ENDPOINTS.cms.forgot_password, data);
   }
   async register(data) {
-    return this.request.post(API_ENDPOINTS.cms.register, data)
+    return this.request.post(API_ENDPOINTS.cms.register, data);
   }
 
   async verifyToken(data) {
-    return this.request.post(API_ENDPOINTS.cms.verify_token, data)
+    return this.request.post(API_ENDPOINTS.cms.verify_token, data);
   }
 
   async verifyEmail(data) {
-    return this.request.post(API_ENDPOINTS.cms.verify_email, data)
+    return this.request.post(API_ENDPOINTS.cms.verify_email, data);
   }
 
   async resendOtp(data) {
-    return this.request.post(API_ENDPOINTS.cms.resend_otp, data)
+    return this.request.post(API_ENDPOINTS.cms.resend_otp, data);
+  }
+  //__________________________________________________________________________________________
+
+  // user_____________________________________________________________________________________
+  async getUser(data) {
+    return this.request.get(API_ENDPOINTS.cms.User, data);
   }
   //__________________________________________________________________________________________
 
   //Unit______________________________________________________________________________________
   async getUnitInformation(data) {
-    return this.request.get(API_ENDPOINTS.cms.unit_information, data)
-    
+    return this.request.get(API_ENDPOINTS.cms.unit_information, data);
   }
   async updateUnitInformation(data) {
-    return this.request.put(API_ENDPOINTS.cms.unit_information, data)
+    return this.request.put(API_ENDPOINTS.cms.unit_information, data);
   }
   //__________________________________________________________________________________________
-  
+
   //Students__________________________________________________________________________________
   async getStudents(data) {
-    return this.request.get(API_ENDPOINTS.cms.students, data)
+    return this.request.get(API_ENDPOINTS.cms.students, data);
   }
   async createStudent(data) {
-    return this.request.post(API_ENDPOINTS.cms.students, data)
+    return this.request.post(API_ENDPOINTS.cms.students, data);
   }
   async getStudentDetail(data) {
-    return this.request.get(`${API_ENDPOINTS.cms.students}/${data.id}`, data)
+    return this.request.get(`${API_ENDPOINTS.cms.students}/${data.id}`, data);
   }
   async updateStudent(data) {
-    return this.request.put(`${API_ENDPOINTS.cms.students}/${data.id}`, data)
+    return this.request.put(`${API_ENDPOINTS.cms.students}/${data.id}`, data);
   }
   async deleteStudents(data) {
-    return this.request.delete(API_ENDPOINTS.cms.students, data)
+    return this.request.delete(API_ENDPOINTS.cms.students, data);
   }
   //__________________________________________________________________________________________
 
   //Study neesd_______________________________________________________________________________
   async createStudyNeed(data) {
-    return this.request.post(API_ENDPOINTS.cms.study_need, data)
+    return this.request.post(API_ENDPOINTS.cms.study_need, data);
   }
   async getStudyNeedDetail(data) {
-    return this.request.get(`${API_ENDPOINTS.cms.study_need}/${data.id}`, data)
+    return this.request.get(`${API_ENDPOINTS.cms.study_need}/${data.id}`, data);
   }
   async updateStudyNeed(data) {
-    return this.request.put(`${API_ENDPOINTS.cms.study_need}/${data.id}`, data)
+    return this.request.put(`${API_ENDPOINTS.cms.study_need}/${data.id}`, data);
   }
   async listStudyNeed(data) {
-    return this.request.get(API_ENDPOINTS.cms.list_study_need, data)
+    return this.request.get(API_ENDPOINTS.cms.list_study_need, data);
   }
   async deleteStudyNeed(data) {
-    return this.request.delete(`${API_ENDPOINTS.cms.study_need}/${data.id}`, data)
+    return this.request.delete(
+      `${API_ENDPOINTS.cms.study_need}/${data.id}`,
+      data,
+    );
   }
   //__________________________________________________________________________________________
 
   // Staff____________________________________________________________________________________
-   async getStaff(data) {
-    return this.request.get(API_ENDPOINTS.cms.staff, data)
+  async getStaff(data) {
+    return this.request.get(API_ENDPOINTS.cms.staff, data);
   }
   //__________________________________________________________________________________________
 
   // Branches_________________________________________________________________________________
   async getBranches(data) {
-    return this.request.get(API_ENDPOINTS.cms.branches, data)
+    return this.request.get(API_ENDPOINTS.cms.branches, data);
   }
   //__________________________________________________________________________________________
 
-
   // Category_________________________________________________________________________________
   async getCategories(data) {
-    return this.request.get(API_ENDPOINTS.cms.category, data)
+    return this.request.get(API_ENDPOINTS.cms.category, data);
   }
   async getCategoryDetail(data) {
-    return this.request.get(`${API_ENDPOINTS.cms.category}/${data.id}`, data)
+    return this.request.get(`${API_ENDPOINTS.cms.category}/${data.id}`, data);
   }
   async createCategory(data) {
-    return this.request.post(API_ENDPOINTS.cms.category, data)
+    return this.request.post(API_ENDPOINTS.cms.category, data);
   }
   async deleteCategory(data) {
-    return this.request.delete(`${API_ENDPOINTS.cms.category}/${data.id}`, data)
+    return this.request.delete(
+      `${API_ENDPOINTS.cms.category}/${data.id}`,
+      data,
+    );
   }
   async updateCategory(data) {
-    return this.request.patch(`${API_ENDPOINTS.cms.category}/${data.id}`, data)
+    return this.request.patch(`${API_ENDPOINTS.cms.category}/${data.id}`, data);
   }
   //__________________________________________________________________________________________
 
   // Subjects_________________________________________________________________________________
   async getSubjects(data) {
-    return this.request.get(API_ENDPOINTS.cms.subjects, data)
-  }
-  //__________________________________________________________________________________________
-
-  // Shift____________________________________________________________________________________
-  async getShift(data) {
-    return this.request.get(API_ENDPOINTS.cms.shifts, data)
-  }
-  async getShiftDetail(data) {
-    return this.request.get(API_ENDPOINTS.cms.shift, data)
-  }
-  async createShift(data) {
-    return this.request.post(API_ENDPOINTS.cms.shift, data)
-  }
-  async updateShift(data) {
     return this.request.patch(API_ENDPOINTS.cms.shift, data)
   }
   async deleteShift(data) {
-    return this.request.delete(`${API_ENDPOINTS.cms.shift}/${data.id}`, data)
+    return this.request.get(API_ENDPOINTS.cms.subjects, data);
   }
   //__________________________________________________________________________________________
 
-
   //administrative - Đơn vị hành chính________________________________________________________
   async getProvinces(data) {
-    return this.request.get(API_ENDPOINTS.cms.provinces, data)
+    return this.request.get(API_ENDPOINTS.cms.provinces, data);
   }
   async getDistricts(data) {
-    return this.request.get(API_ENDPOINTS.cms.districts, data)
+    return this.request.get(API_ENDPOINTS.cms.districts, data);
   }
   //__________________________________________________________________________________________
 
   //Classes___________________________________________________________________________________
+    return this.request.post(API_ENDPOINTS.cms.class, data);
+  }
   async getClasses(data) {
     return this.request.get(API_ENDPOINTS.cms.classes, data);
   }
+    return this.request.patch(`${API_ENDPOINTS.cms.class}/${id}`, data);
+  }
+
   //__________________________________________________________________________________________
 
   // Permissions groups_______________________________________________________________________
@@ -261,20 +277,18 @@ class CMSManager {
   }
   //__________________________________________________________________________________________
 
-
   // Permissions tags_________________________________________________________________________
   async getPermissionTags(data) {
     return this.request.get(API_ENDPOINTS.cms.permissionTag, data)
   }
   //__________________________________________________________________________________________
-
 }
 
 class RestAPI {
   constructor() {
-    this.request = new Request()
-    this.cms = new CMSManager(this.request)
+    this.request = new Request();
+    this.cms = new CMSManager(this.request);
   }
 }
 
-export default () => ({ restAPI: new RestAPI() })
+export default () => ({ restAPI: new RestAPI() });

@@ -1,7 +1,53 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
+import { message } from "ant-design-vue";
 
 const activeTab = ref("all");
+const { restAPI } = useApi();
+
+// Định nghĩa kiểu dữ liệu
+interface ClassData {
+  id: string;
+  subjectName: string;
+  classType: number;
+  startAt: string;
+  endAt: string;
+  status: number;
+}
+
+const data = ref<ClassData[]>([]);
+
+// Hàm tải dữ liệu từ API
+const loadData = async () => {
+  try {
+    const { data: resData, error } = await restAPI.cms.getClasses({});
+    if (error?.value)
+      throw new Error(error.value.data?.message || "Lỗi tải dữ liệu");
+
+    data.value = resData.value?.data?.classes || [];
+  } catch (err) {
+    console.error("Error loading data:", err);
+    message.error("Lỗi tải dữ liệu.");
+  }
+};
+
+// Gọi API khi component được mount
+loadData();
+
+// Tính số lượng lớp học theo trạng thái
+const totalClasses = computed(() => data.value.length);
+const activeClasses = computed(
+  () => data.value.filter((c) => c.status === 2).length,
+);
+const upcomingClasses = computed(
+  () => data.value.filter((c) => c.status === 1).length,
+);
+const endedClasses = computed(
+  () => data.value.filter((c) => c.status === 3).length,
+);
+const canceledClasses = computed(
+  () => data.value.filter((c) => c.status === 4).length,
+);
 </script>
 <template>
   <div class="h-min-fit flex w-full overflow-auto rounded-2xl bg-white">
@@ -13,7 +59,7 @@ const activeTab = ref("all");
         <n-button
           type="info"
           class="ml-auto h-12 w-40 text-xl"
-          @click="$router.push('isactiveinfo')"
+          @click="$router.push('lophocinfo')"
         >
           Thêm mới
           <i class="fa-solid fa-plus ml-1 px-2"></i>
@@ -32,7 +78,8 @@ const activeTab = ref("all");
                   : 'text-gray-600',
               ]"
             >
-              tất cả
+              Tất cả (<small>{{ totalClasses }}</small
+              >)
             </button>
             <button
               @click="activeTab = 'isactive'"
@@ -43,7 +90,8 @@ const activeTab = ref("all");
                   : 'text-gray-600',
               ]"
             >
-              đang diễn ra
+              Đang diễn ra (<small>{{ activeClasses }}</small
+              >)
             </button>
             <button
               @click="activeTab = 'unactive'"
@@ -54,7 +102,8 @@ const activeTab = ref("all");
                   : 'text-gray-600',
               ]"
             >
-              sắp diễn ra
+              Sắp diễn ra (<small>{{ upcomingClasses }}</small
+              >)
             </button>
             <button
               @click="activeTab = 'end'"
@@ -65,7 +114,8 @@ const activeTab = ref("all");
                   : 'text-gray-600',
               ]"
             >
-              đã kết thúc
+              Đã kết thúc (<small>{{ endedClasses }}</small
+              >)
             </button>
             <button
               @click="activeTab = 'cancel'"
@@ -76,7 +126,8 @@ const activeTab = ref("all");
                   : 'text-gray-600',
               ]"
             >
-              đã hủy
+              Đã hủy (<small>{{ canceledClasses }}</small
+              >)
             </button>
           </div>
           <div v-if="activeTab === 'all'"><DaotaoLophocAll /></div>

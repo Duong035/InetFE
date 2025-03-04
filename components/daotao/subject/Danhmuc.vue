@@ -1,12 +1,11 @@
 <script lang="ts">
 import type { DataTableColumns, DataTableRowKey } from "naive-ui";
 import { defineComponent, ref, h, reactive, computed, onMounted } from "vue";
-import { NButton, NDataTable, useMessage } from "naive-ui";
+import { NButton, NDataTable } from "naive-ui";
+import { message } from "ant-design-vue";
 
 export default defineComponent({
   setup() {
-    const message = useMessage();
-
     interface RowData {
       id: string;
       danhmuc: string;
@@ -35,7 +34,6 @@ export default defineComponent({
     const dataTableInstRef = ref<InstanceType<typeof NDataTable> | null>(null);
     const Status = ref("");
     const isLoading = ref(false);
-    const showSpin = ref(false);
 
     const formValue = reactive({
       name: null,
@@ -147,14 +145,13 @@ export default defineComponent({
 
     const data = ref<RowData[]>([]);
     const loadData = async () => {
-      //wait 3 second
-      showSpin.value = true;
-
-      await new Promise((resolve) => setTimeout(resolve, 1));
-
       try {
         const { data: resData, error } = await restAPI.cms.getCategories({});
 
+        if (error?.value) {
+          message.error(error?.value?.data?.message || "Lỗi tải dữ liệu");
+          return;
+        }
         const rawData = toRaw(resData.value)?.data;
         if (Array.isArray(rawData)) {
           data.value = rawData.map((item: any, index) => ({
@@ -166,16 +163,10 @@ export default defineComponent({
             status: item.is_active ? "Hoạt động" : "Không hoạt động",
           }));
         } else {
-          const errorCode = error.value.data.error;
-          const errorMessage =
-            ERROR_CODES[errorCode as keyof typeof ERROR_CODES] ||
-            resData.value?.message ||
-            "Đã xảy ra lỗi, vui lòng thử lại!";
-
-          message.warning(errorMessage);
+          console.error("Unexpected API response:", rawData);
+          message.error("Dữ liệu không hợp lệ từ API.");
         }
       } catch (err) {
-        showSpin.value = false;
         console.error("Error loading data:", err);
         message.error("Lỗi tải dữ liệu.");
       }
@@ -198,11 +189,6 @@ export default defineComponent({
           formValue.description = data.description || null;
           formValue.is_active = data.is_active || null;
         }
-      } else {
-        formValue.name = null;
-        formValue.thumbnail = null;
-        formValue.description = null;
-        formValue.is_active = true;
       }
       danhmucstate.value = "info";
     }
@@ -226,13 +212,7 @@ export default defineComponent({
           if (resUpdate?.value?.status) {
             message.success("Cập nhật danh mục thành công!");
           } else {
-            const errorCode = error.value.data.error;
-            const errorMessage =
-              ERROR_CODES[errorCode as keyof typeof ERROR_CODES] ||
-              resUpdate.value?.message ||
-              "Đã xảy ra lỗi, vui lòng thử lại!";
-
-            message.warning(errorMessage);
+            message.warning("Đã tồn tại danh mục với tên tương tự!");
           }
         } else {
           const { data: resCreate, error } = await restAPI.cms.createCategory({
@@ -241,13 +221,7 @@ export default defineComponent({
           if (resCreate?.value?.status) {
             message.success("Tạo danh mục thành công!");
           } else {
-            const errorCode = error.value.data.error;
-            const errorMessage =
-              ERROR_CODES[errorCode as keyof typeof ERROR_CODES] ||
-              resCreate.value?.message ||
-              "Đã xảy ra lỗi, vui lòng thử lại!";
-
-            message.warning(errorMessage);
+            message.error(error.value.data.error);
           }
         }
       } catch {
@@ -255,7 +229,6 @@ export default defineComponent({
         isLoading.value = false;
         loadData();
         danhmucstate.value = "list";
-        danhmucId.value = "";
       }
     };
 
@@ -266,21 +239,21 @@ export default defineComponent({
     const handleDelete = async (e: string) => {
       if (isLoading.value) return;
 
+      const { name, thumbnail, description, is_active } = formValue;
+      let body = {
+        name,
+        thumbnail,
+        description,
+        is_active,
+      };
       try {
-        const { data: resdel, error } = await restAPI.cms.deleteCategory({
+        const { data: resUpdate, error } = await restAPI.cms.deleteCategory({
           id: danhmucId.value,
         });
-        if (resdel?.value?.status) {
+        if (resUpdate?.value?.status) {
           message.success("Xóa danh mục thành công!");
         } else {
-          const errorCode = error.value.data.error;
-          console.log(errorCode);
-          const errorMessage =
-            ERROR_CODES[errorCode as keyof typeof ERROR_CODES] ||
-            resdel.value?.message ||
-            "Đã xảy ra lỗi, vui lòng thử lại!";
-
-          message.warning(errorMessage);
+          message.warning("Danh mục đang được sử dụng, không thể xóa!");
         }
       } catch {
       } finally {
@@ -303,7 +276,6 @@ export default defineComponent({
       danhmucinfo,
       Status,
       data,
-      showSpin,
       columns: createColumns(),
       dataTableInst: dataTableInstRef,
       checkedRowKeys: checkedRowKeysRef,
@@ -379,7 +351,12 @@ export default defineComponent({
             <n-form-item>
               <n-button type="info" class="w-28">
                 Xuất file
-                <i class="fa-solid fa-file-export pl-2"></i>
+                <Icon
+                  name="fe:export"
+                  width="24"
+                  height="24"
+                  style="margin-left: 5px"
+                />
               </n-button>
             </n-form-item>
           </n-gi>

@@ -1,38 +1,36 @@
 <script lang="ts">
 import type { DataTableColumns, DataTableRowKey } from "naive-ui";
 import { defineComponent, ref, h, reactive, computed, onMounted } from "vue";
-import { NButton, NDataTable, NDropdown } from "naive-ui";
+import { NButton, NDataTable, NDropdown, NInputNumber } from "naive-ui";
 import axios from "axios";
 import dayjs from "dayjs";
 
+// Định nghĩa interface cho dữ liệu bảng
 interface RowData {
   created_at: string;
   id: string;
   stt: number;
   monhoc: string;
   danhmuc: string;
-  hocphi: string;
-  sobuoi: string;
-  solop: string;
-  chuaxep: string;
+  hocphi: number;
+  sobuoi: number;
+  solop: number;
+  chuaxep: number;
   date: string;
   status: string;
+  input_require: string;
+  output_require: string;
+  fee_type: number | string;
+  thumbnail: string;
+  total_lessons: number;
+  origin_fee: number;
+  discount_fee: number;
+  color: string;
 }
 
-const actionMenu = [
-  {
-    title: "Xem học viên chưa xếp lớp",
-    key: "Xem học viên chưa xếp lớp",
-  },
-  {
-    title: "Xem danh sách môn học",
-    key: "Xem danh sách môn học",
-  },
-];
-
 export default defineComponent({
+  name: "SubjectComponent",
   setup() {
-    // Cấu hình phân trang
     const paginationReactive = reactive({
       page: 1,
       pageSize: 5,
@@ -57,27 +55,32 @@ export default defineComponent({
     const token = ref("");
     const loading = ref(false);
     const danhmucoptions = ref([{ label: "Tất cả danh mục", value: "All" }]);
+    const danhmucstate = ref<"info" | "list">("list");
+    const danhmucId = ref<string>("");
+    const formValue = reactive({
+      name: "",
+      description: "",
+      is_active: true,
+      input_require: "",
+      output_require: "",
+      fee_type: "",
+      total_lessons: 0,
+      thumbnail: "",
+      code: "",
+      origin_fee: 0,
+      discount_fee: 0,
+      color: "",
+    });
+    const isLoading = ref<boolean>(false);
+    const railStyle = { backgroundColor: "#ccc" };
 
-    // Retrieve token from localStorage safely
-    if (typeof window !== "undefined" && window.localStorage) {
-      token.value =
-        localStorage.getItem("authToken") ||
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA4MjU2MzEsInJvbGUiOiJvd25lciIsInJvbGVfaWQiOjIsInNpdGVfaWQiOiIwYjc4YjA5Yi0wOGQ0LTRiYTYtODc2Yy04NDZmMDYwMmU1ZWYiLCJzdGF0dXMiOnRydWUsInVzZXJfaWQiOiI5OWMzZGE0My1jNWRmLTQ1ZGYtODk0ZS1hODg0NDgwNzAxYTAifQ.ehgQDrm2XIVXqIDXR7KGqx1QvznSz4WDd-A2-0qkpgc";
+    if (typeof window !== "undefined" && window.sessionStorage) {
+      token.value = localStorage.getItem("auth_token") || "";
     }
-    // Mảng chứa dữ liệu bảng
 
-    function filterStatus() {
-      if (dataTableInstRef.value) {
-        return dataTableInstRef.value.filter(null);
-      }
-    }
-
-    // Lấy dữ liệu subjects từ API và chuyển đổi sang RowData
     async function fetchData() {
       loading.value = true;
       try {
-        console.log("Fetching users...");
-        console.log("Token used:", token.value);
         const response = await axios.get(
           "http://localhost:3000/api/admin/subjects",
           {
@@ -92,22 +95,29 @@ export default defineComponent({
           stt: index + 1,
           monhoc: subject.name,
           danhmuc: subject.category ? subject.category.name : "",
-          hocphi: subject.origin_fee.toString(),
-          sobuoi: subject.total_lessons.toString(),
-          solop: subject.class_total.toString(),
-          chuaxep: subject.student_pendings.toString(),
+          hocphi: subject.origin_fee,
+          sobuoi: subject.total_lessons,
+          solop: subject.class_total,
+          chuaxep: subject.student_pendings,
           date: subject.created_at,
+          input_require: subject.input_require,
+          output_require: subject.output_require,
+          fee_type: subject.fee_type,
+          total_lessons: subject.total_lessons,
+          thumbnail: subject.thumbnail,
+          origin_fee: subject.origin_fee,
+          discount_fee: subject.discount_fee,
           status: subject.is_active ? "Hoạt động" : "Không hoạt động",
+          color: subject.metadata?.color || "",
         }));
 
-        // get category from subjects
+        // Lấy danh mục từ subjects
         const categorySet = new Set<string>();
         subjects.forEach((subject: any) => {
           if (subject.category && subject.category.name) {
             categorySet.add(subject.category.name);
           }
         });
-        // Cập nhật lại danh sách option cho danhmucoptions
         danhmucoptions.value = [
           { label: "Tất cả danh mục", value: "All" },
           ...Array.from(categorySet).map((name) => ({
@@ -117,44 +127,120 @@ export default defineComponent({
         ];
       } catch (error) {
         console.error("Error fetching data:", error);
+      } finally {
+        loading.value = false;
       }
     }
 
     onMounted(() => {
-      filterStatus();
       fetchData();
     });
 
-    // Hàm cập nhật dữ liệu (Edit)
-    const editRow = async (row: RowData) => {
-      const newName = prompt("Nhập tên môn học mới:", row.monhoc);
-
-      if (newName !== null && newName !== row.monhoc) {
-        try {
-          const response = await axios.patch(
-            `http://localhost:3000/api/admin/subject`,
-            { id: row.id, name: newName },
-            {
-              headers: {
-                Authorization: `Bearer ${token.value}`,
-              },
+    // lấy thông tin subject theo id
+    const fetchSubjectById = async (id: string) => {
+      try {
+        const response = await axios.get(
+          `http://localhost:3000/api/admin/subject/?id=${id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token.value}`,
             },
-          );
-          // Cập nhật dữ liệu trong mảng
-          const index = data.value.findIndex(
-            (subject) => subject.id === row.id,
-          );
-          if (index !== -1) {
-            data.value[index].monhoc = newName;
-          }
-          console.log("Môn học đã được cập nhật:", response.data);
-        } catch (error) {
-          console.error("Lỗi cập nhật môn học:", error);
-        }
+          },
+        );
+        const subjectInfo = response.data.data;
+        console.log("Thông tin subject:", subjectInfo);
+        return subjectInfo;
+      } catch (error: any) {
+        console.error(
+          "Lỗi lấy thông tin subject theo id:",
+          error.response?.data || error.message,
+        );
+        return null;
       }
     };
 
-    // Hàm xóa dữ liệu (Delete)
+    // API lấy thông tin subject theo id
+    const editRow = async (row: RowData) => {
+      danhmucstate.value = "info";
+      danhmucId.value = row.id;
+      const subjectInfo = await fetchSubjectById(row.id);
+      if (subjectInfo) {
+        formValue.name = subjectInfo.name;
+        formValue.description = subjectInfo.description;
+        formValue.is_active = subjectInfo.is_active;
+        formValue.input_require = subjectInfo.input_require;
+        formValue.output_require = subjectInfo.output_require;
+        formValue.fee_type = subjectInfo.fee_type.toString();
+        formValue.total_lessons = subjectInfo.total_lessons;
+        formValue.thumbnail = subjectInfo.thumbnail;
+        formValue.code = subjectInfo.code;
+        formValue.origin_fee = subjectInfo.origin_fee;
+        formValue.discount_fee = subjectInfo.discount_fee;
+        formValue.color = subjectInfo.metadata?.color || "";
+      }
+    };
+
+    const handleSubmit = async () => {
+      isLoading.value = true;
+      try {
+        const payload = {
+          id: danhmucId.value,
+          name: formValue.name,
+          is_active: formValue.is_active,
+          description: formValue.description,
+          input_require: formValue.input_require,
+          output_require: formValue.output_require,
+          code: formValue.code,
+          fee_type: Number(formValue.fee_type),
+          total_lessons: formValue.total_lessons,
+          origin_fee: formValue.origin_fee,
+          discount_fee: formValue.discount_fee,
+          metadata: {
+            color: formValue.color,
+          },
+          thumbnail: formValue.thumbnail,
+        };
+
+        console.log("Payload gửi đi:", payload);
+
+        const response = await axios.patch(
+          `http://localhost:3000/api/admin/subject`,
+          payload,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token.value}`,
+            },
+          },
+        );
+
+        const index = data.value.findIndex(
+          (subject) => subject.id === danhmucId.value,
+        );
+        if (index !== -1) {
+          data.value[index].monhoc = formValue.name;
+          data.value[index].status = formValue.is_active
+            ? "Hoạt động"
+            : "Không hoạt động";
+        }
+        console.log("Môn học đã được cập nhật:", response.data);
+        danhmucstate.value = "list";
+        danhmucId.value = "";
+      } catch (error: any) {
+        console.error(
+          "Lỗi cập nhật môn học:",
+          error.response?.data || error.message,
+        );
+      } finally {
+        isLoading.value = false;
+      }
+    };
+
+    const cancelEdit = () => {
+      danhmucstate.value = "list";
+      danhmucId.value = "";
+    };
+
     const deleteSub = async (row: RowData) => {
       if (confirm("Bạn có chắc chắn muốn xóa môn học này không?")) {
         try {
@@ -174,7 +260,7 @@ export default defineComponent({
         }
       }
     };
-    // Tạo các cột của bảng, truyền editRow và deleteSub vào hàm createColumns
+
     const columns = createColumns(editRow, deleteSub);
 
     return {
@@ -216,24 +302,21 @@ export default defineComponent({
       },
       danhmucoptions,
       statusoptions: [
-        {
-          label: "All",
-          value: "All",
-        },
-        {
-          label: "Hoạt động",
-          value: "Hoạt động",
-        },
-        {
-          label: "Không hoạt động",
-          value: "Không hoạt động",
-        },
+        { label: "All", value: "All" },
+        { label: "Hoạt động", value: "Hoạt động" },
+        { label: "Không hoạt động", value: "Không hoạt động" },
       ],
+      danhmucstate,
+      danhmucId,
+      formValue,
+      isLoading,
+      railStyle,
+      handleSubmit,
+      cancelEdit,
     };
   },
 });
 
-// Hàm tạo cột cho n-data-table, nhận hai hàm editRow và deleteSub từ setup
 function createColumns(
   editRow: (row: RowData) => void,
   deleteSub: (row: RowData) => void,
@@ -251,7 +334,6 @@ function createColumns(
     {
       title: "Danh mục",
       key: "danhmuc",
-      defaultFilterOptionValues: ["Thiết kế đồ họa", "Công nghệ thông tin"],
       filter(value, row) {
         return row.danhmuc.includes(value as string);
       },
@@ -356,23 +438,6 @@ function createColumns(
             },
             { default: () => h("i", { class: "fa-solid fa-trash" }) },
           ),
-          h(
-            NDropdown,
-            {
-              trigger: "click",
-              options: actionMenu,
-              quaternary: true,
-              style: { color: "gray" },
-              onSelect(key) {
-                if (key === "Xem học viên chưa xếp lớp") {
-                  editRow(row);
-                } else if (key === "Xem danh sách môn học") {
-                  deleteSub(row);
-                }
-              },
-            },
-            { default: () => h("i", { class: "fa-solid fa-ellipsis-v" }) },
-          ),
         ]);
       },
     },
@@ -383,7 +448,7 @@ function createColumns(
 <template>
   <div class="flex h-full w-full overflow-auto rounded-2xl bg-gray-50">
     <!-- Main Content -->
-    <div class="flex-1">
+    <div class="flex-1" v-show="danhmucstate === 'list'">
       <!-- Content Area -->
       <div class="h-full bg-white text-black">
         <n-grid
@@ -456,6 +521,147 @@ function createColumns(
           </n-gi>
         </n-grid>
       </div>
+    </div>
+    <div v-show="danhmucstate === 'info'" class="w-full p-4">
+      <n-grid cols="1" class="w-full">
+        <n-gi>
+          <n-grid cols="2" :x-gap="40">
+            <n-gi>
+              <n-gi>
+                <n-form-item label="Tên danh mục" path="name">
+                  <n-input
+                    v-model:value="formValue.name"
+                    placeholder="Nhập tên danh mục"
+                  />
+                </n-form-item>
+              </n-gi>
+              <n-gi>
+                <n-form-item label="Mô tả" path="description">
+                  <n-input
+                    v-model:value="formValue.description"
+                    placeholder="Nhập mô tả"
+                  />
+                </n-form-item>
+              </n-gi>
+              <n-gi>
+                <n-form-item
+                  class="flex text-4xl"
+                  label="Trạng thái hoạt động"
+                  label-placement="left"
+                  path="switchValue"
+                >
+                  <n-switch
+                    v-model:value="formValue.is_active"
+                    :unchecked-value="false"
+                    :checked-value="true"
+                  />
+                </n-form-item>
+              </n-gi>
+            </n-gi>
+            <n-gi>
+              <n-gi>
+                <n-form-item label="Ảnh đại diện khóa học" path="cover">
+                  <div>
+                    <img
+                      src="../../../public/images/subject.png"
+                      :square="false"
+                      :width="250"
+                      :height="150"
+                      class="rounded-xl"
+                    />
+                    <div class="mt-2">
+                      <label
+                        for="cover-upload"
+                        class="cursor-pointer text-sm text-blue-500 hover:underline"
+                      >
+                        Chỉnh sửa ảnh
+                      </label>
+                      <input
+                        type="file"
+                        id="cover-upload"
+                        class="hidden"
+                        accept="image/*"
+                      />
+                    </div>
+                    <p class="text-xs text-gray-500">
+                      Cho phép ảnh jpeg, jpg, png. Size ảnh tối đa 3.1 MB
+                    </p>
+                  </div>
+                </n-form-item>
+              </n-gi>
+            </n-gi>
+          </n-grid>
+        </n-gi>
+
+        <n-gi>
+          <n-grid cols="1" class="mt-4" :x-gap="20">
+            <n-gi>
+              <n-form-item label="Input Require" path="input_require">
+                <n-input
+                  v-model:value="formValue.input_require"
+                  placeholder="Nhập input require"
+                />
+              </n-form-item>
+            </n-gi>
+            <n-gi>
+              <n-form-item label="Output Require" path="output_require">
+                <n-input
+                  v-model:value="formValue.output_require"
+                  placeholder="Nhập output require"
+                />
+              </n-form-item>
+            </n-gi>
+            <n-gi>
+              <n-form-item label="Fee Type" path="fee_type">
+                <n-input
+                  v-model:value="formValue.fee_type"
+                  placeholder="Nhập fee type"
+                />
+              </n-form-item>
+            </n-gi>
+            <n-gi>
+              <n-form-item label="Total Lessons" path="total_lessons">
+                <n-input-number
+                  v-model:value="formValue.total_lessons"
+                  placeholder="Nhập tổng số buổi học"
+                />
+              </n-form-item>
+            </n-gi>
+            <n-gi>
+              <n-form-item label="Thumbnail" path="thumbnail">
+                <n-input
+                  v-model:value="formValue.thumbnail"
+                  placeholder="Nhập URL thumbnail hoặc chọn file"
+                />
+              </n-form-item>
+            </n-gi>
+          </n-grid>
+        </n-gi>
+        <n-gi style="display: flex; justify-content: center">
+          <n-grid cols="2" :x-gap="40">
+            <n-gi style="display: flex; justify-content: flex-end">
+              <n-button
+                round
+                class="h-12 w-52 rounded-2xl text-lg text-blue-400"
+                @click="cancelEdit"
+              >
+                Hủy
+              </n-button>
+            </n-gi>
+            <n-gi>
+              <n-button
+                round
+                type="info"
+                :loading="isLoading"
+                class="h-12 w-52 rounded-2xl text-lg"
+                @click.prevent="handleSubmit"
+              >
+                Lưu
+              </n-button>
+            </n-gi>
+          </n-grid>
+        </n-gi>
+      </n-grid>
     </div>
   </div>
 </template>
