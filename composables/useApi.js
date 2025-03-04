@@ -253,6 +253,12 @@ class CMSManager {
   async getPermissionGroups(data) {
     return this.request.get(API_ENDPOINTS.cms.permissionGroup, data)
   }
+  async getPermissionGroupsDetails(data) {
+    return this.request.get(`${API_ENDPOINTS.cms.permissionGroup}/${data.id}`, data)
+  }
+  async deletePermissionGroups(data) {
+    return this.request.delete(`${API_ENDPOINTS.cms.permissionGroup}`, data)
+  }
   //__________________________________________________________________________________________
 
 

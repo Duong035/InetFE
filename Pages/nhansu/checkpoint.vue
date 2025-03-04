@@ -252,16 +252,18 @@ function updatePermissions(data, permissionWith) {
           });
         }
       });
+
+      // Count selected items for Level 2
+      level1.countSelected = level1.listLevel2.filter(
+        (l3) => l3.checked,
+      ).length;
     });
-    // Count
-    const countSelected = level0.listLevel1.reduce((acc, curr) => {
-      const childCount = curr.listLevel2.reduce(
-        (childAcc, childCurr) => (childAcc += childCurr.checked ? 1 : 0),
-        0,
-      );
-      return (acc += childCount);
-    }, 0);
-    level0.countSelected = countSelected;
+
+    // Count selected items for Level 1
+    level0.countSelected = level0.listLevel1.reduce(
+      (acc, curr) => acc + curr.countSelected,
+      0,
+    );
   });
 }
 </script>

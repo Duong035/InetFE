@@ -1,5 +1,5 @@
 <script lang="ts">
-import type { DataTableColumns, DataTableRowKey } from "naive-ui";
+import type { DataTableColumns } from "naive-ui";
 import dayjs from "dayjs";
 import {
   defineComponent,
@@ -10,7 +10,6 @@ import {
   onMounted,
   toRaw,
 } from "vue";
-import { NButton, NDataTable } from "naive-ui";
 import { message } from "ant-design-vue";
 
 export default defineComponent({
@@ -22,6 +21,7 @@ export default defineComponent({
       startAt: string;
       status: string;
       endAt: string;
+      name: string;
     }
 
     const paginationReactive = reactive({
@@ -29,7 +29,7 @@ export default defineComponent({
       pageSize: 5,
       showSizePicker: true,
       pageSizes: [3, 5, 7],
-      itemCount: computed(() => data.value.length),
+      itemCount: computed(() => filteredData.value.length),
       onUpdatePage: (page: number) => {
         paginationReactive.page = page;
       },
@@ -42,6 +42,28 @@ export default defineComponent({
     const { restAPI } = useApi();
     const data = ref<RowData[]>([]);
     const isLoading = ref(false);
+    //lọc theo loại lớp học
+    const classTypeOptions = [
+      { label: "Tất cả loại lớp học", value: "" },
+      { label: "Online", value: "1" },
+      { label: "Offline", value: "2" },
+      { label: "Hybrid", value: "3" },
+    ];
+    const selectedClassType = ref("");
+    // lọc theo môn học
+    const subjectOptions = ref<{ label: string; value: string }[]>([
+      { label: "Tất cả môn học", value: "" },
+    ]);
+    const selectedSubject = ref("");
+
+    const filteredData = computed(() =>
+      data.value.filter(
+        (row) =>
+          (!selectedClassType.value ||
+            row.classType === selectedClassType.value) &&
+          (!selectedSubject.value || row.subjectName === selectedSubject.value),
+      ),
+    );
 
     const loadData = async () => {
       try {
@@ -58,11 +80,21 @@ export default defineComponent({
             stt: index + 1,
             id: item.id || "N/A",
             subjectName: item.subject?.name || "N/A",
-            classType: item.type ? `Loại ${item.type}` : "N/A",
+            classType: item.type ? `${item.type}` : "N/A",
             startAt: item.start_at ? item.start_at.split("T")[0] : "N/A",
             endAt: item.end_at ? item.end_at.split("T")[0] : "N/A",
-            status: item.status === 1 ? "Hoạt động" : "Không hoạt động",
+            status: item.status,
+            name: item.name,
           }));
+
+          // Lấy danh sách môn học từ dữ liệu
+          const subjects = [
+            ...new Set(rawData.map((item: any) => item.subject?.name || "N/A")),
+          ];
+          subjectOptions.value = [
+            { label: "Tất cả môn học", value: "" },
+            ...subjects.map((subject) => ({ label: subject, value: subject })),
+          ];
         } else {
           console.error("Unexpected API response:", rawData);
           message.error("Dữ liệu không hợp lệ từ API.");
@@ -72,34 +104,38 @@ export default defineComponent({
         message.error("Lỗi tải dữ liệu.");
       }
     };
-    function checkStatusByDate(startAt: string, endAt: string): string {
-      const today = new Date();
-      const startDate = new Date(startAt);
-      const endDate = new Date(endAt);
 
-      if (today >= startDate && today <= endDate) {
-        return "Đang diễn ra";
-      } else if (today < startDate) {
-        return "Sắp diễn ra";
-      } else {
-        return "Đã kết thúc";
-      }
+    function convertClassType(classType: number): string {
+      const ClassTypeMap: Record<number, string> = {
+        1: "Online",
+        2: "Offline",
+        3: "Hybrid",
+      };
+      return ClassTypeMap[classType] || "Không xác định";
+    }
+
+    function getClassStatus(status: number): string {
+      const statusMap: Record<number, string> = {
+        1: "Sắp diễn ra",
+        2: "Đang diễn ra",
+        3: "Đã kết thúc",
+        4: "Đã hủy",
+      };
+
+      return statusMap[status] || "Không xác định";
     }
 
     function createColumns(): DataTableColumns<RowData> {
       return [
-        {
-          title: "STT",
-          key: "stt",
-          titleAlign: "center",
-        },
-        {
-          title: "Tên môn học",
-          key: "subjectName",
-        },
+        { title: "STT", key: "stt", titleAlign: "center" },
+        { title: "tên Lớp học", key: "name" },
+        { title: "Tên môn học", key: "subjectName" },
         {
           title: "Loại lớp học",
           key: "classType",
+          render(row) {
+            return convertClassType(Number(row.classType));
+          },
         },
         {
           title: "Thời gian học",
@@ -116,25 +152,27 @@ export default defineComponent({
           title: "Trạng thái",
           key: "status",
           render(row) {
-            const status = checkStatusByDate(row.startAt, row.endAt);
+            const status = getClassStatus(Number(row.status));
+            const statusStyles: Record<
+              string,
+              { color: string; background: string }
+            > = {
+              "Đang diễn ra": { color: "#00974F", background: "#F0FFF8" },
+              "Sắp diễn ra": { color: "#FFA500", background: "#FFF8E5" },
+              "Đã kết thúc": { color: "#4D6FA8", background: "#ECF1F9" },
+              "Đã hủy": { color: "#D32F2F", background: "#FDECEA" },
+            };
+
             return h(
               "span",
               {
                 style: {
                   padding: "5px 10px",
                   borderRadius: "10px",
-                  color:
-                    status === "Đang diễn ra"
-                      ? "#00974F"
-                      : status === "Sắp diễn ra"
-                        ? "#FFA500"
-                        : "#4D6FA8",
-                  background:
-                    status === "Đang diễn ra"
-                      ? "#F0FFF8"
-                      : status === "Sắp diễn ra"
-                        ? "#FFF8E5"
-                        : "#ECF1F9",
+                  ...(statusStyles[status] || {
+                    color: "#000",
+                    background: "#FFF",
+                  }),
                 },
               },
               status,
@@ -151,26 +189,42 @@ export default defineComponent({
     return {
       isLoading,
       data,
+      filteredData,
       columns: createColumns(),
       pagination: paginationReactive,
+      classTypeOptions,
+      selectedClassType,
+      subjectOptions,
+      selectedSubject,
     };
   },
 });
 </script>
 
 <template>
-  <div class="flex h-full w-full overflow-auto rounded-2xl bg-white">
-    <div class="flex-1">
-      <div class="h-full bg-white text-black">
-        <n-data-table
-          :bordered="false"
-          :single-line="false"
-          :columns="columns"
-          :data="data"
-          :scroll-x="1000"
-          :pagination="pagination"
-        />
-      </div>
+  <div class="h-full w-full overflow-auto rounded-2xl bg-white">
+    <div class="flex gap-4 p-4">
+      <n-select
+        v-model:value="selectedSubject"
+        :options="subjectOptions"
+        style="width: 200px"
+      />
+      <n-select
+        v-model:value="selectedClassType"
+        :options="classTypeOptions"
+        style="width: 200px"
+      />
+    </div>
+
+    <div class="h-full bg-white text-black">
+      <n-data-table
+        :bordered="false"
+        :single-line="false"
+        :columns="columns"
+        :data="filteredData"
+        :scroll-x="1000"
+        :pagination="pagination"
+      />
     </div>
   </div>
 </template>

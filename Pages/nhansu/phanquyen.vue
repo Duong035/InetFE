@@ -29,6 +29,10 @@ export default defineComponent({
         paginationReactive.page = 1;
       },
     });
+    const showDeleteModal = ref(false);
+    const isDeleting = ref(false);
+    const deleteId = ref("");
+    const PermId = ref("");
     const dayjs = useDayjs();
     const { restAPI } = useApi();
     const router = useRouter();
@@ -49,11 +53,45 @@ export default defineComponent({
 
     function edit(value: RowData) {
       router.push({
-        path: "hocvieninfo",
+        path: "pqinfo",
         query: { id: value.id },
       });
     }
+    function delID(value: RowData) {
+      PermId.value = value.id;
+      showDeleteModal.value = true;
+    }
+    const confirmDelete = async () => {
+      isDeleting.value = true;
+      await handleDelete(PermId.value);
+      isDeleting.value = false;
+      showDeleteModal.value = false;
+    };
 
+    const handleDelete = async (e: string) => {
+      try {
+        const body = { ids: [PermId.value] };
+        const { data: resdel, error } =
+          await restAPI.cms.deletePermissionGroups({
+            body,
+          });
+        if (resdel?.value?.status) {
+          message.success("Xóa nhóm phân quyền thành công!");
+        } else {
+          const errorCode = error.value.data.error;
+          console.log(errorCode);
+          const errorMessage =
+            ERROR_CODES[errorCode as keyof typeof ERROR_CODES] ||
+            resdel.value?.message ||
+            "Đã xảy ra lỗi, vui lòng thử lại!";
+
+          message.warning(errorMessage);
+        }
+      } catch {
+      } finally {
+        loadData();
+      }
+    };
     function createColumns(): DataTableColumns<RowData> {
       return [
         {
@@ -241,7 +279,7 @@ export default defineComponent({
                     size: "small",
                     quaternary: true,
                     style: { backgroundColor: "transparent", color: "red" },
-                    // onClick: () => ,
+                    onClick: () => delID(row),
                   },
                   { default: () => h("i", { class: "fa-solid fa-trash" }) },
                 ),
@@ -291,6 +329,10 @@ export default defineComponent({
     };
 
     return {
+      showDeleteModal,
+      isDeleting,
+      deleteId,
+      confirmDelete,
       edit,
       activeItem,
       accountStatus,
@@ -412,5 +454,24 @@ interface RowData {
         </n-card>
       </div>
     </div>
+    <n-modal v-model:show="showDeleteModal">
+      <n-card
+        title="Xác nhận xóa"
+        closable
+        @close="showDeleteModal = false"
+        style="width: 400px"
+      >
+        <p>Bạn có chắc chắn muốn nhóm phân quyền này không?</p>
+
+        <template #footer>
+          <n-space justify="end">
+            <n-button @click="showDeleteModal = false">Hủy</n-button>
+            <n-button type="error" @click="confirmDelete" :loading="isDeleting">
+              Xóa
+            </n-button>
+          </n-space>
+        </template>
+      </n-card>
+    </n-modal>
   </div>
 </template>

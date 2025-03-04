@@ -545,6 +545,8 @@ watchEffect(() => {
           :is-date-disabled="disablePastDates"
           placeholder="Chọn ngày"
           v-model:value="selectedDate"
+          format="dd-MM-yyyy"
+          value-format="yyyy-MM-dd"
         />
       </n-form-item>
     </n-gi>
