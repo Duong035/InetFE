@@ -1,12 +1,12 @@
 <script setup>
 import { useRouter } from "vue-router";
-import { message } from "ant-design-vue";
 import { reactive, ref, watch } from "vue";
 
 definePageMeta({
   layout: "form",
 });
 
+const message = useMessage();
 const router = useRouter();
 const { restAPI } = useApi();
 const formRef = ref(null);
@@ -126,14 +126,17 @@ const handleSubmit = async (e) => {
   const body = { email, full_name, password };
   try {
     const { data: resVerify, error } = await restAPI.cms.register({ body });
-
     if (resVerify.value?.status) {
       message.success("Đăng ký thành công!");
       router.push("login");
-    } else if (error.value.statusCode === 400) {
-      message.warning("Email đã tồn tại, vui lòng nhập lại!");
     } else {
-      message.error("Lỗi không xác định, vui lòng thử lại sau!");
+      const errorCode = error.value.data.error;
+      const errorMessage =
+        ERROR_CODES[errorCode] ||
+        resVerify.value?.message ||
+        "Đã xảy ra lỗi, vui lòng thử lại!";
+
+      message.warning(errorMessage);
     }
   } catch (error) {
     console.error(error);

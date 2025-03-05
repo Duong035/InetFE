@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { reactive, ref, onMounted, onUnmounted } from "vue";
 
-// State for dropdowns
 const dropdowns = reactive<{ [key: string]: boolean }>({
   tuyensinh: false,
   daoTao: false,
@@ -11,50 +10,42 @@ const dropdowns = reactive<{ [key: string]: boolean }>({
   thietlap: false,
 });
 
-// Track the active dropdown and active item
-const activeDropdown = ref(""); // Tracks the open dropdown
-const activeItem = ref(""); // Tracks the active menu item
+const activeDropdown = ref("");
+const activeItem = ref("");
 
-// Set active item and optionally the active dropdown
 const setActive = (menu: string, dropdown?: string) => {
   activeItem.value = menu;
-  // If the item is part of a dropdown, ensure the dropdown stays open
   if (dropdown) {
     dropdowns[dropdown] = true;
     activeDropdown.value = dropdown;
   } else {
-    // If a standalone menu item is clicked, close all dropdowns
     Object.keys(dropdowns).forEach((key) => {
       dropdowns[key] = false;
     });
-    activeDropdown.value = ""; // Reset active dropdown
+    activeDropdown.value = "";
   }
 };
-// Toggle dropdowns
 const toggleDropdown = (menu: string) => {
   if (dropdowns[menu]) {
-    // Close the dropdown if already open
     dropdowns[menu] = false;
-    activeDropdown.value = ""; // Unset the active dropdown
+    activeDropdown.value = "";
   } else {
-    // Close all dropdowns
     Object.keys(dropdowns).forEach((key) => {
       dropdowns[key] = false;
     });
-    // Open the clicked dropdown
     dropdowns[menu] = true;
-    activeDropdown.value = menu; // Set the active dropdown
+    activeDropdown.value = menu;
   }
 };
 const isCollapsed = ref(false);
 
 const handleResize = () => {
-  isCollapsed.value = window.innerWidth < 1500; // Collapse sidebar on small screens
+  isCollapsed.value = window.innerWidth < 1500;
 };
 
 onMounted(() => {
   window.addEventListener("resize", handleResize);
-  handleResize(); // Trigger on load
+  handleResize();
 });
 
 onUnmounted(() => {
@@ -201,7 +192,7 @@ onUnmounted(() => {
             </li>
             <li>
               <NuxtLink
-                to="#"
+                to="../daotao/lophoc"
                 class="block px-2 py-1 hover:text-blue-500"
                 :class="[
                   'block px-2 py-1 hover:text-blue-500',
@@ -396,6 +387,30 @@ onUnmounted(() => {
                 >
                 </i>
                 Danh sách nhân sự
+              </NuxtLink>
+            </li>
+            <li>
+              <NuxtLink
+                to="../nhansu/phanquyen"
+                class="block px-2 py-1 hover:text-blue-500"
+                :class="[
+                  'block px-2 py-1 hover:text-blue-500',
+                  activeItem === 'phanquyen'
+                    ? 'font-semibold text-blue-500'
+                    : '',
+                ]"
+                @click="setActive('phanquyen', 'nhansu')"
+              >
+                <i
+                  :class="[
+                    'fa-2xs mr-5',
+                    activeItem === 'phanquyen'
+                      ? 'fas fa-circle'
+                      : 'fas fa-circle-dot',
+                  ]"
+                >
+                </i>
+                Phân Quyền
               </NuxtLink>
             </li>
             <li>

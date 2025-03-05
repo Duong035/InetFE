@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
+import { useRouter } from "vue-router";
 
 const activeTab = ref(""); // Options: "draw", "upload"
 const canvas = ref<HTMLCanvasElement | null>(null);
@@ -326,9 +327,16 @@ const handleSubmit = () => {
               <div class="mt-8 text-center">
                 <button
                   type="button"
-                  class="rounded bg-blue-500 px-6 py-2 text-white shadow hover:bg-blue-600"
+                  class="mr-20 rounded bg-blue-500 px-6 py-2 text-white shadow hover:bg-blue-600"
                 >
                   Lưu
+                </button>
+                <button
+                  type="button"
+                  class="rounded bg-blue-500 px-6 py-2 text-white shadow hover:bg-blue-600"
+                  @click="$router.push('auth/login')"
+                >
+                  Đăng xuất
                 </button>
               </div>
             </div>

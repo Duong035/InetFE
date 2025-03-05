@@ -29,16 +29,33 @@
               href="../Pages/content/user.vue"
             />
           </NuxtLink>
+          <button @click.prevent="doLogout">OUT</button>
         </div>
       </header>
     </div>
   </div>
 </template>
 
-<script setup lang="ts">
-/* No special logic required for this static layout */
-</script>
+<script setup>
+import { useDialog, useMessage } from "naive-ui";
+import { useUserStore } from "@/stores/userStore";
 
-<style scoped>
-/* Add custom styles if needed */
-</style>
+const dialog = useDialog();
+const userStore = useUserStore();
+const message = useMessage();
+
+const doLogout = () => {
+  dialog.info({
+    title: "Chú ý",
+    content: "Bạn có chắc chắn bạn muốn thoát",
+    positiveText: "Đồng ý",
+    negativeText: "Không đồng ý",
+    onPositiveClick: () => {
+      userStore.logOut();
+      message.success("Đăng xuất thành công");
+      return navigateTo(`/auth/login`);
+    },
+    onNegativeClick: () => {},
+  });
+};
+</script>

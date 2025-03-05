@@ -2,6 +2,7 @@
 import { message } from "ant-design-vue";
 import { ref, reactive, onMounted, nextTick, computed } from "vue";
 import { useRoute } from "vue-router";
+import axios from "axios";
 
 const railStyle = ({ focused, checked }) => {
   const style = {};
@@ -14,11 +15,14 @@ const railStyle = ({ focused, checked }) => {
   return style;
 };
 
+// Nếu bạn dùng các hàm loadTeacher và loadCategory từ API khác thì giữ lại restAPI
 const { restAPI } = useApi();
 const isLoading = ref(false);
 const showSpin = ref(false);
 const Staffarray = ref([]);
 const Categoryarray = ref([]);
+
+// Cập nhật formValue để thêm trường description3 (cho output_require)
 const formValue = reactive({
   img: null,
   color: null,
@@ -32,14 +36,27 @@ const formValue = reactive({
   discount: null,
   description: null,
   description2: null,
-  state: null,
+  description3: null,
+  state: true,
 });
-const displayPrice = computed(() =>
-  formValue.type === "Miễn phí" ? "0" : formValue.price,
-);
-const displayDiscount = computed(() =>
-  formValue.type === "Miễn phí" ? "0" : formValue.discount,
-);
+
+const displayPrice = computed({
+  get: () => (formValue.type === "1" ? "0" : formValue.price),
+  set: (value) => {
+    if (formValue.type !== "1") {
+      formValue.price = value;
+    }
+  },
+});
+
+const displayDiscount = computed({
+  get: () => (formValue.type === "1" ? "0" : formValue.discount),
+  set: (value) => {
+    if (formValue.type !== "1") {
+      formValue.discount = value;
+    }
+  },
+});
 const options = [
   { label: "Sáng", value: "Sáng" },
   { label: "Tối", value: "Tối" },
@@ -90,71 +107,52 @@ const loadCategory = async () => {
 const handleSubmit = async (e) => {
   if (isLoading.value) return;
   e.preventDefault();
+  isLoading.value = true;
 
-  const {
-    img,
-    color,
-    id,
-    name,
-    catagory,
-    teacher,
-    days,
-    type,
-    price,
-    discount,
-    description,
-    description2,
-    state,
-  } = formValue;
-
-  let body = {
-    img,
-    color,
-    id,
-    name,
-    catagory,
-    teacher,
-    days,
-    type,
-    price: type === "Miễn phí" ? 0 : price,
-    discount: type === "Miễn phí" ? 0 : discount,
-    description,
-    description2,
-    state,
+  // Chuyển đổi dữ liệu từ form thành payload theo định dạng API yêu cầu
+  const payload = {
+    name: formValue.name,
+    category_id: formValue.catagory, // ánh xạ từ formValue.catagory
+    thumbnail: formValue.thumbnail,
+    is_active: formValue.state,
+    origin_fee: Number(formValue.type === 1 ? 0 : formValue.price),
+    discount_fee: Number(formValue.type === 1 ? 0 : formValue.discount),
+    total_lessons: Number(formValue.days),
+    description: formValue.description,
+    input_require: formValue.description2,
+    output_require: formValue.description3,
+    metadata: {
+      color: formValue.color,
+    },
+    teacher_ids: formValue.teacher ? [formValue.teacher] : [],
+    fee_type: Number(formValue.type),
   };
 
   try {
-    console.log(body);
-    // await formRef.value?.validate();
-    // if (id) {
-    //   const { data: resUpdate, error } = await restAPI.cms.updateStudent({
-    //     id,
-    //     body,
-    //   });
-    //   if (resUpdate?.value?.status) {
-    //     message.success("Cập nhật thông tin học viên thành công!");
-    //   } else {
-    //     message.error(error.value.data.message);
-    //   }
-    // } else {
-    //   const { data: resCreate, error } = await restAPI.cms.createStudent({
-    //     body,
-    //   });
-    //   if (resCreate?.value?.status) {
-    //     message.success("Tạo học viên thành công!");
-    //     const newId = resCreate.value.data;
-    //     router.push({ path: window.location.pathname, query: { id: newId } });
-    //   } else {
-    //     message.error(error.value.data.message);
-    //   }
-    // }
+    console.log("Payload gửi đi:", payload);
+    const response = await axios.post(
+      "http://localhost:3000/api/admin/subject",
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("auth_token") || ""}`,
+        },
+      },
+    );
+    // Giả sử API trả về đối tượng có thuộc tính "status" để đánh giá thành công hay thất bại
+    if (response.data && response.data.status) {
+      message.success("Tạo khóa học thành công!");
+    } else {
+      message.error(response.data?.message || "Lỗi khi tạo khóa học!");
+    }
   } catch (err) {
-    message.error("Vui lòng kiểm tra lại thông tin!");
+    message.error("Có lỗi xảy ra, vui lòng kiểm tra lại thông tin!");
     console.error("API error:", err);
   } finally {
     isLoading.value = false;
   }
 };
+
 onMounted(async () => {
   await nextTick();
   loadTeacher();
@@ -255,8 +253,8 @@ onMounted(async () => {
             <n-form-item label="Học phí" path="session">
               <n-radio-group v-model:value="formValue.type">
                 <n-space>
-                  <n-radio value="Miễn phí"> Miễn phí </n-radio>
-                  <n-radio value="Trả phí"> Trả phí </n-radio>
+                  <n-radio value="1"> Miễn phí </n-radio>
+                  <n-radio value="2"> Trả phí </n-radio>
                 </n-space>
               </n-radio-group>
             </n-form-item>
@@ -267,7 +265,7 @@ onMounted(async () => {
               <n-input
                 v-model:value="displayPrice"
                 placeholder="0"
-                :disabled="formValue.type === 'Miễn phí'"
+                :disabled="formValue.type === '1'"
               />
             </n-form-item>
           </n-gi>
@@ -276,7 +274,7 @@ onMounted(async () => {
               <n-input
                 v-model:value="displayDiscount"
                 placeholder="Nhập giá"
-                :disabled="formValue.type === 'Miễn phí'"
+                :disabled="formValue.type === '1'"
               />
             </n-form-item>
           </n-gi>
@@ -304,7 +302,6 @@ onMounted(async () => {
               />
             </n-form-item>
           </n-gi>
-
           <n-gi>
             <n-form-item
               class="flex text-4xl"
@@ -313,8 +310,8 @@ onMounted(async () => {
               path="switchValue"
             >
               <n-switch
-                :unchecked-value="1"
-                :checked-value="2"
+                :unchecked-value="false"
+                :checked-value="true"
                 :rail-style="railStyle"
                 v-model:value="formValue.state"
               />

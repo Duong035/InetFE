@@ -22,23 +22,19 @@ export default defineComponent({
 
     // Retrieve token from sessionStorage safely
     if (typeof window !== "undefined" && window.sessionStorage) {
-      token.value =
-        sessionStorage.getItem("authToken") ||
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDA0OTk3NjUsInJvbGUiOiJvd25lciIsInJvbGVfaWQiOjIsInNpdGVfaWQiOiJiYmVhN2RlYi1jMmQ5LTRhODItYTdmZS1mMWE2YmZiNjU3MDciLCJzdGF0dXMiOnRydWUsInVzZXJfaWQiOiI4YjYxMDE5Ni0xMWRmLTQxNGItODM4NS0xYjk2M2U5ZTQ4MDAifQ.3tFX67634ZYj2KI6Vno3f5DC9MoIVrJlL4DqtMaC3y0";
+      token.value = `Bearer ${useUserStore()?.userInfo?.token}`;
+      console.log(token.value);
     }
 
     // Fetch user data from API with authentication token
     async function fetchData() {
       loading.value = true;
       try {
-        console.log("Fetching users...");
-        console.log("Token used:", token.value);
-
         const response = await axios.get(
           "http://localhost:3000/api/admin/users",
           {
             headers: {
-              Authorization: `Bearer ${token.value}`,
+              Authorization: token.value,
             },
           },
         );

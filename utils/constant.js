@@ -733,7 +733,7 @@ export const ERROR_CODES = {
   6073: "Danh mục đã có dữ liệu thuộc. Không thể xóa",
   6074: "Tên danh mục đã tồn tại",
   6075: "Không tìm thấy danh mục",
-
+  6076: "Danh mục đang có môn học, Không thể xóa",
   // Teacher errors
   6084: "Không tìm thấy giảng viên",
 

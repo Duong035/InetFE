@@ -14,9 +14,8 @@ const props = defineProps({
   timeSlots: Array,
   shortShifts: Array,
   localBranchId: [String, Number],
-  stt: Number,
-  queryId: String,
-  NeedId: String,
+  stt: [Number],
+  queryId: [String],
 });
 const emit = defineEmits([
   "update:timeSlots",
@@ -36,7 +35,6 @@ const shift = ref([
     end: "12",
     start_time: "",
     end_time: "",
-    work_session_id: "",
     session: [
       { value: 1, checked: false },
       { value: 2, checked: false },
@@ -54,7 +52,6 @@ const shift = ref([
     end: "18",
     start_time: "",
     end_time: "",
-    work_session_id: "",
     session: [
       { value: 1, checked: false },
       { value: 2, checked: false },
@@ -72,7 +69,6 @@ const shift = ref([
     end: "23",
     start_time: "",
     end_time: "",
-    work_session_id: "",
     session: [
       { value: 1, checked: false },
       { value: 2, checked: false },
@@ -258,13 +254,7 @@ const selectedTimes = ref({});
 
 const updateSelectedTime = (index, type, value) => {
   if (!selectedTimes.value[index]) return;
-
-  if (!value || isNaN(new Date(value).getTime())) {
-    selectedTimes.value[index][type] = null; // Set to null if value is invalid
-    return;
-  }
-
-  selectedTimes.value[index][type] = formatTime(value);
+  selectedTimes.value[index][type] = value ? formatTime(value) : "Invalid Date";
 };
 
 const formatTime = (time) => {
@@ -272,9 +262,7 @@ const formatTime = (time) => {
   return dayjs(time).format("YYYY-MM-DDTHH:mm:ss");
 };
 
-const createShifts = async (e) => {
-  if (props.NeedId) return;
-
+const scheduleSubmit = async (e) => {
   for (const s of shift.value) {
     let body = {
       title: `${props.queryId}_${props.stt}_${s.id}`,
@@ -283,12 +271,10 @@ const createShifts = async (e) => {
       end_time: "2024-06-09T18:00:00.000Z",
       is_active: true,
     };
-    await restAPI.cms.createShift({ body });
+    await restAPI.cms.createShift({
+      body,
+    });
   }
-};
-
-const scheduleSubmit = async (e) => {
-  await createShifts();
   await listShifts();
   const validTimeSlots = Object.entries(selectedTimes.value).reduce(
     (acc, [shiftId, t]) => {
@@ -330,7 +316,7 @@ const scheduleSubmit = async (e) => {
     return acc;
   }, {});
   emit("update:shortShifts", filteredValidWork);
-  emit("update:studying_start_date", selectedDate.value);
+  emit("update:studying_start_date", selectedDate.value?.toISOString());
 };
 
 watch(
@@ -408,7 +394,7 @@ const listShifts = async () => {
 
 onMounted(async () => {
   if (!props.timeSlots || props.timeSlots.length === 0) {
-    selectedTimes.value = [{ start: null, end: null, session: "NO_SESSION" }];
+    selectedTimes.value = [{ start: null, end: null }];
     return;
   }
 
@@ -416,63 +402,18 @@ onMounted(async () => {
     .map((timeSlot) => ({
       start: timeSlot.start_time ? formatHM(timeSlot.start_time) : null,
       end: timeSlot.end_time ? formatHM(timeSlot.end_time) : null,
-      session: timeSlot.work_session_id || "NO_SESSION",
     }))
-    .filter((slot) => slot.start !== null)
     .sort((a, b) => (a.start > b.start ? 1 : -1));
-
-  console.log("Selected Times:", selectedTimes.value);
+  console.log(selectedTimes);
 
   shift.value.forEach((s, index) => {
     if (selectedTimes.value[index]) {
-      let selectedStart = selectedTimes.value[index].start;
-      let selectedEnd = selectedTimes.value[index].end;
-      let selectedSession = selectedTimes.value[index].session;
-      let selectedStartNum = selectedStart
-        ? parseInt(selectedStart.split(":")[0], 10)
-        : NaN;
-
-      while (
-        !isNaN(selectedStartNum) &&
-        selectedStartNum > parseInt(s.end, 10)
-      ) {
-        index++;
-        if (!shift.value[index]) return;
-
-        selectedTimes.value[index] = {
-          start: selectedStart,
-          end: selectedEnd,
-          session: selectedSession,
-        };
-
-        s = shift.value[index];
-      }
-
-      if (!isNaN(selectedStartNum)) {
-        s.start_time = selectedStart || s.start_time;
-        s.end_time = selectedEnd || s.end_time;
-        s.work_session_id = selectedSession || s.work_session_id;
-
-        let matchingShortShift = props.shortShifts.find(
-          (shortShift) => shortShift.work_session_id === selectedSession,
-        );
-
-        if (matchingShortShift) {
-          s.session.forEach((session) => {
-            const day = session.value; // Get the day of the week
-            const isChecked = matchingShortShift.day_of_week.includes(day);
-
-            session.checked = isChecked;
-
-            // ✅ Call handleCheckedValue to update `listCheckedShifts`
-            handleCheckedValue(day, isChecked, s.id);
-          });
-        }
-      }
+      s.start_time = selectedTimes.value[index].start || s.start_time;
+      s.end_time = selectedTimes.value[index].end || s.end_time;
     }
   });
 
-  console.log("Updated Shifts:", shift.value);
+  console.log("Updated Shift:", shift.value);
 
   await listShifts();
 });
@@ -499,36 +440,14 @@ const shiftTimes = ref(
 
 watchEffect(() => {
   shiftTimes.value = Object.fromEntries(
-    shift.value.map((s) => {
-      const startTime = parseTime(s.start_time);
-      const endTime = parseTime(s.end_time);
-
-      // Manually update selectedTimes when shiftTimes updates
-      updateSelectedTime(s.id, "start", startTime);
-      updateSelectedTime(s.id, "end", endTime);
-
-      return [
-        s.id,
-        {
-          start: startTime,
-          end: endTime,
-        },
-      ];
-    }),
+    shift.value.map((s) => [
+      s.id,
+      {
+        start: parseTime(s.start_time),
+        end: parseTime(s.end_time),
+      },
+    ]),
   );
-});
-
-watchEffect(() => {
-  daysOfWeek.value.forEach((day) => {
-    const isChecked = shift.value.some((s) =>
-      s.session.some(
-        (session) => session.value === day.value && session.checked,
-      ),
-    );
-
-    day.checked = isChecked;
-    listChecked.value[day.value] = isChecked;
-  });
 });
 </script>
 
@@ -545,8 +464,6 @@ watchEffect(() => {
           :is-date-disabled="disablePastDates"
           placeholder="Chọn ngày"
           v-model:value="selectedDate"
-          format="dd-MM-yyyy"
-          value-format="yyyy-MM-dd"
         />
       </n-form-item>
     </n-gi>

@@ -5,6 +5,14 @@ import {
   NMessageProvider,
   NDialogProvider,
 } from "naive-ui";
+
+try {
+  const $message = useMessage();
+  if (typeof window !== "undefined") {
+    window["$message"] = $message;
+  }
+} catch (error) {}
+
 const getThemeOverrides = computed(() => {
   // const lightenStr = lighten(designStore.appTheme, 6)
   return {
@@ -104,9 +112,15 @@ const getThemeOverrides = computed(() => {
 });
 </script>
 <template>
-  <n-config-provider :theme-overrides="getThemeOverrides">
-    <NuxtLayout>
-      <NuxtPage />
-    </NuxtLayout>
-  </n-config-provider>
+  <client-only>
+    <n-config-provider :theme-overrides="getThemeOverrides">
+      <n-message-provider>
+        <n-dialog-provider>
+          <NuxtLayout>
+            <NuxtPage />
+          </NuxtLayout>
+        </n-dialog-provider>
+      </n-message-provider>
+    </n-config-provider>
+  </client-only>
 </template>

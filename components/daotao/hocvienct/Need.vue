@@ -1,22 +1,37 @@
 <script setup>
-import { ref, watch, onMounted, reactive, nextTick } from "vue";
-import { message } from "ant-design-vue";
+import { ref, watch, onMounted, reactive, nextTick, toRaw } from "vue";
 import { useRoute } from "vue-router";
-
+import Schedule from "@/components/daotao/hocvienct/Schedule.vue";
+const message = useMessage();
 const emit = defineEmits(["apiSuccess"]);
 const route = useRoute();
 const dayjs = useDayjs();
 const isLoading = ref(false);
 const showSpin = ref(false);
 const { restAPI } = useApi();
+const shifts = ref([]);
+
+const listShifts = async () => {
+  const { data } = await restAPI.cms.getShift({});
+  shifts.value = data.value.data.data;
+};
 const props = defineProps({
-  needId: String, // Existing prop
-  branchId: String, // New prop for branch ID
+  needId: String,
+  branchId: String,
+  stt: Number,
 });
 
 const localNeedId = ref("");
 const localBranchId = ref("");
 const Subjectarray = ref([]);
+const scheduleRef = ref(null);
+const queryId = route.query.id;
+
+const submitSchedule = async () => {
+  if (scheduleRef.value && scheduleRef.value.scheduleSubmit) {
+    await scheduleRef.value.scheduleSubmit();
+  }
+};
 
 watch(
   () => props.needId,
@@ -36,14 +51,26 @@ watch(
 
 const formValue = reactive({
   student_id: null,
-  id: null,
   branch_id: null,
   study_goals: null,
   teacher_requirements: null,
   is_online_form: null,
   is_offline_form: null,
-  studying_start_date: null,
-  subject_ids: [],
+  studying_start_date: "",
+  subject_ids: [], // Ensuring it's always an array
+  time_slots: [
+    {
+      work_session_id: null,
+      start_time: null,
+      end_time: null,
+    },
+  ],
+  short_shifts: [
+    {
+      work_session_id: null,
+      day_of_week: [],
+    },
+  ],
 });
 
 if (localNeedId.value && localNeedId.value !== "") {
@@ -58,31 +85,35 @@ if (localNeedId.value && localNeedId.value !== "") {
     formValue.branch_id = data.branch_id || null;
     formValue.study_goals = data.study_goals || null;
     formValue.subject_ids = Array.isArray(data.subject_ids)
-      ? data.subject_ids
-      : data.subject_ids
-        ? [data.subject_ids]
-        : [];
-    console.log(formValue.subject_ids);
+      ? data.subject_ids[0]
+      : data.subject_ids;
     formValue.teacher_requirements = data.teacher_requirements || null;
     formValue.is_online_form = Boolean(data.is_online_form);
     formValue.is_offline_form = Boolean(data.is_offline_form);
-    formValue.studying_start_date = data.studying_start_date
-      ? new Date(data.studying_start_date).getTime()
-      : null;
+    formValue.studying_start_date = data.studying_start_date;
+    formValue.time_slots = data.time_slots || null;
+    formValue.short_shifts = data.short_shifts || null;
   } else {
-    console.warn("No matching data found for localNeedId:", localNeedId.value);
+    const errorCode = error.value.data.error;
+    const errorMessage =
+      ERROR_CODES[errorCode] ||
+      resVerify.value?.message ||
+      "Đã xảy ra lỗi, vui lòng thử lại!";
+
+    message.warning(errorMessage);
   }
   showSpin.value = false;
+  console.log(formValue);
 } else {
   showSpin.value = false;
 }
 
 const loadSubjects = async () => {
   try {
-    const { data: resData, error } = await restAPI.cms.getSubjects({});
-    const rawData = toRaw(resData.value)?.data;
-    if (resData.value?.status) {
-      Subjectarray.value = rawData.subjects
+    const response = await restAPI.cms.getSubjects({});
+    const rawData = toRaw(response.data.value.data);
+    if (response.status) {
+      Subjectarray.value = rawData
         .map(({ id, name }) => ({
           id,
           name,
@@ -99,8 +130,37 @@ const loadSubjects = async () => {
   }
 };
 
+const formatDate = (timestamp) => {
+  return timestamp
+    ? dayjs(timestamp).format("YYYY-MM-DDTHH:mm:ss.SSS+07:00")
+    : null;
+};
+
+const formatShortShifts = async (shortShiftsObj) => {
+  await listShifts();
+  return Object.entries(shortShiftsObj).map(([sessionId, days]) => {
+    const work_id = `${queryId}_${props.stt}_${sessionId}`;
+    const matchingShift = shifts.value.find((s) => s.title === work_id);
+
+    return {
+      work_session_id: matchingShift ? matchingShift.id : null,
+      day_of_week: days,
+    };
+  });
+};
+
 const handleSubmit = async (e) => {
   if (isLoading.value) return;
+  await submitSchedule();
+
+  // Format time slots properly
+  const formattedTimeSlots = Object.values(formValue.time_slots).map(
+    ({ start, end, work_session_id }) => ({
+      start_time: dayjs(start).format("YYYY-MM-DDTHH:mm:ss.SSS+07:00"),
+      end_time: dayjs(end).format("YYYY-MM-DDTHH:mm:ss.SSS+07:00"),
+      work_session_id,
+    }),
+  );
 
   const {
     id,
@@ -109,9 +169,14 @@ const handleSubmit = async (e) => {
     teacher_requirements,
     is_online_form,
     is_offline_form,
-    studying_start_date,
+    short_shifts,
     subject_ids,
+    studying_start_date,
   } = formValue;
+
+  const formattedShortShifts = await formatShortShifts(short_shifts);
+  console.log("Formatted Short Shifts:", formattedShortShifts);
+
   let body = {
     student_id: route.query.id || null,
     id,
@@ -122,11 +187,13 @@ const handleSubmit = async (e) => {
     is_online_form,
     is_offline_form,
     subject_ids: Array.isArray(subject_ids) ? subject_ids : [subject_ids],
-    studying_start_date: dayjs(studying_start_date).isValid()
-      ? dayjs(studying_start_date).toISOString()
-      : null,
+    time_slots: formattedTimeSlots,
+    short_shifts: formattedShortShifts,
+    studying_start_date: formatDate(studying_start_date),
   };
-  console.log(body);
+
+  console.log("Final Payload:", body);
+
   try {
     if (localNeedId.value && String(localNeedId.value).trim() !== "") {
       const { data: resUpdate, error } = await restAPI.cms.updateStudyNeed({
@@ -136,7 +203,11 @@ const handleSubmit = async (e) => {
       if (resUpdate?.value?.status) {
         message.success("Cập nhật nhu cầu học tập thành công!");
       } else {
-        message.error(error.value.data.error);
+        const errorMessage =
+          ERROR_CODES[error.value.data.error] ||
+          resUpdate.value?.message ||
+          "Đã xảy ra lỗi, vui lòng thử lại!";
+        message.warning(errorMessage);
       }
     } else {
       const { data: resCreate, error } = await restAPI.cms.createStudyNeed({
@@ -146,14 +217,20 @@ const handleSubmit = async (e) => {
         message.success("Tạo nhu cầu học tập thành công!");
         emit("apiSuccess");
       } else {
-        message.error(error.value.data.error);
+        const errorMessage =
+          ERROR_CODES[error.value.data.error] ||
+          resCreate.value?.message ||
+          "Đã xảy ra lỗi, vui lòng thử lại!";
+        message.warning(errorMessage);
       }
     }
-  } catch {
+  } catch (err) {
+    console.error("Submission error:", err);
   } finally {
     isLoading.value = false;
   }
 };
+
 onMounted(async () => {
   await nextTick();
   loadSubjects();
@@ -207,23 +284,17 @@ onMounted(async () => {
             </n-form-item>
           </n-gi>
           <n-gi></n-gi>
-          <n-gi>
-            <n-form-item
-              label="Ngày mong muốn bắt đầu học:"
-              label-placement="left"
-            >
-              <n-date-picker
-                v-model:value="formValue.studying_start_date"
-                type="date"
-                placeholder="Chọn ngày"
-              />
-            </n-form-item>
-          </n-gi>
-
           <n-gi span="1 m:2">
-            <DaotaoHocvienctSchedule />
-            <!-- v-model:Shift="shift"
-              v-model:listChecked="listChecked" -->
+            <DaotaoHocvienctSchedule
+              ref="scheduleRef"
+              v-model:studying_start_date="formValue.studying_start_date"
+              v-model:timeSlots="formValue.time_slots"
+              v-model:shortShifts="formValue.short_shifts"
+              :localBranchId="localBranchId"
+              :stt="props.stt"
+              :queryId="queryId"
+              :NeedId="localNeedId"
+            />
           </n-gi>
           <n-gi span="1 m:2" class="mt-2">
             <n-form-item label="Ghi chú" path="note">

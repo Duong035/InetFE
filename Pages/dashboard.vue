@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import Today from "./Admin/AdminHomePage/today.vue";
 import Week from "./Admin/AdminHomePage/week.vue";
 
@@ -7,6 +7,7 @@ const activeTab = ref("");
 
 onMounted(() => {
   activeTab.value = "HomNay";
+  sessionStorage.removeItem("loginfo");
   sessionStorage.removeItem("first_time");
 });
 </script>
