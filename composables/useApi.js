@@ -18,6 +18,7 @@ const API_ENDPOINTS = {
     districts: "/api/admin/districts",
     branches: "/api/admin/branches",
     shift: "/api/admin/work-session",
+    shifts: "/api/admin/work-sessions",
     staff: "/api/admin/users",
     category: "/api/admin/category",
     categories: "/api/admin/categories",
@@ -39,6 +40,7 @@ class Request {
     this.handleFetch = {
       onRequest() {},
       onRequestError({ _, __, error }) {
+        console.error("Request error: ", error.message);
       },
       onResponse() {},
       onResponseError({ _, response }) {
