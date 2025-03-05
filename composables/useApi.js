@@ -17,18 +17,18 @@ const API_ENDPOINTS = {
     provinces: "/api/admin/provinces",
     districts: "/api/admin/districts",
     branches: "/api/admin/branches",
+    shift: "/api/admin/work-session",
     staff: "/api/admin/users",
     category: "/api/admin/category",
     categories: "/api/admin/categories",
-    subjects: "/api/admin/subject/all",
-    shift: "/api/admin/work-session",
-    shifts: "/api/admin/work-sessions",
     subjects: "/api/admin/subjects",
     classes: "/api/admin/classes",
+    User: "/api/admin/users",
+    class: "/api/admin/class",
     permissionGroup: "/api/admin/permission-grp",
     permissionTag: "/api/admin/permission-tags",
   },
-}
+};
 
 class Request {
   constructor() {
@@ -39,13 +39,10 @@ class Request {
     this.handleFetch = {
       onRequest() {},
       onRequestError({ _, __, error }) {
-        console.error("Request error: ", error.message)
       },
       onResponse() {},
       onResponseError({ _, response }) {
         if (response._data?.error === 6039) {
-
-          if (numberOfLectures > 0) return window["$message"].error(t(response._data?.error, { numberOfLectures: response._data?.message }))
           const numberOfLectures = Number(response._data?.message);
 
           if (isNaN(numberOfLectures))
@@ -238,10 +235,25 @@ class CMSManager {
 
   // Subjects_________________________________________________________________________________
   async getSubjects(data) {
+    return this.request.get(API_ENDPOINTS.cms.subjects, data);
+  }
+  //__________________________________________________________________________________________
+
+   // Shift____________________________________________________________________________________
+   async getShift(data) {
+    return this.request.get(API_ENDPOINTS.cms.shifts, data)
+  }
+  async getShiftDetail(data) {
+    return this.request.get(API_ENDPOINTS.cms.shift, data)
+  }
+  async createShift(data) {
+    return this.request.post(API_ENDPOINTS.cms.shift, data)
+  }
+  async updateShift(data) {
     return this.request.patch(API_ENDPOINTS.cms.shift, data)
   }
   async deleteShift(data) {
-    return this.request.get(API_ENDPOINTS.cms.subjects, data);
+    return this.request.delete(`${API_ENDPOINTS.cms.shift}/${data.id}`, data)
   }
   //__________________________________________________________________________________________
 
@@ -254,15 +266,25 @@ class CMSManager {
   }
   //__________________________________________________________________________________________
 
-  //Classes___________________________________________________________________________________
+  //class_____________________________________________________________________________________
+  async createClass(data) {
     return this.request.post(API_ENDPOINTS.cms.class, data);
   }
   async getClasses(data) {
     return this.request.get(API_ENDPOINTS.cms.classes, data);
   }
+
+  async getClassById(data) {
+    return this.request.get(`${API_ENDPOINTS.cms.class}/${id}`, data);
+  }
+
+  async updateClass(data) {
     return this.request.patch(`${API_ENDPOINTS.cms.class}/${id}`, data);
   }
 
+  async deleteClass(data) {
+    return this.request.delete(`${API_ENDPOINTS.cms.class}/${id}`, data);
+  }
   //__________________________________________________________________________________________
 
   // Permissions groups_______________________________________________________________________
