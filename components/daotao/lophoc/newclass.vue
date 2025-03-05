@@ -46,8 +46,11 @@ const handleSubmit = async () => {
 
     console.log("Payload gửi lên API:", payload);
 
-    const { data: resData, error } = await restAPI.cms.createClass({ payload });
+    const { data: resData, error } = await restAPI.cms.createClass({
+      body: JSON.stringify(payload), // ✅ Ensure body is set
+    });
 
+    console.log(resData);
     if (error?.value) {
       message.error(error?.value?.data?.message || "Lỗi khi tạo lớp học");
       return;

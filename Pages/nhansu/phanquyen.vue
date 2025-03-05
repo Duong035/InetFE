@@ -14,6 +14,25 @@ import { useRouter } from "vue-router";
 
 export default defineComponent({
   setup() {
+    const tagColorMap = new Map();
+
+    // 🎨 Define a color palette
+    const colorPalette = [
+      { color: "#2563EB", background: "#EFF6FF" }, // Blue
+      { color: "#D97706", background: "#FFF7ED" }, // Orange
+      { color: "#10B981", background: "#ECFDF5" }, // Green
+      { color: "#9333EA", background: "#F3E8FF" }, // Purple
+      { color: "#F43F5E", background: "#FFE4E6" }, // Pink
+      { color: "#0EA5E9", background: "#E0F2FE" }, // Sky Blue
+      { color: "#F59E0B", background: "#FEF3C7" }, // Yellow
+      { color: "#14B8A6", background: "#CCFBF1" }, // Teal
+      { color: "#64748B", background: "#F1F5F9" }, // Gray
+      { color: "#8B5CF6", background: "#EDE9FE" }, // Indigo
+      { color: "#22C55E", background: "#DCFCE7" }, // Emerald
+      // { color: "#DB2777", background: "#FCE7F3" }, // Rose
+      // { color: "#DC2626", background: "#FEE2E2" }, // Red
+    ];
+
     const message = useMessage();
     const paginationReactive = reactive({
       page: 1,
@@ -117,20 +136,6 @@ export default defineComponent({
           render(row) {
             if (!row.tags || !Array.isArray(row.tags)) return "N/A";
 
-            // 🎨 Define a color palette
-            const colorPalette = [
-              { color: "#2563EB", background: "#EFF6FF" }, //  Blue
-              { color: "#D97706", background: "#FFF7ED" }, //  Orange
-              { color: "#10B981", background: "#ECFDF5" }, //  Green
-              { color: "#DC2626", background: "#FEE2E2" }, //  Red
-            ];
-
-            // Store assigned colors for consistency
-            const tagColorMap = new Map<
-              string,
-              { color: string; background: string }
-            >();
-
             return h(
               "div",
               {
@@ -142,15 +147,12 @@ export default defineComponent({
                 },
               },
               [
-                // Limit to 3 tags
-                ...row.tags.slice(0, 3).map((tagText) => {
-                  const tagName = tagText.split("(")[0].trim(); // Extract tag name
+                ...row.tags.slice(0, 4).map((tagText) => {
+                  const tagName = tagText.split("(")[0].trim();
 
-                  // Assign a consistent color for each unique tag
                   if (!tagColorMap.has(tagName)) {
-                    const randomColor =
-                      colorPalette[tagColorMap.size % colorPalette.length]; // Cycle through palette
-                    tagColorMap.set(tagName, randomColor);
+                    const colorIndex = tagColorMap.size % colorPalette.length;
+                    tagColorMap.set(tagName, colorPalette[colorIndex]);
                   }
                   const tagStyle = tagColorMap.get(tagName);
 
@@ -172,13 +174,12 @@ export default defineComponent({
                   );
                 }),
 
-                // Show "+X" if more than 3 tags exist
                 row.tags.length > 3
                   ? h(
                       "span",
                       {
                         style: {
-                          color: "#DC2626", // 🔴 Red color
+                          color: "#DC2626",
                           background: "#FEE2E2",
                           padding: "6px 12px",
                           borderRadius: "16px",
@@ -302,9 +303,10 @@ export default defineComponent({
         }
 
         const rawData = toRaw(resData.value)?.data;
-        const Studentsdata = rawData.data;
-        if (Array.isArray(Studentsdata)) {
-          data.value = Studentsdata.map((item: any, index) => ({
+        console.log(rawData);
+        const Permisdata = rawData.data;
+        if (Array.isArray(Permisdata)) {
+          data.value = Permisdata.map((item: any, index) => ({
             id: item.id || "N/A",
             stt: index + 1,
             name: item.name || "N/A",
@@ -329,6 +331,8 @@ export default defineComponent({
     };
 
     return {
+      colorPalette,
+      tagColorMap,
       showDeleteModal,
       isDeleting,
       deleteId,
