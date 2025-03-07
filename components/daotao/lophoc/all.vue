@@ -1,5 +1,5 @@
 <script lang="ts">
-import type { DataTableColumns } from "naive-ui";
+import { NButton, type DataTableColumns } from "naive-ui";
 import dayjs from "dayjs";
 import {
   defineComponent,
@@ -42,6 +42,7 @@ export default defineComponent({
     const { restAPI } = useApi();
     const data = ref<RowData[]>([]);
     const isLoading = ref(false);
+    const router = useRouter();
     //lọc theo loại lớp học
     const classTypeOptions = [
       { label: "Tất cả loại lớp học", value: "" },
@@ -125,10 +126,30 @@ export default defineComponent({
       return statusMap[status] || "Không xác định";
     }
 
+    //button action
+    const editRow = (row: RowData) => {
+      console.log("Edit:", row);
+      router.push({
+        path: "lophocinfo",
+        query: { id: row.id },
+      });
+      message.success(`Chỉnh sửa lớp học: ${row.name}`);
+    };
+
+    const deleteRow = (row: RowData) => {
+      console.log("Delete:", row);
+      message.warning(`Dừng hoạt động lớp: ${row.name}`);
+    };
+
+    const addRow = (row: RowData) => {
+      console.log("Add:", row);
+      message.info(`Thêm lớp học liên quan đến: ${row.name}`);
+    };
+
     function createColumns(): DataTableColumns<RowData> {
       return [
         { title: "STT", key: "stt", titleAlign: "center" },
-        { title: "tên Lớp học", key: "name" },
+        { title: "Tên Lớp học", key: "name" },
         { title: "Tên môn học", key: "subjectName" },
         {
           title: "Loại lớp học",
@@ -177,6 +198,61 @@ export default defineComponent({
               },
               status,
             );
+          },
+        },
+        {
+          title: "Hành động",
+          key: "actions",
+          align: "center",
+          render(row) {
+            return h("div", { class: "flex gap-2 justify-center" }, [
+              h(
+                NButton,
+                {
+                  size: "small",
+                  type: "primary",
+                  quaternary: true,
+                  onClick: () => editRow(row),
+                },
+                {
+                  default: () =>
+                    h("i", {
+                      class: "fa-regular fa-pen-to-square",
+                      style: "color: green;",
+                    }),
+                },
+              ),
+              h(
+                NButton,
+                {
+                  size: "small",
+                  type: "error",
+                  quaternary: true,
+                  onClick: () => deleteRow(row),
+                },
+                {
+                  default: () =>
+                    h("i", { class: "fas fa-ban", style: "color: red;" }),
+                },
+              ),
+              h(
+                NButton,
+                {
+                  size: "small",
+                  type: "warning",
+                  quaternary: true,
+
+                  onClick: () => addRow(row),
+                },
+                {
+                  default: () =>
+                    h("i", {
+                      class: "fa-solid fa-square-plus",
+                      style: "color: orange;",
+                    }),
+                },
+              ),
+            ]);
           },
         },
       ];

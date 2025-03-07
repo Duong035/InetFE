@@ -68,7 +68,7 @@ export default defineComponent({
             endAt: item.end_at ? item.end_at.split("T")[0] : "N/A",
             status: item.status,
           }))
-          .filter((row) => row.status === 2);
+          .filter((row: any) => row.status === 2);
 
         pagination.itemCount = data.value.length;
       } catch (err) {

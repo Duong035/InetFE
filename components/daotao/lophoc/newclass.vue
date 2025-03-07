@@ -1,26 +1,26 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { message } from "ant-design-vue";
+import { useRouter, useRoute } from "vue-router";
 import dayjs from "dayjs";
-
-const formValue = ref({
-  image: "",
-  studyMode: null as Number | null,
-  subjects: "",
-  classCode: "",
-  className: "",
-  startDate: null,
-  endDate: null,
-  description: "",
-  branches: "",
-});
 
 const subjects = ref<{ label: string; value: string }[]>([]);
 const branches = ref<{ label: string; value: string }[]>([]);
-
 const { restAPI } = useApi();
-
 const isSubmitting = ref(false);
+const route = useRoute();
+const formValue = ref({
+  id: null as string | null,
+  image: "",
+  className: "",
+  classCode: "",
+  studyMode: null as number | null,
+  subjects: "",
+  branches: "",
+  startDate: null as number | null,
+  endDate: null as number | null,
+  description: "",
+});
 
 const handleSubmit = async () => {
   isSubmitting.value = true;
@@ -46,8 +46,11 @@ const handleSubmit = async () => {
 
     console.log("Payload gửi lên API:", payload);
 
-    const { data: resData, error } = await restAPI.cms.createClass({ payload });
+    const { data: resData, error } = await restAPI.cms.createClass({
+      body: JSON.stringify(payload), // Ensure body is set
+    });
 
+    console.log(resData);
     if (error?.value) {
       message.error(error?.value?.data?.message || "Lỗi khi tạo lớp học");
       return;
@@ -57,6 +60,7 @@ const handleSubmit = async () => {
 
     // Reset form sau khi gửi thành công
     formValue.value = {
+      id: null,
       image: "",
       studyMode: null,
       subjects: "",
@@ -120,6 +124,40 @@ onMounted(async () => {
   } catch (err) {
     console.error("Lỗi khi tải danh sách chi nhánh:", err);
   }
+
+  // lấy thông tin môn học theo id
+  onMounted(async () => {
+    if (!formValue.value.id) return; // Nếu không có ID, không gọi API
+    console.log("ID lớp học:", formValue.value.id);
+    try {
+      const { data: resData } = await restAPI.cms.getClassById({
+        id: formValue.value.id,
+      });
+      console.log("Thông tin lớp học:", resData);
+
+      if (resData.value?.status) {
+        const data = resData.value?.data?.entry;
+
+        formValue.value = {
+          id: data?.id || null,
+          image: data?.image || "",
+          className: data?.name || "",
+          classCode: data?.code || "",
+          studyMode: data?.type || null,
+          subjects: data?.subject_id || "",
+          branches: data?.branch_id || "",
+          startDate: data?.start_at ? dayjs(data?.start_at).valueOf() : null,
+          endDate: data?.end_at ? dayjs(data?.end_at).valueOf() : null,
+          description: data?.description || "",
+        };
+      } else {
+        message.error("Không tìm thấy thông tin lớp học.");
+      }
+    } catch (error) {
+      console.error("Lỗi khi tải thông tin lớp học:", error);
+      message.error("Lỗi khi tải thông tin lớp học.");
+    }
+  });
 });
 </script>
 
@@ -129,8 +167,6 @@ onMounted(async () => {
 
     <!-- Ảnh đại diện lớp học -->
     <div class="rounded-lg bg-white p-5 shadow-md">
-      <h2 class="mb-4 text-lg font-semibold">Thông tin cơ bản</h2>
-
       <div class="flex items-center gap-5">
         <!-- Ảnh đại diện lớp học -->
         <div class="w-1/3">

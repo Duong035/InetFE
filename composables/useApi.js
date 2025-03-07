@@ -33,10 +33,10 @@ const API_ENDPOINTS = {
 
 class Request {
   constructor() {
-    const route = useRoute()
-    this.baseURL = "http://localhost:3000"
-    this.accessToken = `Bearer ${useUserStore()?.userInfo?.token}`
-    this.headers = {}
+    const route = useRoute();
+    this.baseURL = "http://localhost:3000";
+    this.accessToken = `Bearer ${useUserStore()?.userInfo?.token}`;
+    this.headers = {};
     this.handleFetch = {
       onRequest() {},
       onRequestError({ _, __, error }) {
@@ -241,21 +241,21 @@ class CMSManager {
   }
   //__________________________________________________________________________________________
 
-   // Shift____________________________________________________________________________________
-   async getShift(data) {
-    return this.request.get(API_ENDPOINTS.cms.shifts, data)
+  // Shift____________________________________________________________________________________
+  async getShift(data) {
+    return this.request.get(API_ENDPOINTS.cms.shifts, data);
   }
   async getShiftDetail(data) {
-    return this.request.get(API_ENDPOINTS.cms.shift, data)
+    return this.request.get(API_ENDPOINTS.cms.shift, data);
   }
   async createShift(data) {
-    return this.request.post(API_ENDPOINTS.cms.shift, data)
+    return this.request.post(API_ENDPOINTS.cms.shift, data);
   }
   async updateShift(data) {
-    return this.request.patch(API_ENDPOINTS.cms.shift, data)
+    return this.request.patch(API_ENDPOINTS.cms.shift, data);
   }
   async deleteShift(data) {
-    return this.request.delete(`${API_ENDPOINTS.cms.shift}/${data.id}`, data)
+    return this.request.delete(`${API_ENDPOINTS.cms.shift}/${data.id}`, data);
   }
   //__________________________________________________________________________________________
 
@@ -291,19 +291,22 @@ class CMSManager {
 
   // Permissions groups_______________________________________________________________________
   async getPermissionGroups(data) {
-    return this.request.get(API_ENDPOINTS.cms.permissionGroup, data)
+    return this.request.get(API_ENDPOINTS.cms.permissionGroup, data);
   }
   async getPermissionGroupsDetails(data) {
-    return this.request.get(`${API_ENDPOINTS.cms.permissionGroup}/${data.id}`, data)
+    return this.request.get(
+      `${API_ENDPOINTS.cms.permissionGroup}/${data.id}`,
+      data,
+    );
   }
   async deletePermissionGroups(data) {
-    return this.request.delete(`${API_ENDPOINTS.cms.permissionGroup}`, data)
+    return this.request.delete(`${API_ENDPOINTS.cms.permissionGroup}`, data);
   }
   //__________________________________________________________________________________________
 
   // Permissions tags_________________________________________________________________________
   async getPermissionTags(data) {
-    return this.request.get(API_ENDPOINTS.cms.permissionTag, data)
+    return this.request.get(API_ENDPOINTS.cms.permissionTag, data);
   }
   //__________________________________________________________________________________________
 }
