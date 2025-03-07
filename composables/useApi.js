@@ -30,6 +30,8 @@ const API_ENDPOINTS = {
     class: "/api/admin/class",
     permissionGroup: "/api/admin/permission-grp",
     permissionTag: "/api/admin/permission-tags",
+    lessons: "/api/admin/lessons",
+    lesson_data: "/api/admin/lesson-data",
   },
 };
 
@@ -247,12 +249,15 @@ class CMSManager {
   async getSubjectDetail(data) {
     return this.request.get(`${API_ENDPOINTS.cms.subject}?id=${data.id}`, data)
   }
-
   async createSubject(data) {
     return this.request.post(API_ENDPOINTS.cms.subject, data)
   }
   async updateSubject(data) {
     return this.request.patch(API_ENDPOINTS.cms.subject, data)
+  }
+
+  async getListLesson(data) {
+    return this.request.get(API_ENDPOINTS.cms.lessons, data)
   }
   //__________________________________________________________________________________________
 

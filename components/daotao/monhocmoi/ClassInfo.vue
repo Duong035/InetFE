@@ -121,7 +121,7 @@ if (formValue.id) {
     formValue.thumbnail = data?.thumbnail;
     formValue.color = data?.color;
     formValue.code = data?.code;
-    formValue.total_lessons = data?.total_lessons;
+    formValue.total_lessons = String(data?.total_lessons ?? "");
     formValue.name = data?.name;
     formValue.category_id = data?.category?.id;
     formValue.teacher_ids = Array.isArray(data.teachers)
@@ -219,7 +219,8 @@ onMounted(async () => {
 <template>
   <n-spin :show="showSpin">
     <div class="px-5">
-      <n-form :model="formValue" :rules="rules" ref="formRef">
+      <n-form :model="formValue">
+        <!-- :rules="rules" ref="formRef" -->
         <n-grid :x-gap="15" cols="1 m:4" responsive="screen" class="my-5">
           <n-gi>
             <n-form-item label="Ảnh đại diện khóa học" path="cover">

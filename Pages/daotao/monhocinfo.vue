@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { NModal } from "naive-ui";
-import { reactive, ref, watch } from "vue";
+import { reactive, ref, watch, nextTick } from "vue";
+import { useRoute } from "vue-router";
 
 const dropdowns = reactive<{ [key: string]: boolean }>({
   coban: true,
@@ -9,50 +10,99 @@ const dropdowns = reactive<{ [key: string]: boolean }>({
   caidat: false,
   chamsoc: false,
 });
+
+const message = useMessage();
+const { restAPI } = useApi();
+const route = useRoute();
 const isCollapsed = ref(false);
+const isLoading = ref(false);
 const activeDropdown = ref("coban");
-const noidungarrey = ref<{ id: number; name: string }[]>([]);
+const lessonarray = ref<{ stt: number; Lessonid: string }[]>([]);
+const Lesson = reactive<{ stt: number; name: string }[]>([]);
 const isModalVisible = ref(false);
-const newLessonName = ref("");
-const Lesson = ref<{ id: number; name: string }[]>([]);
-const addLesson = (): void => {
-  Lesson.value.push({ id: Lesson.value.length + 1, name: "" });
-  console.log(Lesson);
+
+const formValue = reactive({
+  name: null,
+  duration: null,
+  difficulty: null,
+  freeTrial: false,
+  childrens: [],
+});
+
+function addLesson() {
+  lessonarray.value.push({
+    stt: lessonarray.value.length + 1,
+    Lessonid: "",
+  });
+}
+
+const addchildLesson = () => {
+  const newLesson = { stt: Lesson.length + 1, name: "" };
+  Lesson.push(newLesson);
+  console.log("Updated Lesson:", Lesson);
 };
+
+const difficultyOptions = ref([
+  { label: "Dễ", value: "easy" },
+  { label: "Trung bình", value: "medium" },
+  { label: "Khó", value: "hard" },
+]);
+
+const getDisabledMinutes = (selectedHour) => {
+  const allMinutes = Array.from({ length: 60 }, (_, i) => i);
+
+  if (selectedHour === 0) {
+    return allMinutes.filter((minute) => minute < 45);
+  }
+
+  if (selectedHour === 2) {
+    return allMinutes.filter((minute) => minute !== 0);
+  }
+
+  return [];
+};
+
 watch(isModalVisible, (newValue) => {
   if (!newValue) {
     Lesson.value = [];
   }
 });
-const removeLesson = (index: number) => {
-  Lesson.value.splice(index, 1);
-};
+
 function addSubject() {
   isModalVisible.value = true;
 }
 
-function handleAddSubject() {
-  console.log(newLessonName);
-  if (!newLessonName.value.trim()) {
-    console.warn("Tên bài học không được để trống!"); // Debugging check
-    return; // Prevent empty values
+async function getLesson() {
+  const lesson_id = route.query.id;
+
+  if (!lesson_id) return;
+
+  try {
+    const { data: resData } = await restAPI.cms.getListLesson();
+
+    const filteredData = resData.value.data.filter(
+      (item) => item.subject_id === lesson_id,
+    );
+
+    lessonarray.value = filteredData.map((item, index) => ({
+      stt: index + 1,
+      Needid: item.id,
+      student_id: item.student_id, // Include student_id
+      branch_id: item.branch_id, // Include branch_id
+    }));
+  } catch (error) {
+    console.error("Error fetching need data:", error);
   }
-
-  // Add new lesson
-  noidungarrey.value.push({
-    id: noidungarrey.value.length + 1,
-    name: newLessonName.value, // Store input value
-  });
-
-  console.log("Updated noidungarrey:", noidungarrey.value); // Debugging check
-
-  newLessonName.value = ""; // Clear input field after adding
-  isModalVisible.value = false; // Close modal
 }
 
-function deleteSubject(value: number) {
-  noidungarrey.value = noidungarrey.value.filter((i) => i.id !== value);
-}
+const handleSubmit = async (e) => {
+  if (isLoading.value) return;
+  const { name, duration, difficulty, freeTrial, childrens } = formValue;
+
+  let body = { name, duration, difficulty, freeTrial, childrens };
+  console.log(body);
+  console.log(Lesson);
+};
 
 const toggleDropdown = (menu: string) => {
   if (menu.startsWith("noidung-")) {
@@ -75,12 +125,18 @@ const toggleDropdown = (menu: string) => {
   }
 };
 
-watch(isModalVisible, (newValue) => {
-  if (!newValue) {
-    Lesson.value = [];
-  }
-});
+watch(
+  Lesson,
+  (newValue) => {
+    console.log("Lesson updated:", newValue);
+  },
+  { deep: true },
+);
 // Removed the local watch function declaration
+onMounted(async () => {
+  await nextTick();
+  getLesson();
+});
 </script>
 <template>
   <div class="flex h-full w-full">
@@ -227,21 +283,21 @@ watch(isModalVisible, (newValue) => {
                 <li>
                   <div class="w-ful h-full" v-if="!isCollapsed">
                     <div class="px-5">
-                      <div v-for="item in noidungarrey" :key="item.id">
+                      <div v-for="item in lessonarray" :key="item.stt">
                         <div>
                           <li
                             :class="[
                               'cursor-pointer py-2',
-                              activeDropdown === `noidung-${item.id}`
+                              activeDropdown === `noidung-${item.stt}`
                                 ? 'text-[#133D85]'
                                 : 'text-gray-600',
                             ]"
-                            @click="toggleDropdown(`noidung-${item.id}`)"
+                            @click="toggleDropdown(`noidung-${item.stt}`)"
                           >
                             <div
                               :class="[
                                 'flex h-full w-full items-center justify-between rounded-2xl bg-gray-200 px-1',
-                                activeDropdown === `noidung-${item.id}`
+                                activeDropdown === `noidung-${item.stt}`
                                   ? 'text-[#133D85]'
                                   : 'text-gray-600',
                               ]"
@@ -249,10 +305,10 @@ watch(isModalVisible, (newValue) => {
                               <div
                                 class="my-2 flex h-full w-full items-center justify-between px-5"
                               >
-                                <p>{{ item.name }}</p>
+                                <p>{{ item.Lessonid }}</p>
                                 <div>
                                   <button
-                                    @click="editSubject(item.id)"
+                                    @click="editSubject(item.stt)"
                                     class="pr-5 text-green-500 hover:text-green-700"
                                   >
                                     <i
@@ -260,7 +316,7 @@ watch(isModalVisible, (newValue) => {
                                     ></i>
                                   </button>
                                   <button
-                                    @click="deleteSubject(item.id)"
+                                    @click="deleteSubject(item.stt)"
                                     class="text-red-500 hover:text-red-700"
                                   >
                                     <i class="fas fa-trash-alt"></i>
@@ -271,7 +327,7 @@ watch(isModalVisible, (newValue) => {
                           </li>
                           <div
                             class="-mt-2"
-                            v-if="activeDropdown === `noidung-${item.id}`"
+                            v-if="activeDropdown === `noidung-${item.stt}`"
                           >
                             <!-- Content to be shown when active -->
                             <div class="mt-2 border-b-2"></div>
@@ -314,9 +370,47 @@ watch(isModalVisible, (newValue) => {
                               <n-gi span="2">
                                 <n-form-item label="Tên bài học mới">
                                   <n-input
-                                    v-model:value="newLessonName"
+                                    v-model:value="formValue.name"
                                     placeholder="Nhập tên bài học"
                                   ></n-input>
+                                </n-form-item>
+                              </n-gi>
+                              <n-gi>
+                                <n-form-item label="Thời lượng bài học">
+                                  <n-time-picker
+                                    v-model:value="formValue.duration"
+                                    format="HH:mm"
+                                    :hours="[0, 1, 2]"
+                                    :is-minute-disabled="
+                                      (minute, hour) =>
+                                        getDisabledMinutes(hour).includes(
+                                          minute,
+                                        )
+                                    "
+                                    style="width: 250px"
+                                    placeholder="Chọn thời lượng"
+                                  />
+                                </n-form-item>
+                              </n-gi>
+
+                              <n-gi>
+                                <n-form-item label="Mức độ">
+                                  <n-select
+                                    v-model:value="formValue.difficulty"
+                                    :options="difficultyOptions"
+                                    placeholder="Chọn độ khó"
+                                  />
+                                </n-form-item>
+                              </n-gi>
+
+                              <n-gi>
+                                <n-form-item
+                                  label="Học thử miễn phí"
+                                  label-placement="left"
+                                >
+                                  <n-checkbox
+                                    v-model:checked="formValue.freeTrial"
+                                  ></n-checkbox>
                                 </n-form-item>
                               </n-gi>
                               <n-gi span="2">
@@ -334,11 +428,11 @@ watch(isModalVisible, (newValue) => {
                                   cols="15"
                                   :x-gap="20"
                                   v-for="(item, index) in Lesson"
-                                  :key="item.id"
+                                  :key="item.stt"
                                 >
                                   <n-gi span="14" class="mb-2">
                                     <n-input
-                                      v-model="item.name"
+                                      v-model="Lesson[index].name"
                                       placeholder="Nhập tên nội dung"
                                     ></n-input>
                                   </n-gi>
@@ -355,7 +449,7 @@ watch(isModalVisible, (newValue) => {
                               <n-gi span="2" class="mb-5">
                                 <span
                                   class="cursor-pointer text-sm text-[#00A2EB]"
-                                  @click="addLesson"
+                                  @click="addchildLesson"
                                 >
                                   + Thêm nội dung mới
                                 </span>
@@ -374,7 +468,7 @@ watch(isModalVisible, (newValue) => {
                                   round
                                   type="info"
                                   class="h-12 w-full rounded-2xl text-lg"
-                                  @click.prevent="handleAddSubject()"
+                                  @click.prevent="handleSubmit"
                                 >
                                   Lưu
                                 </n-button>
