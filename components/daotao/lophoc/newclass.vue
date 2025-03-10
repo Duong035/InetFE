@@ -1,27 +1,122 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { message } from "ant-design-vue";
-import { useRouter, useRoute } from "vue-router";
+import { useRoute } from "vue-router";
 import dayjs from "dayjs";
 
+// API
+const { restAPI } = useApi();
+
+// Interface
+interface ClassData {
+  id: String | null;
+  image: string;
+  className: string;
+  classCode: string;
+  studyMode: number | null;
+  subjects: string;
+  branches: string;
+  startDate: number | null;
+  endDate: number | null;
+  description: string;
+}
+
+// Dữ liệu reactive
+const route = useRoute();
+const isSubmitting = ref(false);
 const subjects = ref<{ label: string; value: string }[]>([]);
 const branches = ref<{ label: string; value: string }[]>([]);
-const { restAPI } = useApi();
-const isSubmitting = ref(false);
-const route = useRoute();
-const formValue = ref({
-  id: null as string | null,
+const newId = route.query.id;
+
+// Giá trị form
+const formValue = ref<ClassData>({
+  id: null,
   image: "",
   className: "",
   classCode: "",
-  studyMode: null as number | null,
+  studyMode: null,
   subjects: "",
   branches: "",
-  startDate: null as number | null,
-  endDate: null as number | null,
+  startDate: null,
+  endDate: null,
   description: "",
 });
 
+//  HÀM LẤY THÔNG TIN LỚP HỌC THEO ID
+const fetchClassData = async () => {
+  try {
+    const { data: resData } = await restAPI.cms.getClassById({
+      id: newId,
+    });
+
+    if (resData.value?.status) {
+      console.log("Dữ liệu lớp học:", resData);
+      const data = resData.value?.data;
+
+      formValue.value.id = data?.id || null;
+      formValue.value.image = data?.image || "";
+      formValue.value.className = data?.name || "";
+      formValue.value.classCode = data?.code || "";
+      formValue.value.studyMode = data?.type || null;
+      formValue.value.subjects = data?.subject?.id || "";
+      formValue.value.branches = data?.branch?.id || "";
+      formValue.value.startDate = data?.start_at
+        ? dayjs(data?.start_at).valueOf()
+        : null;
+      formValue.value.endDate = data?.end_at
+        ? dayjs(data?.end_at).valueOf()
+        : null;
+      formValue.value.description = data?.description || "";
+    } else {
+      message.warning("Không tìm thấy thông tin lớp học.");
+    }
+  } catch (error) {
+    console.error("Lỗi khi tải thông tin lớp học:", error);
+    message.error("Lỗi khi tải thông tin lớp học.");
+  }
+};
+
+//  HÀM LẤY DANH SÁCH MÔN HỌC
+const fetchSubjects = async () => {
+  try {
+    const { data: resData, error } = await restAPI.cms.getSubjects({});
+    if (error?.value) {
+      message.error(error?.value?.data?.message || "Lỗi tải dữ liệu môn học");
+      return;
+    }
+
+    subjects.value =
+      resData.value?.data?.subjects?.map((subject: any) => ({
+        label: subject.name,
+        value: subject.id,
+      })) || [];
+  } catch (err) {
+    console.error("Lỗi khi tải danh sách môn học:", err);
+  }
+};
+
+//  HÀM LẤY DANH SÁCH CHI NHÁNH
+const fetchBranches = async () => {
+  try {
+    const { data: resData, error } = await restAPI.cms.getBranches({});
+    if (error?.value) {
+      message.error(
+        error?.value?.data?.message || "Lỗi tải danh sách chi nhánh",
+      );
+      return;
+    }
+
+    branches.value =
+      resData.value?.data?.map((branch: any) => ({
+        label: branch.address,
+        value: branch.id,
+      })) || [];
+  } catch (err) {
+    console.error("Lỗi khi tải danh sách chi nhánh:", err);
+  }
+};
+
+//  HÀM TẠO HOẶC CẬP NHẬT LỚP HỌC
 const handleSubmit = async () => {
   isSubmitting.value = true;
 
@@ -47,18 +142,15 @@ const handleSubmit = async () => {
     console.log("Payload gửi lên API:", payload);
 
     const { data: resData, error } = await restAPI.cms.createClass({
-      body: JSON.stringify(payload), // Ensure body is set
+      body: JSON.stringify(payload),
     });
 
-    console.log(resData);
     if (error?.value) {
       message.error(error?.value?.data?.message || "Lỗi khi tạo lớp học");
       return;
     }
 
     message.success("Tạo lớp học thành công!");
-
-    // Reset form sau khi gửi thành công
     formValue.value = {
       id: null,
       image: "",
@@ -79,85 +171,13 @@ const handleSubmit = async () => {
   }
 };
 
-// lấy danh sách môn học
-onMounted(async () => {
-  try {
-    const { data: resData, error } = await restAPI.cms.getSubjects({});
+// CHẠY CÁC HÀM KHI COMPONENT ĐƯỢC MOUNTED
+onMounted(() => {
+  fetchSubjects();
+  fetchBranches();
+  console.log("ID lớp học0:", newId);
 
-    if (error?.value) {
-      message.error(error?.value?.data?.message || "Lỗi tải dữ liệu");
-      return;
-    }
-
-    subjects.value =
-      resData.value?.data?.subjects?.map((subjects: any) => ({
-        label: subjects.name,
-        value: subjects.id,
-      })) || [];
-  } catch (err) {
-    console.error("Lỗi khi tải danh sách môn học:", err);
-  }
-});
-// lấy danh sách chi nhánh
-onMounted(async () => {
-  try {
-    const { data: resData, error } = await restAPI.cms.getBranches({});
-
-    if (error?.value) {
-      message.error(error?.value?.data?.message || "Lỗi tải dữ liệu");
-      return;
-    }
-
-    if (
-      !resData.value ||
-      !resData.value.data ||
-      !Array.isArray(resData.value.data)
-    ) {
-      console.error("Dữ liệu API không hợp lệ:", resData.value);
-      return;
-    }
-
-    branches.value = resData.value.data.map((branch: any) => ({
-      label: branch.address,
-      value: branch.id,
-    }));
-  } catch (err) {
-    console.error("Lỗi khi tải danh sách chi nhánh:", err);
-  }
-
-  // lấy thông tin môn học theo id
-  onMounted(async () => {
-    if (!formValue.value.id) return; // Nếu không có ID, không gọi API
-    console.log("ID lớp học:", formValue.value.id);
-    try {
-      const { data: resData } = await restAPI.cms.getClassById({
-        id: formValue.value.id,
-      });
-      console.log("Thông tin lớp học:", resData);
-
-      if (resData.value?.status) {
-        const data = resData.value?.data?.entry;
-
-        formValue.value = {
-          id: data?.id || null,
-          image: data?.image || "",
-          className: data?.name || "",
-          classCode: data?.code || "",
-          studyMode: data?.type || null,
-          subjects: data?.subject_id || "",
-          branches: data?.branch_id || "",
-          startDate: data?.start_at ? dayjs(data?.start_at).valueOf() : null,
-          endDate: data?.end_at ? dayjs(data?.end_at).valueOf() : null,
-          description: data?.description || "",
-        };
-      } else {
-        message.error("Không tìm thấy thông tin lớp học.");
-      }
-    } catch (error) {
-      console.error("Lỗi khi tải thông tin lớp học:", error);
-      message.error("Lỗi khi tải thông tin lớp học.");
-    }
-  });
+  fetchClassData();
 });
 </script>
 

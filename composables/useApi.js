@@ -22,12 +22,16 @@ const API_ENDPOINTS = {
     staff: "/api/admin/users",
     category: "/api/admin/category",
     categories: "/api/admin/categories",
+    subject: "/api/admin/subject",
     subjects: "/api/admin/subjects",
+    all_subject: "/api/admin/subject/all",
     classes: "/api/admin/classes",
     User: "/api/admin/users",
     class: "/api/admin/class",
     permissionGroup: "/api/admin/permission-grp",
     permissionTag: "/api/admin/permission-tags",
+    lessons: "/api/admin/lessons",
+    lesson_data: "/api/admin/lesson-data",
   },
 };
 
@@ -239,6 +243,22 @@ class CMSManager {
   async getSubjects(data) {
     return this.request.get(API_ENDPOINTS.cms.subjects, data);
   }
+  async getAllSubject(data) {
+    return this.request.get(API_ENDPOINTS.cms.all_subject, data)
+  }
+  async getSubjectDetail(data) {
+    return this.request.get(`${API_ENDPOINTS.cms.subject}?id=${data.id}`, data)
+  }
+  async createSubject(data) {
+    return this.request.post(API_ENDPOINTS.cms.subject, data)
+  }
+  async updateSubject(data) {
+    return this.request.patch(API_ENDPOINTS.cms.subject, data)
+  }
+
+  async getListLesson(data) {
+    return this.request.get(API_ENDPOINTS.cms.lessons, data)
+  }
   //__________________________________________________________________________________________
 
   // Shift____________________________________________________________________________________
@@ -298,6 +318,12 @@ class CMSManager {
       `${API_ENDPOINTS.cms.permissionGroup}/${data.id}`,
       data,
     );
+  }
+  async createPermissionGroups(data) {
+    return this.request.post(API_ENDPOINTS.cms.permissionGroup, data)
+  }
+  async updatePermissionGroups(data) {
+    return this.request.put(`${API_ENDPOINTS.cms.permissionGroup}/${data.id}`, data)
   }
   async deletePermissionGroups(data) {
     return this.request.delete(`${API_ENDPOINTS.cms.permissionGroup}`, data);
