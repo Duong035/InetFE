@@ -126,12 +126,17 @@ export default defineComponent({
       return statusMap[status] || "Không xác định";
     }
 
-    //button action
-    const editRow = (row: RowData) => {
+    // HÀM CHỈNH SỬA LỚP HỌC
+    const editRow = (row: any) => {
+      if (!row.id) {
+        console.error("ID lớp học không hợp lệ:", row);
+        return;
+      }
+
       console.log("Edit:", row);
       router.push({
         path: "lophocinfo",
-        query: { id: row.id },
+        query: { id: row.id.toString() },
       });
       message.success(`Chỉnh sửa lớp học: ${row.name}`);
     };

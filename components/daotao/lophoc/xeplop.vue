@@ -1,11 +1,7 @@
 <script lang="ts">
-import {
-  NCalendar,
-  NRadioGroup,
-  NRadio,
-  NButton,
-  type DataTableColumns,
-} from "naive-ui";
+import { NRadioGroup, NRadio, NButton, type DataTableColumns } from "naive-ui";
+import VueDatePicker from "@vuepic/vue-datepicker";
+import "@vuepic/vue-datepicker/dist/main.css";
 
 import dayjs from "dayjs";
 import {
@@ -47,6 +43,8 @@ export default defineComponent({
     });
 
     const { restAPI } = useApi();
+    const day = ref<Date[]>([]);
+
     const data = ref<RowData[]>([]);
     const isLoading = ref(false);
     const selectedSubject = ref("");
@@ -252,6 +250,7 @@ export default defineComponent({
       scheduleMode,
       displayDate,
       selectedValue,
+      day,
     };
   },
 });
@@ -287,20 +286,7 @@ export default defineComponent({
         </div>
 
         <!-- Lịch -->
-        <n-calendar
-          class="rounded-md border"
-          v-model:display-date="displayDate"
-          v-model:value="selectedValue"
-          :type="scheduleMode === 'week' ? 'week' : 'date'"
-          :first-day-of-week="0"
-          :day-names="['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']"
-        />
-
-        <!-- Thông tin số buổi -->
-        <div class="mt-4 flex items-center justify-between">
-          <span>Số buổi cuối tháng: 0 buổi</span>
-          <span>Số buổi của lớp: 10 buổi</span>
-        </div>
+        <VueDatePicker v-model="day" multi-dates />
       </div>
 
       <div class="mt-4">

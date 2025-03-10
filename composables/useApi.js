@@ -244,20 +244,20 @@ class CMSManager {
     return this.request.get(API_ENDPOINTS.cms.subjects, data);
   }
   async getAllSubject(data) {
-    return this.request.get(API_ENDPOINTS.cms.all_subject, data)
+    return this.request.get(API_ENDPOINTS.cms.all_subject, data);
   }
   async getSubjectDetail(data) {
-    return this.request.get(`${API_ENDPOINTS.cms.subject}?id=${data.id}`, data)
+    return this.request.get(`${API_ENDPOINTS.cms.subject}?id=${data.id}`, data);
   }
   async createSubject(data) {
-    return this.request.post(API_ENDPOINTS.cms.subject, data)
+    return this.request.post(API_ENDPOINTS.cms.subject, data);
   }
   async updateSubject(data) {
-    return this.request.patch(API_ENDPOINTS.cms.subject, data)
+    return this.request.patch(API_ENDPOINTS.cms.subject, data);
   }
 
   async getListLesson(data) {
-    return this.request.get(API_ENDPOINTS.cms.lessons, data)
+    return this.request.get(API_ENDPOINTS.cms.lessons, data);
   }
   //__________________________________________________________________________________________
 
@@ -297,7 +297,7 @@ class CMSManager {
   }
 
   async getClassById(data) {
-    return this.request.get(`${API_ENDPOINTS.cms.class}/${id}`, data);
+    return this.request.get(`${API_ENDPOINTS.cms.class}/${data.id}`, data);
   }
 
   async updateClass(data) {
@@ -320,10 +320,13 @@ class CMSManager {
     );
   }
   async createPermissionGroups(data) {
-    return this.request.post(API_ENDPOINTS.cms.permissionGroup, data)
+    return this.request.post(API_ENDPOINTS.cms.permissionGroup, data);
   }
   async updatePermissionGroups(data) {
-    return this.request.put(`${API_ENDPOINTS.cms.permissionGroup}/${data.id}`, data)
+    return this.request.put(
+      `${API_ENDPOINTS.cms.permissionGroup}/${data.id}`,
+      data,
+    );
   }
   async deletePermissionGroups(data) {
     return this.request.delete(`${API_ENDPOINTS.cms.permissionGroup}`, data);

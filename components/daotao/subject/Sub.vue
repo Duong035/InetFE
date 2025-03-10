@@ -343,7 +343,13 @@ function createColumns(
       key: "hocphi",
       defaultSortOrder: "ascend",
       sorter: "default",
+      render(row) {
+        return row.fee_type == 1
+          ? "miễn phí"
+          : Number(row.hocphi).toLocaleString("en-US");
+      },
     },
+
     {
       title: "Số buổi",
       key: "sobuoi",
