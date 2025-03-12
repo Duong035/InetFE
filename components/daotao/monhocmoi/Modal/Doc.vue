@@ -23,6 +23,7 @@ const formValue = reactive({
   name: null,
   file_size: 0,
   file_name: null,
+  is_live: false,
   content_type: "application/pdf",
   document_id: "550e8400-e29b-41d4-a716-446655440002",
 });
@@ -56,6 +57,7 @@ watch(isModalVisible, (newValue, oldValue) => {
   if (!newValue) {
     Object.assign(formValue, {
       name: null,
+      is_live: false,
     });
   }
 });
@@ -86,6 +88,7 @@ const fetchLessonData = async () => {
   if (resData.value?.status) {
     const data = resData.value?.data;
     formValue.name = data?.name || "";
+    formValue.is_live = data?.is_live || false;
   }
 };
 
@@ -94,7 +97,7 @@ const handleSubmit = async (e) => {
   const valid = await formRef.value.validate();
   if (!valid) return;
   let fileData = uploadedFiles.value.length > 0 ? uploadedFiles.value[0] : null;
-  const { id, name, type, position } = formValue;
+  const { id, name, type, position, is_live } = formValue;
   let body = {
     name,
     type,
@@ -102,6 +105,7 @@ const handleSubmit = async (e) => {
     file_size: fileData ? fileData.file_size : null,
     file_name: fileData ? fileData.file_name : null,
     content_type: fileData ? fileData.content_type : null,
+    is_live,
   };
 
   if (!is_addnew.value) {
@@ -132,11 +136,12 @@ const closeModal = () => {
         max-width: 600px;
       "
       :header-style="{ padding: '10px' }"
+      :closable="false"
       @update:show="closeModal"
     >
       <n-form :model="formValue" :rules="rules" ref="formRef">
-        <n-grid cols="2" :x-gap="20">
-          <n-gi span="2">
+        <n-grid cols="3" :x-gap="20">
+          <n-gi span="3">
             <h1 v-if="is_addnew" class="text-2xl font-bold text-[#133D85]">
               Tải lên tài liệu mới cho bài học
             </h1>
@@ -153,7 +158,16 @@ const closeModal = () => {
               ></n-input>
             </n-form-item>
           </n-gi>
-          <n-gi span="2">
+          <n-gi>
+            <n-form-item
+              label="Trạng thái hoạt động"
+              label-placement="left"
+              class="mt-7"
+            >
+              <n-checkbox v-model:checked="formValue.is_live"></n-checkbox>
+            </n-form-item>
+          </n-gi>
+          <n-gi span="3">
             <n-form-item label="Tài liệu:">
               <n-upload :max="1" :multiple="false" @change="handleFileChange">
                 <n-upload-dragger v-if="uploadedFiles.length < 1">
@@ -168,24 +182,27 @@ const closeModal = () => {
               </n-upload>
             </n-form-item>
           </n-gi>
-          <n-gi>
-            <n-button
-              ghost
-              class="h-12 w-full rounded-2xl text-lg"
-              @click="closeModal"
-            >
-              Hủy
-            </n-button>
-          </n-gi>
-          <n-gi>
-            <n-button
-              round
-              type="info"
-              class="h-12 w-full rounded-2xl text-lg"
-              @click.prevent="handleSubmit"
-            >
-              Lưu
-            </n-button>
+          <n-gi span="3">
+            <n-grid cols="2" :x-gap="20">
+              <n-gi>
+                <n-button
+                  ghost
+                  class="h-12 w-full rounded-2xl text-lg"
+                  @click="closeModal"
+                >
+                  Hủy
+                </n-button>
+              </n-gi>
+              <n-gi>
+                <n-button
+                  round
+                  type="info"
+                  class="h-12 w-full rounded-2xl text-lg"
+                >
+                  Lưu
+                </n-button>
+              </n-gi>
+            </n-grid>
           </n-gi>
         </n-grid>
       </n-form>

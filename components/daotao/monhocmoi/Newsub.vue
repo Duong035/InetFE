@@ -13,6 +13,7 @@ const formValue = reactive({
   name: null,
   position: null,
   free_trial: false,
+  is_live: false,
 });
 
 const message = useMessage();
@@ -26,11 +27,30 @@ const isLoading = ref(false);
 const is_addnew = ref(false);
 const lessonData = ref([]);
 const childLesson = ref([]);
-let data_type = null;
 let lessonDataID = null;
+
+const delref = ref(null);
+const deleteAction = ref(null);
+const itemId = ref(null);
 
 const activeDropdown = ref(null);
 const dropdowns = ref({});
+
+const showDeleteModal = (action, title, id) => {
+  deleteAction.value = action;
+  itemId.value = id;
+  if (delref.value) {
+    delref.value.setAddNew(title);
+  }
+};
+
+const handleConfirmDelete = () => {
+  if (deleteAction.value && itemId.value !== null) {
+    deleteAction.value(itemId.value);
+    itemId.value = null;
+    deleteAction.value = null;
+  }
+};
 
 async function deleteCLesson(value) {
   const body = { id: value };
@@ -50,6 +70,7 @@ async function deleteCLesson(value) {
   }
   getLesson();
 }
+
 function toggleDropdown(id) {
   for (const key in dropdowns.value) {
     dropdowns.value[key] = false;
@@ -61,6 +82,7 @@ function addContentToLesson(lessonId, content) {
   lessonDataID = lessonId;
   switch (content) {
     case 1:
+      console.log(ytref.value);
       if (ytref.value) {
         ytref.value.setAddNew(true, "");
       }
@@ -115,10 +137,14 @@ async function getLesson() {
   const { data: resData } = await restAPI.cms.getLessonDetail({
     id: lesson_id,
   });
-  childLesson.value = resData.value.data.childrens.map((lesson, index) => ({
-    id: lesson.id,
-    name: `Bài ${lesson.position}: ${lesson.name}`,
-  }));
+  if (resData.value?.data?.childrens?.length) {
+    childLesson.value = resData.value.data.childrens.map((lesson, index) => ({
+      id: lesson.id,
+      name: `Bài ${lesson.position}: ${lesson.name}`,
+    }));
+  } else {
+    childLesson.value = [];
+  }
 }
 
 async function getLessonData() {
@@ -129,7 +155,7 @@ async function getLessonData() {
 const getLessonContent = (lessonId) => {
   return lessonData.value
     .filter((lesson) => lesson.lesson_id === lessonId)
-    .map(({ id, name, type }) => ({ id, name, type }))
+    .map(({ id, name, type, is_live }) => ({ id, name, type, is_live }))
     .sort((a, b) => a.type - b.type);
 };
 
@@ -164,6 +190,7 @@ watch(isModalVisible, (newValue, oldValue) => {
       name: null,
       position: null,
       free_trial: false,
+      is_live: false,
     });
   }
 });
@@ -179,15 +206,14 @@ async function editCLesson(value) {
     formValue.name = data.name;
     formValue.position = data.position;
     formValue.free_trial = data.free_trial || false;
+    formValue.is_live = data.is_live || false;
   }
   isModalVisible.value = true;
 }
 const handleFormSubmit = async (body) => {
   if (body.id) {
-    console.log(JSON.stringify(body, null, 2));
     await updateLesson(body);
   } else {
-    body.lesson_id = lessonDataID;
     await createLesson(body);
   }
   getLessonData();
@@ -249,13 +275,29 @@ async function deleteContent(value) {
 
 const handleSubmit = async () => {
   if (isLoading.value) return;
-  const { id, position, name, free_trial } = formValue;
+  const { id, position, name, free_trial, is_live } = formValue;
   let body = {
     name,
     position: Number(position),
     free_trial,
+    is_live,
   };
   if (id === undefined || id === null || id === "") {
+    body.parent_id = props.lessonId;
+    const { data: resCreate, error } = await restAPI.cms.createLesson({
+      body,
+    });
+    if (resCreate?.value?.status) {
+      message.success("Tạo bài học thành công!");
+    } else {
+      const errorCode = error.value?.data?.error;
+      const errorMessage =
+        ERROR_CODES[errorCode] ||
+        resdel?.value?.message ||
+        "Đã xảy ra lỗi, vui lòng thử lại!";
+
+      message.warning(errorMessage);
+    }
   } else {
     body.id = id;
     let finalBody = [body];
@@ -317,7 +359,9 @@ onMounted(() => {
                   <i class="fas fa-pen-to-square text-sm"></i>
                 </button>
                 <button
-                  @click="deleteCLesson(item.id)"
+                  @click="
+                    showDeleteModal(deleteCLesson, 'Xóa bài học', item.id)
+                  "
                   class="text-red-500 hover:text-red-700"
                 >
                   <i class="fas fa-trash-alt text-sm"></i>
@@ -369,6 +413,7 @@ onMounted(() => {
                           {{ content.name }}
                         </span>
                       </div>
+
                       <div>
                         <button
                           @click="editContent(content.id, content.type)"
@@ -377,7 +422,13 @@ onMounted(() => {
                           <i class="fas fa-regular fa-pen-to-square"></i>
                         </button>
                         <button
-                          @click="deleteContent(content.id)"
+                          @click="
+                            showDeleteModal(
+                              deleteContent,
+                              'Xóa nội dung bài học',
+                              content.id,
+                            )
+                          "
                           class="text-red-500 hover:text-red-700"
                         >
                           <i class="fas fa-trash-alt"></i>
@@ -448,6 +499,7 @@ onMounted(() => {
           max-width: 600px;
         "
         :header-style="{ padding: '10px' }"
+        :closable="false"
       >
         <n-form>
           <n-grid cols="2" :x-gap="20">
@@ -476,9 +528,14 @@ onMounted(() => {
                 ></n-input>
               </n-form-item>
             </n-gi>
-            <n-gi span="2">
+            <n-gi>
               <n-form-item label="Học thử miễn phí" label-placement="left">
                 <n-checkbox v-model:checked="formValue.free_trial"></n-checkbox>
+              </n-form-item>
+            </n-gi>
+            <n-gi>
+              <n-form-item label="Trạng thái hoạt động" label-placement="left">
+                <n-checkbox v-model:checked="formValue.is_live"></n-checkbox>
               </n-form-item>
             </n-gi>
             <n-gi>
@@ -509,5 +566,6 @@ onMounted(() => {
     <DaotaoMonhocmoiModalVid @submit="handleFormSubmit" ref="vidref" />
     <DaotaoMonhocmoiModalText @submit="handleFormSubmit" ref="textref" />
     <DaotaoMonhocmoiModalDoc @submit="handleFormSubmit" ref="docref" />
+    <DelModal @confirm-delete="handleConfirmDelete" ref="delref" />
   </div>
 </template>

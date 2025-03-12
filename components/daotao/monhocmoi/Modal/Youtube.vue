@@ -22,6 +22,7 @@ const formValue = reactive({
   type: 1,
   name: null,
   url: null,
+  is_live: false,
 });
 
 const rules = {
@@ -77,6 +78,7 @@ watch(isModalVisible, (newValue, oldValue) => {
     Object.assign(formValue, {
       name: null,
       url: null,
+      is_live: false,
     });
   }
 });
@@ -92,6 +94,7 @@ const fetchLessonData = async () => {
     const data = resData.value?.data;
     formValue.name = data?.name || "";
     formValue.url = data?.metadata.url || "";
+    formValue.is_live = data?.is_live || false;
   }
 };
 
@@ -100,12 +103,13 @@ const handleSubmit = async (e) => {
   const valid = await formRef.value.validate();
   if (!valid) return;
 
-  const { id, name, url, type, position } = formValue;
+  const { id, name, url, type, position, is_live } = formValue;
   let body = {
     name,
     url,
     type,
     position,
+    is_live,
   };
 
   if (!is_addnew.value) {
@@ -134,11 +138,12 @@ const closeModal = () => {
         max-width: 600px;
       "
       :header-style="{ padding: '10px' }"
+      :closable="false"
       @update:show="closeModal"
     >
       <n-form :model="formValue" :rules="rules" ref="formRef">
-        <n-grid cols="2" :x-gap="20">
-          <n-gi span="2">
+        <n-grid cols="3" :x-gap="20">
+          <n-gi span="3">
             <h1 v-if="is_addnew" class="text-2xl font-bold text-[#133D85]">
               Thêm video Youtube mới cho bài học
             </h1>
@@ -155,7 +160,16 @@ const closeModal = () => {
               ></n-input>
             </n-form-item>
           </n-gi>
-          <n-gi span="2">
+          <n-gi>
+            <n-form-item
+              label="Trạng thái hoạt động"
+              label-placement="left"
+              class="mt-7"
+            >
+              <n-checkbox v-model:checked="formValue.is_live"></n-checkbox>
+            </n-form-item>
+          </n-gi>
+          <n-gi span="3">
             <n-form-item label="Link video Youtube:" path="url">
               <n-input
                 placeholder="Nhập link video Youtube"
@@ -163,24 +177,27 @@ const closeModal = () => {
               ></n-input>
             </n-form-item>
           </n-gi>
-          <n-gi>
-            <n-button
-              ghost
-              class="h-12 w-full rounded-2xl text-lg"
-              @click="closeModal"
-            >
-              Hủy
-            </n-button>
-          </n-gi>
-          <n-gi>
-            <n-button
-              round
-              type="info"
-              class="h-12 w-full rounded-2xl text-lg"
-              @click.prevent="handleSubmit"
-            >
-              Lưu
-            </n-button>
+          <n-gi span="3">
+            <n-grid cols="2" :x-gap="20">
+              <n-gi>
+                <n-button
+                  ghost
+                  class="h-12 w-full rounded-2xl text-lg"
+                  @click="closeModal"
+                >
+                  Hủy
+                </n-button>
+              </n-gi>
+              <n-gi>
+                <n-button
+                  round
+                  type="info"
+                  class="h-12 w-full rounded-2xl text-lg"
+                >
+                  Lưu
+                </n-button>
+              </n-gi>
+            </n-grid>
           </n-gi>
         </n-grid>
       </n-form>

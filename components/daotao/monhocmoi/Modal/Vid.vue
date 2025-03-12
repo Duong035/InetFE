@@ -22,6 +22,7 @@ const formValue = reactive({
   type: 2,
   name: null,
   url: null,
+  is_live: false,
 });
 
 const uploadedFiles = ref([]);
@@ -59,11 +60,12 @@ const closeModal = () => {
         max-width: 600px;
       "
       :header-style="{ padding: '10px' }"
+      :closable="false"
       @update:show="closeModal"
     >
       <n-form>
-        <n-grid cols="2" :x-gap="20">
-          <n-gi span="2">
+        <n-grid cols="3" :x-gap="20">
+          <n-gi span="3">
             <h1 v-if="is_addnew" class="text-2xl font-bold text-[#133D85]">
               Tải lên video mới cho bài học
             </h1>
@@ -77,7 +79,16 @@ const closeModal = () => {
               <n-input placeholder="Nhập tên video"></n-input>
             </n-form-item>
           </n-gi>
-          <n-gi span="2">
+          <n-gi>
+            <n-form-item
+              label="Trạng thái hoạt động"
+              label-placement="left"
+              class="mt-7"
+            >
+              <n-checkbox v-model:checked="formValue.is_live"></n-checkbox>
+            </n-form-item>
+          </n-gi>
+          <n-gi span="3">
             <n-form-item label="Video:">
               <n-grid cols="2" :x-gap="20">
                 <n-gi span="1">
@@ -112,20 +123,28 @@ const closeModal = () => {
               </n-grid>
             </n-form-item>
           </n-gi>
-          <n-gi span="2"></n-gi>
-          <n-gi>
-            <n-button
-              ghost
-              class="h-12 w-full rounded-2xl text-lg"
-              @click="closeModal"
-            >
-              Hủy
-            </n-button>
-          </n-gi>
-          <n-gi>
-            <n-button round type="info" class="h-12 w-full rounded-2xl text-lg">
-              Lưu
-            </n-button>
+          <n-gi span="3"></n-gi>
+          <n-gi span="3">
+            <n-grid cols="2" :x-gap="20">
+              <n-gi>
+                <n-button
+                  ghost
+                  class="h-12 w-full rounded-2xl text-lg"
+                  @click="closeModal"
+                >
+                  Hủy
+                </n-button>
+              </n-gi>
+              <n-gi>
+                <n-button
+                  round
+                  type="info"
+                  class="h-12 w-full rounded-2xl text-lg"
+                >
+                  Lưu
+                </n-button>
+              </n-gi>
+            </n-grid>
           </n-gi>
         </n-grid>
       </n-form>

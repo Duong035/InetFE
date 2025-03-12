@@ -219,7 +219,6 @@ onMounted(async () => {
   <n-spin :show="showSpin">
     <div class="px-5">
       <n-form :model="formValue">
-        <!-- :rules="rules" ref="formRef" -->
         <n-grid :x-gap="15" cols="1 m:4" responsive="screen" class="my-5">
           <n-gi>
             <n-form-item label="Ảnh đại diện khóa học" path="cover">

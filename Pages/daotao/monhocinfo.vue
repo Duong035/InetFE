@@ -19,6 +19,26 @@ const dropdowns = reactive({
 });
 const activeDropdown = ref("coban");
 
+const delref = ref(null);
+const deleteAction = ref(null);
+const itemId = ref(null);
+
+const showDeleteModal = (action, title, id) => {
+  deleteAction.value = action;
+  itemId.value = id;
+  if (delref.value) {
+    delref.value.setAddNew(title);
+  }
+};
+
+const handleConfirmDelete = () => {
+  if (deleteAction.value && itemId.value !== null) {
+    deleteAction.value(itemId.value);
+    itemId.value = null;
+    deleteAction.value = null;
+  }
+};
+
 const lessonarray = ref([]);
 const tempValues = ref({});
 const formValue = reactive({
@@ -30,6 +50,7 @@ const formValue = reactive({
     difficulty: null,
   },
   free_trial: false,
+  is_live: false,
 
   child_lessons: [
     {
@@ -81,10 +102,11 @@ async function editSubject(value) {
     const data = resData.value?.data;
     formValue.id = data.id;
     formValue.name = data.name;
-    formValue.position = data.position;
+    formValue.position = String(data.position);
     formValue.metadata.duration = data.metadata?.duration || null;
     formValue.metadata.difficulty = data.metadata?.difficulty || null;
     formValue.free_trial = data.free_trial || false;
+    formValue.is_live = data.is_live || false;
     formValue.child_lessons = data.childrens
       ? data.childrens.map((child) => ({
           id: child.id,
@@ -112,6 +134,7 @@ watch(isModalVisible, (newValue, oldValue) => {
         position: null,
       },
       free_trial: false,
+      is_live: false,
       child_lessons: [],
     });
     tempValues.value = [];
@@ -134,7 +157,6 @@ async function getLesson() {
   } catch (error) {
     console.error("Error fetching lesson data:", error);
   }
-  console.log(lessonarray);
 }
 
 const handleSubmit = async () => {
@@ -148,13 +170,15 @@ const handleSubmit = async () => {
     return;
   }
 
-  const { id, position, name, free_trial, metadata, child_lessons } = formValue;
+  const { id, position, name, free_trial, is_live, metadata, child_lessons } =
+    formValue;
 
   let body = {
     name,
     position: Number(position),
     subject_id: route.query.id,
     free_trial,
+    is_live,
     metadata: {
       duration: metadata.duration,
       difficulty: metadata.difficulty,
@@ -164,7 +188,6 @@ const handleSubmit = async () => {
       position: index + 1,
     })),
   };
-  console.log(JSON.stringify(body, null, 2));
 
   if (id === undefined || id === null || id === "") {
     const { data: resCreate, error } = await restAPI.cms.createLesson({
@@ -216,41 +239,6 @@ const removeLesson = (index) => {
 
   tempValues.value = formValue.child_lessons.map((lesson) => lesson.name || "");
 };
-
-// async function removeLesson(value) {
-//   if (value === undefined || value === null || value === "") {
-//     formValue.child_lessons = formValue.child_lessons.filter(
-//       (lesson) => lesson.name && lesson.name.trim() !== "",
-//     );
-
-//     tempValues.value = formValue.child_lessons.map(
-//       (lesson) => lesson.name || "",
-//     );
-//   } else {
-//     const body = { id: value };
-//     const { data: delData, error } = await restAPI.cms.deleteLesson({ body });
-
-//     if (delData?.value?.status) {
-//       message.success("Xóa bài học thành công!");
-
-//       formValue.child_lessons = [
-//         ...formValue.child_lessons.filter((lesson) => lesson.id !== value),
-//       ];
-
-//       tempValues.value = formValue.child_lessons.map(
-//         (lesson) => lesson.name || "",
-//       );
-//     } else {
-//       const errorCode = error.value?.data?.error;
-//       const errorMessage =
-//         ERROR_CODES[errorCode] ||
-//         error?.value?.message ||
-//         "Đã xảy ra lỗi, vui lòng thử lại!";
-
-//       message.warning(errorMessage);
-//     }
-//   }
-// }
 
 async function deleteLesson(value) {
   const body = { id: value };
@@ -309,7 +297,7 @@ onMounted(async () => {
             :class="[
               'relative flex cursor-pointer items-center py-3 pl-3 pr-10',
               activeDropdown === 'coban'
-                ? '-mr-14 bg-gray-50 pr-0 text-[#133D85]'
+                ? '-mr-12 bg-gray-50 pr-0 text-[#133D85]'
                 : 'text-[#4D6FA8]',
             ]"
           >
@@ -317,8 +305,8 @@ onMounted(async () => {
               :class="[
                 'pr-3 text-[8px] text-[#133D85]',
                 activeDropdown === 'coban'
-                  ? 'fa-solchapterfa-circle text-[#133D85]'
-                  : 'fa-solchapterfa-circle-dot text-[#4D6FA8]',
+                  ? 'fa-solid fa-circle text-[#133D85]'
+                  : 'fa-solid fa-circle-dot text-[#4D6FA8]',
               ]"
             ></i>
             Thông tin cơ bản
@@ -334,10 +322,10 @@ onMounted(async () => {
           >
             <i
               :class="[
-                'pr-3 text-[8px]',
-                activeDropdown.startsWith('noidung')
-                  ? 'fa-solchapterfa-circle text-[#133D85]'
-                  : 'fa-solchapterfa-circle-dot text-[#4D6FA8]',
+                'pr-3 text-[8px] text-[#133D85]',
+                activeDropdown === 'noidung'
+                  ? 'fa-solid fa-circle text-[#133D85]'
+                  : 'fa-solid fa-circle-dot text-[#4D6FA8]',
               ]"
             ></i>
             Nội dung bài giảng
@@ -347,16 +335,16 @@ onMounted(async () => {
             :class="[
               'relative flex cursor-pointer items-center py-3 pl-3 pr-10',
               activeDropdown === 'chungchi'
-                ? '-mr-14 bg-gray-50 pr-0 text-[#133D85]'
+                ? '-mr-12 bg-gray-50 pr-0 text-[#133D85]'
                 : 'text-[#4D6FA8]',
             ]"
           >
             <i
               :class="[
-                'pr-3 text-[8px]',
+                'pr-3 text-[8px] text-[#133D85]',
                 activeDropdown === 'chungchi'
-                  ? 'fa-solchapterfa-circle text-[#133D85]'
-                  : 'fa-solchapterfa-circle-dot text-[#4D6FA8]',
+                  ? 'fa-solid fa-circle text-[#133D85]'
+                  : 'fa-solid fa-circle-dot text-[#4D6FA8]',
               ]"
             ></i>
             Chứng chỉ
@@ -366,19 +354,19 @@ onMounted(async () => {
             :class="[
               'relative flex cursor-pointer items-center py-3 pl-3 pr-10',
               activeDropdown === 'caidat'
-                ? '-mr-14 bg-gray-50 pr-0 text-[#133D85]'
+                ? '-mr-12 bg-gray-50 pr-0 text-[#133D85]'
                 : 'text-[#4D6FA8]',
             ]"
           >
             <i
               :class="[
-                'pr-3 text-[8px]',
+                'pr-3 text-[8px] text-[#133D85]',
                 activeDropdown === 'caidat'
-                  ? 'fa-solchapterfa-circle text-[#133D85]'
-                  : 'fa-solchapterfa-circle-dot text-[#4D6FA8]',
+                  ? 'fa-solid fa-circle text-[#133D85]'
+                  : 'fa-solid fa-circle-dot text-[#4D6FA8]',
               ]"
-            ></i
-            >Cài đặt
+            ></i>
+            Cài đặt
           </li>
         </ul>
       </nav>
@@ -410,9 +398,9 @@ onMounted(async () => {
                   "
                 ></i>
               </div>
-              <ul v-if="dropdowns.coban" class="w-ful h-full">
+              <ul v-if="dropdowns.coban" class="h-full w-full">
                 <li>
-                  <div class="w-ful h-full" v-if="!isCollapsed">
+                  <div class="h-full w-full" v-if="!isCollapsed">
                     <DaotaoMonhocmoiClassInfo />
                   </div>
                 </li>
@@ -457,7 +445,7 @@ onMounted(async () => {
                           >
                             <div
                               :class="[
-                                'flex h-full w-full items-center justify-between rounded-2xl bg-gray-200 px-1',
+                                'flex h-full w-full items-center justify-between rounded-2xl bg-gray-200',
                                 activeDropdown === `noidung-${item.id}`
                                   ? 'text-[#133D85]'
                                   : 'text-gray-600',
@@ -477,7 +465,13 @@ onMounted(async () => {
                                     ></i>
                                   </button>
                                   <button
-                                    @click="deleteLesson(item.id)"
+                                    @click="
+                                      showDeleteModal(
+                                        deleteLesson,
+                                        'Xóa chương',
+                                        item.id,
+                                      )
+                                    "
                                     class="text-red-500 hover:text-red-700"
                                   >
                                     <i class="fas fa-trash-alt"></i>
@@ -519,6 +513,7 @@ onMounted(async () => {
                             max-width: 600px;
                           "
                           :header-style="{ padding: '10px' }"
+                          :closable="false"
                         >
                           <n-form>
                             <n-grid cols="2" :x-gap="20">
@@ -597,7 +592,16 @@ onMounted(async () => {
                                   ></n-checkbox>
                                 </n-form-item>
                               </n-gi>
-                              <n-gi span="1"></n-gi>
+                              <n-gi>
+                                <n-form-item
+                                  label="Trạng thái hoạt động"
+                                  label-placement="left"
+                                >
+                                  <n-checkbox
+                                    v-model:checked="formValue.is_live"
+                                  ></n-checkbox>
+                                </n-form-item>
+                              </n-gi>
                               <n-gi span="2" v-if="is_addnew">
                                 <n-gi span="2">
                                   <n-form-item
@@ -700,9 +704,9 @@ onMounted(async () => {
                   "
                 ></i>
               </div>
-              <ul v-if="dropdowns.chungchi" class="w-ful h-full">
+              <ul v-if="dropdowns.chungchi" class="h-full w-full">
                 <li>
-                  <div class="w-ful h-full" v-if="!isCollapsed">
+                  <div class="h-full w-full" v-if="!isCollapsed">
                     <DaotaoHocvienctClass />
                   </div>
                 </li>
@@ -735,5 +739,6 @@ onMounted(async () => {
         </nav>
       </div>
     </div>
+    <DelModal @confirm-delete="handleConfirmDelete" ref="delref" />
   </div>
 </template>
