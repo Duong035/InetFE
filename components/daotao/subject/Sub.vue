@@ -2,6 +2,7 @@
 import type { DataTableColumns, DataTableRowKey } from "naive-ui";
 import { defineComponent, ref, h, reactive, computed, onMounted } from "vue";
 import { NButton, NDataTable, NDropdown, NInputNumber } from "naive-ui";
+import { useRouter } from "vue-router";
 import axios from "axios";
 import dayjs from "dayjs";
 
@@ -46,6 +47,7 @@ export default defineComponent({
       },
     });
 
+    const router = useRouter();
     const delModal = ref(false);
     const data = ref<RowData[]>([]);
     const checkedRowKeysRef = ref<DataTableRowKey[]>([]);
@@ -75,7 +77,7 @@ export default defineComponent({
     const railStyle = { backgroundColor: "#ccc" };
 
     if (typeof window !== "undefined" && window.sessionStorage) {
-      token.value = localStorage.getItem("auth_token") || "";
+      token.value = `Bearer ${useUserStore()?.userInfo?.token}`;
     }
 
     async function fetchData() {
@@ -85,7 +87,7 @@ export default defineComponent({
           "http://localhost:3000/api/admin/subjects",
           {
             headers: {
-              Authorization: `Bearer ${token.value}`,
+              Authorization: token.value,
             },
           },
         );
@@ -136,6 +138,140 @@ export default defineComponent({
       fetchData();
     });
 
+    function edit(value: RowData) {
+      router.push({
+        path: "monhocinfo",
+        query: { id: value.id },
+      });
+    }
+
+    function createColumns(): DataTableColumns<RowData> {
+      return [
+        {
+          title: "STT",
+          key: "stt",
+          titleAlign: "center",
+        },
+        {
+          title: "Môn học",
+          key: "monhoc",
+        },
+        {
+          title: "Danh mục",
+          key: "danhmuc",
+          filter(value, row) {
+            return row.danhmuc.includes(value as string);
+          },
+        },
+        {
+          title: "Học phí(VNĐ)",
+          key: "hocphi",
+          defaultSortOrder: "ascend",
+          sorter: "default",
+          render(row) {
+            return row.fee_type == 1 ? "miễn phí" : row.hocphi;
+          },
+        },
+        {
+          title: "Số buổi",
+          key: "sobuoi",
+          defaultSortOrder: "ascend",
+          sorter: "default",
+        },
+        {
+          title: "Số lớp",
+          key: "solop",
+          defaultSortOrder: "ascend",
+          sorter: "default",
+        },
+        {
+          title: "Số học viên chưa xếp lớp",
+          key: "chuaxep",
+          defaultSortOrder: "ascend",
+          sorter: "default",
+        },
+        {
+          title: "Ngày tạo",
+          key: "created_at",
+          defaultSortOrder: "ascend",
+          sorter: "default",
+          render(row) {
+            return dayjs(row.created_at).format("DD-MM-YYYY");
+          },
+        },
+        {
+          title: "Trạng thái",
+          key: "status",
+          render(row) {
+            let color = "";
+            let background = "";
+            switch (row.status) {
+              case "Hoạt động":
+                color = "#00974F";
+                background = "#F0FFF8";
+                break;
+              case "Không hoạt động":
+                color = "#4D6FA8";
+                background = "#ECF1F9";
+                break;
+              default:
+                color = "gray";
+            }
+            return h(
+              "span",
+              {
+                style: {
+                  padding: "5px 10px",
+                  borderRadius: "10px",
+                  color,
+                  background,
+                },
+              },
+              row.status,
+            );
+          },
+          defaultFilterOptionValues: ["Hoạt động", "Không hoạt động"],
+          filter(value, row) {
+            return row.status.includes(value as string);
+          },
+        },
+        {
+          title: "Action",
+          key: "actions",
+          titleAlign: "center",
+          render(row) {
+            return h("div", [
+              h(
+                NButton,
+                {
+                  size: "small",
+                  quaternary: true,
+                  style: { backgroundColor: "transparent", color: "green" },
+                  onclick: () => edit(row),
+                },
+                {
+                  default: () =>
+                    h("i", {
+                      class: "fa-regular fa-pen-to-square",
+                    }),
+                },
+              ),
+              h(
+                NButton,
+                {
+                  size: "small",
+                  quaternary: true,
+                  style: { backgroundColor: "transparent", color: "red" },
+                  onclick: () => deleteSub(row),
+                },
+                { default: () => h("i", { class: "fa-solid fa-trash" }) },
+              ),
+            ]);
+          },
+        },
+      ];
+    }
+
     // lấy thông tin subject theo id
     const fetchSubjectById = async (id: string) => {
       try {
@@ -143,7 +279,7 @@ export default defineComponent({
           `http://localhost:3000/api/admin/subject/?id=${id}`,
           {
             headers: {
-              Authorization: `Bearer ${token.value}`,
+              Authorization: token.value,
             },
           },
         );
@@ -209,7 +345,7 @@ export default defineComponent({
           {
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${token.value}`,
+              Authorization: token.value,
             },
           },
         );
@@ -248,7 +384,7 @@ export default defineComponent({
             `http://localhost:3000/api/admin/subject`,
             {
               headers: {
-                Authorization: `Bearer ${token.value}`,
+                Authorization: token.value,
               },
               data: { id: row.id },
             },
@@ -261,14 +397,13 @@ export default defineComponent({
       }
     };
 
-    const columns = createColumns(editRow, deleteSub);
-
     return {
       delModal,
+      edit,
       Status,
       Danhmuclist,
       data,
-      columns,
+      columns: createColumns(),
       dataTableInst: dataTableInstRef,
       checkedRowKeys: checkedRowKeysRef,
       pagination: paginationReactive,
@@ -316,133 +451,6 @@ export default defineComponent({
     };
   },
 });
-
-function createColumns(
-  editRow: (row: RowData) => void,
-  deleteSub: (row: RowData) => void,
-): DataTableColumns<RowData> {
-  return [
-    {
-      title: "STT",
-      key: "stt",
-      titleAlign: "center",
-    },
-    {
-      title: "Môn học",
-      key: "monhoc",
-    },
-    {
-      title: "Danh mục",
-      key: "danhmuc",
-      filter(value, row) {
-        return row.danhmuc.includes(value as string);
-      },
-    },
-    {
-      title: "Học phí(VNĐ)",
-      key: "hocphi",
-      defaultSortOrder: "ascend",
-      sorter: "default",
-    },
-    {
-      title: "Số buổi",
-      key: "sobuoi",
-      defaultSortOrder: "ascend",
-      sorter: "default",
-    },
-    {
-      title: "Số lớp",
-      key: "solop",
-      defaultSortOrder: "ascend",
-      sorter: "default",
-    },
-    {
-      title: "Số học viên chưa xếp lớp",
-      key: "chuaxep",
-      defaultSortOrder: "ascend",
-      sorter: "default",
-    },
-    {
-      title: "Ngày tạo",
-      key: "created_at",
-      defaultSortOrder: "ascend",
-      sorter: "default",
-      render(row) {
-        return dayjs(row.created_at).format("DD-MM-YYYY");
-      },
-    },
-    {
-      title: "Trạng thái",
-      key: "status",
-      render(row) {
-        let color = "";
-        let background = "";
-        switch (row.status) {
-          case "Hoạt động":
-            color = "#00974F";
-            background = "#F0FFF8";
-            break;
-          case "Không hoạt động":
-            color = "#4D6FA8";
-            background = "#ECF1F9";
-            break;
-          default:
-            color = "gray";
-        }
-        return h(
-          "span",
-          {
-            style: {
-              padding: "5px 10px",
-              borderRadius: "10px",
-              color,
-              background,
-            },
-          },
-          row.status,
-        );
-      },
-      defaultFilterOptionValues: ["Hoạt động", "Không hoạt động"],
-      filter(value, row) {
-        return row.status.includes(value as string);
-      },
-    },
-    {
-      title: "Action",
-      key: "actions",
-      titleAlign: "center",
-      render(row) {
-        return h("div", [
-          h(
-            NButton,
-            {
-              size: "small",
-              quaternary: true,
-              style: { backgroundColor: "transparent", color: "green" },
-              onclick: () => editRow(row),
-            },
-            {
-              default: () =>
-                h("i", {
-                  class: "fa-regular fa-pen-to-square",
-                }),
-            },
-          ),
-          h(
-            NButton,
-            {
-              size: "small",
-              quaternary: true,
-              style: { backgroundColor: "transparent", color: "red" },
-              onclick: () => deleteSub(row),
-            },
-            { default: () => h("i", { class: "fa-solid fa-trash" }) },
-          ),
-        ]);
-      },
-    },
-  ];
-}
 </script>
 
 <template>

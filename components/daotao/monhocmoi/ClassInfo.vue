@@ -1,7 +1,6 @@
 <script setup>
-import { message } from "ant-design-vue";
 import { ref, reactive, onMounted, nextTick, computed } from "vue";
-import { useRoute } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import axios from "axios";
 
 const railStyle = ({ focused, checked }) => {
@@ -15,45 +14,49 @@ const railStyle = ({ focused, checked }) => {
   return style;
 };
 
-// Nếu bạn dùng các hàm loadTeacher và loadCategory từ API khác thì giữ lại restAPI
+const route = useRoute();
+const router = useRouter();
+
+const message = useMessage();
 const { restAPI } = useApi();
 const isLoading = ref(false);
 const showSpin = ref(false);
 const Staffarray = ref([]);
 const Categoryarray = ref([]);
+const token = ref("");
 
-// Cập nhật formValue để thêm trường description3 (cho output_require)
 const formValue = reactive({
-  img: null,
-  color: null,
-  id: null,
+  thumbnail: "AA",
+  color: "red",
+  code: null,
+  id: computed(() => route.query.id || null),
   name: null,
-  catagory: null,
-  teacher: null,
-  days: null,
-  type: null,
-  price: null,
-  discount: null,
+  category_id: null,
+  teacher_ids: [],
+  total_lessons: null,
+  fee_type: null,
+  origin_fee: null,
+  discount_fee: null,
   description: null,
-  description2: null,
-  description3: null,
-  state: true,
+  input_require: null,
+  output_require: null,
+  is_active: true,
 });
 
 const displayPrice = computed({
-  get: () => (formValue.type === "1" ? "0" : formValue.price),
+  get: () => (formValue.fee_type === "1" ? "0" : formValue.origin_fee),
   set: (value) => {
-    if (formValue.type !== "1") {
-      formValue.price = value;
+    if (formValue.fee_type !== "1") {
+      formValue.origin_fee = value;
     }
   },
 });
 
 const displayDiscount = computed({
-  get: () => (formValue.type === "1" ? "0" : formValue.discount),
+  get: () => (formValue.fee_type === "1" ? "0" : formValue.discount_fee),
   set: (value) => {
-    if (formValue.type !== "1") {
-      formValue.discount = value;
+    if (formValue.fee_type !== "1") {
+      formValue.discount_fee = value;
     }
   },
 });
@@ -61,7 +64,9 @@ const options = [
   { label: "Sáng", value: "Sáng" },
   { label: "Tối", value: "Tối" },
 ];
-
+if (typeof window !== "undefined" && window.sessionStorage) {
+  token.value = `Bearer ${useUserStore()?.userInfo?.token}`;
+}
 const loadTeacher = async () => {
   try {
     const { data: resData } = await restAPI.cms.getStaff({});
@@ -104,50 +109,100 @@ const loadCategory = async () => {
   }
 };
 
+if (formValue.id) {
+  showSpin.value = true;
+  const { data: resData } = await restAPI.cms.getSubjectDetail({
+    id: formValue.id,
+  });
+  if (resData.value?.status) {
+    const data = resData.value?.data;
+    formValue.thumbnail = data?.thumbnail;
+    formValue.color = data?.color;
+    formValue.code = data?.code;
+    formValue.total_lessons = String(data?.total_lessons ?? "");
+    formValue.name = data?.name;
+    formValue.category_id = data?.category?.id;
+    formValue.teacher_ids = Array.isArray(data.teachers)
+      ? data.teachers[0].full_name
+      : data.teachers.full_name;
+    formValue.fee_type = String(data?.fee_type);
+    formValue.origin_fee = data?.origin_fee;
+    formValue.discount_fee = data?.discount_fee;
+    formValue.description = data?.description;
+    formValue.input_require = data?.input_require;
+    formValue.output_require = data?.output_require;
+    formValue.is_active = data?.is_active;
+  }
+  showSpin.value = false;
+}
+
 const handleSubmit = async (e) => {
   if (isLoading.value) return;
   e.preventDefault();
   isLoading.value = true;
 
-  // Chuyển đổi dữ liệu từ form thành payload theo định dạng API yêu cầu
-  const payload = {
-    name: formValue.name,
-    category_id: formValue.catagory, // ánh xạ từ formValue.catagory
-    thumbnail: formValue.thumbnail,
-    is_active: formValue.state,
-    origin_fee: Number(formValue.type === 1 ? 0 : formValue.price),
-    discount_fee: Number(formValue.type === 1 ? 0 : formValue.discount),
-    total_lessons: Number(formValue.days),
-    description: formValue.description,
-    input_require: formValue.description2,
-    output_require: formValue.description3,
-    metadata: {
-      color: formValue.color,
-    },
-    teacher_ids: formValue.teacher ? [formValue.teacher] : [],
-    fee_type: Number(formValue.type),
+  const {
+    thumbnail,
+    color,
+    code,
+    id,
+    name,
+    category_id,
+    teacher_ids,
+    total_lessons,
+    fee_type,
+    origin_fee,
+    discount_fee,
+    description,
+    input_require,
+    output_require,
+    is_active,
+  } = formValue;
+
+  let body = {
+    thumbnail,
+    color,
+    code,
+    name,
+    category_id,
+    teacher_ids: Array.isArray(teacher_ids) ? teacher_ids : [teacher_ids],
+    total_lessons: Number(total_lessons),
+    fee_type: Number(fee_type),
+    origin_fee: Number(origin_fee),
+    discount_fee: Number(discount_fee),
+    description,
+    input_require,
+    output_require,
+    is_active,
   };
 
   try {
-    console.log("Payload gửi đi:", payload);
-    const response = await axios.post(
-      "http://localhost:3000/api/admin/subject",
-      payload,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("auth_token") || ""}`,
-        },
-      },
-    );
-    // Giả sử API trả về đối tượng có thuộc tính "status" để đánh giá thành công hay thất bại
-    if (response.data && response.data.status) {
-      message.success("Tạo khóa học thành công!");
+    // validate
+    if (id) {
+      console.log(id);
+      console.log(JSON.stringify(body, null, 2));
+      const { data: resUpdate, error } = await restAPI.cms.updateSubject({
+        id,
+        body,
+      });
+      if (resUpdate?.value?.status) {
+        message.success("Cập nhật thông tin môn học thành công!");
+      } else {
+        message.error(error.value.data.message);
+      }
     } else {
-      message.error(response.data?.message || "Lỗi khi tạo khóa học!");
+      const { data: resCreate, error } = await restAPI.cms.createSubject({
+        body,
+      });
+      if (resCreate?.value?.status) {
+        message.success("Tạo môn học thành công!");
+        const newId = resCreate.value.data.id;
+        router.push({ path: window.location.pathname, query: { id: newId } });
+      } else {
+        message.error(error.value.data.message);
+      }
     }
-  } catch (err) {
-    message.error("Có lỗi xảy ra, vui lòng kiểm tra lại thông tin!");
-    console.error("API error:", err);
+  } catch {
   } finally {
     isLoading.value = false;
   }
@@ -163,7 +218,8 @@ onMounted(async () => {
 <template>
   <n-spin :show="showSpin">
     <div class="px-5">
-      <n-form :model="formValue" :rules="rules" ref="formRef">
+      <n-form :model="formValue">
+        <!-- :rules="rules" ref="formRef" -->
         <n-grid :x-gap="15" cols="1 m:4" responsive="screen" class="my-5">
           <n-gi>
             <n-form-item label="Ảnh đại diện khóa học" path="cover">
@@ -208,7 +264,7 @@ onMounted(async () => {
           <n-gi></n-gi>
           <n-gi>
             <n-form-item label="Mã môn học" path="code" class="w-32">
-              <n-input v-model:value="formValue.id" placeholder="0465214" />
+              <n-input v-model:value="formValue.code" placeholder="0465214" />
             </n-form-item>
           </n-gi>
           <n-gi span="1 m:3" class="-ml-36">
@@ -222,7 +278,7 @@ onMounted(async () => {
           <n-gi span="1 m:4">
             <n-form-item label="Danh mục" path="cata">
               <n-select
-                v-model:value="formValue.catagory"
+                v-model:value="formValue.category_id"
                 :options="Categoryarray"
                 label-field="name"
                 value-field="id"
@@ -233,7 +289,7 @@ onMounted(async () => {
           <n-gi span="1 m:4">
             <n-form-item label="Giảng viên phụ trách" path="teacher">
               <n-select
-                v-model:value="formValue.teacher"
+                v-model:value="formValue.teacher_ids"
                 :options="Staffarray"
                 label-field="full_name"
                 value-field="id"
@@ -244,14 +300,14 @@ onMounted(async () => {
           <n-gi span="1 m:4">
             <n-form-item label="Số buổi học" path="session">
               <n-input
-                v-model:value="formValue.days"
+                v-model:value="formValue.total_lessons"
                 placeholder="Nhập số buổi"
               />
             </n-form-item>
           </n-gi>
           <n-gi>
             <n-form-item label="Học phí" path="session">
-              <n-radio-group v-model:value="formValue.type">
+              <n-radio-group v-model:value="formValue.fee_type">
                 <n-space>
                   <n-radio value="1"> Miễn phí </n-radio>
                   <n-radio value="2"> Trả phí </n-radio>
@@ -265,7 +321,7 @@ onMounted(async () => {
               <n-input
                 v-model:value="displayPrice"
                 placeholder="0"
-                :disabled="formValue.type === '1'"
+                :disabled="formValue.fee_type === '1'"
               />
             </n-form-item>
           </n-gi>
@@ -274,7 +330,7 @@ onMounted(async () => {
               <n-input
                 v-model:value="displayDiscount"
                 placeholder="Nhập giá"
-                :disabled="formValue.type === '1'"
+                :disabled="formValue.fee_type === '1'"
               />
             </n-form-item>
           </n-gi>
@@ -289,7 +345,7 @@ onMounted(async () => {
           <n-gi span="1 m:4">
             <n-form-item label="Yêu cầu đầu vào" path="in">
               <n-input
-                v-model:value="formValue.description2"
+                v-model:value="formValue.input_require"
                 placeholder="Nhập mô tả"
               />
             </n-form-item>
@@ -297,7 +353,7 @@ onMounted(async () => {
           <n-gi span="1 m:4">
             <n-form-item label="Tiêu chuẩn đầu ra" path="out">
               <n-input
-                v-model:value="formValue.description3"
+                v-model:value="formValue.output_require"
                 placeholder="Nhập mô tả"
               />
             </n-form-item>
@@ -313,7 +369,7 @@ onMounted(async () => {
                 :unchecked-value="false"
                 :checked-value="true"
                 :rail-style="railStyle"
-                v-model:value="formValue.state"
+                v-model:value="formValue.is_active"
               />
             </n-form-item>
           </n-gi>
