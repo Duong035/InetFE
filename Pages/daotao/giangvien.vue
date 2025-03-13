@@ -8,94 +8,24 @@ import {
   computed,
   onMounted,
   toRaw,
-  nextTick,
 } from "vue";
 import { NButton, NDataTable, useMessage } from "naive-ui";
-import { useRouter } from "vue-router";
 
 export default defineComponent({
   setup() {
-    const formRef = ref();
-    const isLoading = ref(false);
-    const formValue = reactive({
-      id: "",
-      full_name: "",
-      email: "",
-      type: "",
-      branch_id: "",
-      organ_struct_id: null,
-      position: "",
-      username: "",
-      password: "",
-      introduction: "",
-      permission_grp_id: "",
-      is_active: true,
-      avatar: "",
-      salary_type: null,
-      salary: 0,
-      role_id: 4,
-    });
-
-    const rules = {
-      full_name: {
-        required: true,
-        message: "Please input full name",
-        trigger: "blur",
-      },
-      position: {
-        required: true,
-        message: "Please select position",
-        trigger: "blur",
-      },
-      email: {
-        required: true,
-        trigger: ["blur", "input"],
-        validator: (rule, value) => {
-          const emailRegex =
-            /^[a-zA-Z0-9]+(?:[._-]?[a-zA-Z0-9]+)*@[a-zA-Z0-9.]+\.[a-zA-Z]{2,}$/;
-          return new Promise((resolve, reject) => {
-            if (!value) reject(Error("Email không được để trống."));
-            else if (value.length > 100)
-              reject(Error("Email nhập không vượt quá 100 ký tự."));
-            else if (!emailRegex.test(value))
-              reject(Error("Email nhập không đúng định dạng."));
-            else resolve();
-          });
-        },
-      },
-      phone: {
-        required: true,
-        message: "Please input phone number",
-        trigger: "blur",
-      },
-      username: {
-        required: true,
-        message: "Please input username",
-        trigger: "blur",
-      },
-      password: {
-        required: true,
-        message: "Please input password",
-        trigger: "blur",
-      },
-      permission_grp_id: {
-        required: true,
-        message: "Please select permission group",
-        trigger: "blur",
-      },
+    const postref = ref<{
+      setAddNew: (value: boolean, id: RowData | string) => void;
+    } | null>(null);
+    const delref = ref<{
+      setAddNew: (title: string) => void;
+    } | null>(null);
+    const itemId = ref<string | null>(null);
+    const showModal = (value: boolean, id: RowData | string) => {
+      postref.value?.setAddNew(value, id);
     };
 
-    watch(
-      () => formValue.email,
-      async (newValue) => {
-        if (newValue) {
-          await nextTick();
-          formRef.value.validate().catch(() => {});
-        }
-      },
-    );
-    const loading = ref(false);
     const message = useMessage();
+    const loading = ref(false);
     const paginationReactive = reactive({
       page: 1,
       pageSize: 9,
@@ -110,45 +40,21 @@ export default defineComponent({
         paginationReactive.page = 1;
       },
     });
+
     const dayjs = useDayjs();
     const { restAPI } = useApi();
-    const router = useRouter();
     const checkedRowKeysRef = ref<DataTableRowKey[]>([]);
     const dataTableInstRef = ref<InstanceType<typeof NDataTable> | null>(null);
     const activeItem = ref("Tất cả trạng thái");
     const accountStatus = ref("");
-    const postref = ref<{ setAddNew: (value: boolean) => void } | null>(null);
-
-    const showPostModal = async () => {
-      await nextTick();
-      console.log("postref:", postref.value);
-      if (postref.value && typeof postref.value.setAddNew === "function") {
-        postref.value.setAddNew(true);
-      } else {
-        console.error("postref is not initialized or setAddNew is missing.");
-      }
-    };
-    const delModal = ref(false);
-    const deleteTarget = ref<{ id: string } | null>(null);
-    function filterStatus() {
-      if (dataTableInstRef.value) {
-        return dataTableInstRef.value.filter(null);
-      }
-    }
+    const Brancharray = ref([]);
+    const PermissionGrouparray = ref([]);
 
     onMounted(async () => {
       loadData();
-      filterStatus();
-      console.log("DaotaoGiangvienTest is mounted!");
-      await nextTick(); // Wait for DOM updates
-      console.log("postref in onMounted:", postref.value);
+      fetchBranch_id();
+      fetchPermissonGroup();
     });
-    // function edit(value: RowData) {
-    //   router.push({
-    //     path: "hocvieninfo",
-    //     query: { id: value.id },
-    //   });
-    // }
 
     function createColumns(): DataTableColumns<RowData> {
       return [
@@ -183,7 +89,7 @@ export default defineComponent({
                 color = "#00974F";
                 background = "#F0FFF8";
                 break;
-              case "Dừng hoạt động":
+              case "Không hoạt động":
                 color = "#4D6FA8";
                 background = "#ECF1F9";
                 break;
@@ -203,7 +109,7 @@ export default defineComponent({
               row.is_active,
             );
           },
-          defaultFilterOptionValues: ["Hoạt động", "Dừng hoạt động"],
+          defaultFilterOptionValues: ["Hoạt động", "Không hoạt động"],
           filter(value, row) {
             return row.is_active.includes(value as string);
           },
@@ -234,7 +140,7 @@ export default defineComponent({
                   size: "small",
                   quaternary: true,
                   style: { backgroundColor: "transparent", color: "blue" },
-                  // onClick: () => editUser(row),
+                  onClick: () => showModal(true, row.id),
                 },
                 {
                   default: () =>
@@ -249,7 +155,7 @@ export default defineComponent({
                   size: "small",
                   quaternary: true,
                   style: { backgroundColor: "transparent", color: "red" },
-                  // onClick: () => deleteUser(row),
+                  onClick: () => showDeleteModal("Xóa nhân viên?", row.id),
                 },
                 { default: () => h("i", { class: "fa-solid fa-trash" }) },
               ),
@@ -260,8 +166,9 @@ export default defineComponent({
     }
     const data = ref<RowData[]>([]);
     const loadData = async () => {
+      loading.value = true;
       try {
-        const { data: resData, error } = await restAPI.cms.getUser();
+        const { data: resData, error } = await restAPI.cms.getStaff();
 
         if (error?.value) {
           message.error(error?.value?.data?.message || "Lỗi tải dữ liệu");
@@ -270,7 +177,6 @@ export default defineComponent({
 
         const rawData = toRaw(resData.value)?.data;
         const Teachersdata = rawData.data;
-        console.log(resData);
         if (Array.isArray(Teachersdata)) {
           data.value = Teachersdata.map((item: any, index) => ({
             id: item.id,
@@ -285,31 +191,149 @@ export default defineComponent({
               item.is_active === true
                 ? "Hoạt động"
                 : item.is_active === false
-                  ? "Dừng hoạt động"
+                  ? "Không hoạt động"
                   : "N/A",
           }));
         } else {
           console.error("Unexpected API response:", rawData);
           message.error("Dữ liệu không hợp lệ từ API.");
         }
+        loading.value = false;
       } catch (err) {
         console.error("Error loading data:", err);
         message.error("Lỗi tải dữ liệu.");
       }
     };
 
+    const fetchBranch_id = async () => {
+      try {
+        const { data: resData } = await restAPI.cms.getBranches({});
+
+        if (resData.value?.status) {
+          Brancharray.value = resData.value.data
+            .map(({ id, Name, address }) => ({
+              id,
+              display: `${Name}: ${address}`,
+            }))
+            .sort((a, b) => a.display.localeCompare(b.display));
+        } else {
+          message.error("Failed to load Branches!");
+          Brancharray.value = [];
+        }
+      } catch (err) {
+        message.error("Error fetching Branches!");
+        console.error(err);
+        Brancharray.value = [];
+      }
+    };
+
+    const fetchPermissonGroup = async () => {
+      try {
+        const { data: resData } = await restAPI.cms.getPermissionGroups({});
+        if (resData.value?.status) {
+          PermissionGrouparray.value = resData.value.data.data
+            .map(({ id, name }) => ({
+              id,
+              name,
+            }))
+            .sort((a, b) => a.name.localeCompare(b.name));
+        } else {
+          message.error("Failed to load permission group!");
+          PermissionGrouparray.value = [];
+        }
+      } catch (err) {
+        message.error("Error fetching permission group!");
+        console.error(err);
+        PermissionGrouparray.value = [];
+      }
+    };
+
+    const handleFormSubmit = async (body: { id?: string }) => {
+      if (body.id) {
+        const id = body.id;
+        await updateStaff(body, id);
+      } else {
+        await createStaff(body);
+      }
+      loadData();
+    };
+    const createStaff = async (body: object) => {
+      const { data: resCreate, error } = await restAPI.cms.createStaff({
+        body,
+      });
+      if (resCreate?.value?.status) {
+        message.success("Tạo nhân viên thành công!");
+      } else {
+        const errorCode: keyof typeof ERROR_CODES = error.value?.data?.error;
+        const errorMessage =
+          ERROR_CODES[errorCode] ||
+          resCreate?.value?.message ||
+          "Đã xảy ra lỗi, vui lòng thử lại!";
+        message.warning(errorMessage);
+      }
+    };
+
+    const updateStaff = async (body: object, id: string) => {
+      const { data: resUpdate, error } = await restAPI.cms.updateStaff({
+        id,
+        body,
+      });
+      if (resUpdate?.value?.status) {
+        message.success("Cập nhật nhân viên thành công!");
+      } else {
+        const errorCode: keyof typeof ERROR_CODES = error.value?.data?.error;
+        const errorMessage =
+          ERROR_CODES[errorCode] ||
+          resUpdate?.value?.message ||
+          "Đã xảy ra lỗi, vui lòng thử lại!";
+
+        message.warning(errorMessage);
+      }
+    };
+
+    const showDeleteModal = (title: string, id: string) => {
+      itemId.value = id;
+      if (delref.value) {
+        delref.value.setAddNew(title);
+      }
+    };
+
+    const handleConfirmDelete = async () => {
+      if (itemId.value !== null) {
+        const body = {
+          ids: [itemId.value],
+        };
+        console.log(JSON.stringify(body, null, 2));
+        const { data: delData, error } = await restAPI.cms.deleteStaff({
+          body,
+        });
+        if (delData?.value?.status) {
+          message.success("Xóa nhân viên thành công!");
+        } else {
+          const errorCode: keyof typeof ERROR_CODES = error.value?.data?.error;
+          const errorMessage =
+            ERROR_CODES[errorCode] ||
+            delData?.value?.message ||
+            "Đã xảy ra lỗi, vui lòng thử lại!";
+
+          message.warning(errorMessage);
+        }
+        itemId.value = null;
+        loadData();
+      }
+    };
     return {
-      rules,
-      isLoading,
-      formRef,
-      formValue,
-      loading,
-      showPostModal,
-      deleteTarget,
-      delModal,
+      Brancharray,
+      PermissionGrouparray,
+      postref,
+      delref,
+      handleConfirmDelete,
+      handleFormSubmit,
+      showModal,
       activeItem,
       accountStatus,
       data,
+      loading,
       columns: createColumns(),
       dataTableInst: dataTableInstRef,
       checkedRowKeys: checkedRowKeysRef,
@@ -317,7 +341,7 @@ export default defineComponent({
 
       filterStatus() {
         if (dataTableInstRef.value) {
-          if (accountStatus.value == "All") {
+          if (accountStatus.value == "") {
             dataTableInstRef.value.filter(null);
           } else {
             dataTableInstRef.value.filter({
@@ -327,29 +351,10 @@ export default defineComponent({
         }
       },
       rowKey: (row: RowData) => row.id,
-      options: [
-        {
-          label: "Select",
-          value: "song0",
-          disabled: true,
-        },
-        {
-          label: "A",
-          value: "A",
-        },
-        {
-          label: "B",
-          value: "B",
-        },
-        {
-          label: "C",
-          value: "C",
-        },
-      ],
       statusoptions: [
         {
-          label: "All",
-          value: "All",
+          label: "Tất cả trạng thái",
+          value: "",
         },
         {
           label: "Hoạt động",
@@ -405,34 +410,30 @@ const actionMenu = [
                   style="margin-right: 20px"
                 />
                 <n-select
-                  v-model="time"
-                  :options="options"
                   placeholder="Tất cả cơ cấu tổ chức"
                   style="margin-right: 20px"
                 />
                 <n-select
                   v-model="accountStatus"
-                  :options="statusoptions"
+                  :options="PermissionGrouparray"
+                  label-field="name"
+                  value-field="id"
                   @change="filterStatus"
                   placeholder="Tất cả nhóm quyền"
                   style="margin-right: 20px"
                 />
                 <n-select
-                  v-model="time"
-                  :options="options"
+                  :options="Brancharray"
+                  label-field="display"
+                  value-field="id"
                   placeholder="Tất cả chi nhánh"
                   style="margin-right: 20px"
                 />
                 <n-select
                   v-model:value="accountStatus"
                   :options="statusoptions"
-                  @change="
-                    (() => {
-                      accountStatus = $event;
-                      filterStatus();
-                    })()
-                  "
                   placeholder="Tất cả trạng thái"
+                  @update:value="filterStatus"
                   style="margin-right: 20px"
                 />
               </n-form-item>
@@ -451,12 +452,11 @@ const actionMenu = [
                       round
                       type="info"
                       class="h-12 w-48 rounded-2xl text-xl"
-                      @click="showPostModal()"
+                      @click="showModal(false, '')"
                     >
                       Thêm mới
                       <i class="fa-solid fa-plus ml-3"></i>
                     </n-button>
-                    <NhansuPost />
                   </n-form-item>
                 </n-gi>
                 <n-gi
@@ -464,38 +464,27 @@ const actionMenu = [
                   class="flex-cols-6 flex gap-x-10 justify-self-end"
                 >
                   <n-form-item>
-                    <n-button type="info" ghost>
+                    <n-button
+                      type="info"
+                      ghost
+                      @click="$router.push('phanquyen')"
+                    >
                       Cài đặt nhóm quyền
-                      <Icon
-                        name="icomoon-free:tree"
-                        width="24"
-                        height="24"
-                        style="margin-left: 5px"
-                      />
+                      <i class="fa-solid fa-sitemap pl-2"></i>
                     </n-button>
                   </n-form-item>
 
                   <n-form-item>
                     <n-button type="info">
                       Thêm từ file
-                      <Icon
-                        name="fe:import"
-                        width="24"
-                        height="24"
-                        style="margin-left: 5px"
-                      />
+                      <i class="fa-solid fa-file-import pl-2"></i>
                     </n-button>
                   </n-form-item>
 
                   <n-form-item>
                     <n-button type="info">
                       Xuất file
-                      <Icon
-                        name="fe:export"
-                        width="24"
-                        height="24"
-                        style="margin-left: 5px"
-                      />
+                      <i class="fa-solid fa-file-export pl-2"></i>
                     </n-button>
                   </n-form-item>
                 </n-gi>
@@ -517,164 +506,12 @@ const actionMenu = [
         </n-card>
       </div>
     </div>
-    <!-- <n-modal v-model:show="showDeleteModal">
-      <n-card
-        title="Xác nhận xóa"
-        @close="showDeleteModal = false"
-        style="width: 400px"
-      >
-        <p v-if="deleteType === 'single'">
-          Bạn có chắc chắn muốn xóa học viên này không?
-        </p>
-        <p v-else>Bạn có chắc chắn muốn xóa các học viên đã chọn không?</p>
-        <template #footer>
-          <n-space justify="end">
-            <n-button @click="showDeleteModal = false">Hủy</n-button>
-            <n-button type="error" @click="confirmDelete" :loading="isDeleting">
-              Xóa
-            </n-button>
-          </n-space>
-        </template>
-      </n-card>
-    </n-modal> -->
-    <n-modal-provider>
-      <n-modal
-        v-model:show="isModalVisible"
-        preset="card"
-        style="
-          position: fixed;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          width: 90%;
-          max-width: 600px;
-        "
-        :header-style="{ padding: '10px' }"
-        :closable="false"
-        @update:show="closeModal"
-      >
-        <n-form :model="formValue" ref="formRef" :rules="rules">
-          <n-grid cols="1 m:2" :x-gap="40" responsive="screen">
-            <n-gi>
-              <n-form-item label="Họ tên nhân sự *" path="full_name">
-                <n-input v-model:value="formValue.full_name" class="w-80" />
-              </n-form-item>
-            </n-gi>
-            <n-gi>
-              <n-form-item label="Ảnh nhân sự">
-                <n-upload
-                  @on-change="handleImageChange"
-                  :max="1"
-                  :show-file-list="false"
-                  :before-upload="beforeUpload"
-                >
-                  <n-button>Chọn tệp</n-button>
-                </n-upload>
-                <template v-if="imageUrl">
-                  <img
-                    :src="imageUrl"
-                    alt="Image preview"
-                    class="mt-3 h-28 w-28 rounded-lg object-cover"
-                  />
-                </template>
-              </n-form-item>
-            </n-gi>
-            <n-gi>
-              <n-form-item label="Tên tài khoản *" path="username">
-                <n-input v-model:value="formValue.username" class="w-80" />
-              </n-form-item>
-            </n-gi>
-
-            <n-gi>
-              <n-form-item label="Vai trò *" path="position">
-                <n-select
-                  v-model:value="formValue.position"
-                  :options="branchPotition"
-                  class="w-80"
-                />
-              </n-form-item>
-            </n-gi>
-
-            <n-gi>
-              <n-form-item label="Email *" path="email">
-                <n-input v-model:value="formValue.email" class="w-80" />
-              </n-form-item>
-            </n-gi>
-            <n-gi>
-              <n-form-item label="Chi nhánh *" path="branch_id">
-                <n-select
-                  v-model:value="formValue.branch_id"
-                  :options="branchOptions"
-                  class="w-80"
-                />
-              </n-form-item>
-            </n-gi>
-
-            <n-gi>
-              <n-form-item label="Cơ cấu tổ chức *" path="organ_struct_id">
-                <n-select
-                  v-model:value="formValue.organ_struct_id"
-                  :options="organizationOptions"
-                  class="w-80"
-                />
-              </n-form-item>
-            </n-gi>
-
-            <n-gi>
-              <n-form-item label="Mật khẩu *" path="password">
-                <n-input
-                  v-model:value="formValue.password"
-                  type="password"
-                  class="w-80"
-                />
-              </n-form-item>
-            </n-gi>
-            <n-gi>
-              <n-form-item label="Nhóm quyền *" path="permission_grp_id">
-                <n-select
-                  v-model:value="formValue.permission_grp_id"
-                  :options="permissionGroupOptions"
-                  class="w-80"
-                />
-              </n-form-item>
-            </n-gi>
-
-            <n-gi>
-              <n-form-item label="Trạng thái hoạt động:">
-                <n-switch v-model:value="formValue.is_active" />
-              </n-form-item>
-            </n-gi>
-            <n-gi span="2">
-              <n-form-item label="Giới thiệu">
-                <n-input
-                  v-model:value="formValue.introduction"
-                  type="textarea"
-                  class="w-full"
-                />
-              </n-form-item>
-            </n-gi>
-
-            <n-gi span="2">
-              <n-form-item class="flex gap-5">
-                <n-button
-                  type="info"
-                  class="mr-5 h-12 w-48 rounded-2xl text-lg"
-                  @click.prevent="handleSubmit"
-                >
-                  Lưu
-                </n-button>
-                <!-- <n-button
-                    type="default"
-                    class="h-12 w-48 rounded-2xl text-lg"
-                    @click="cancelClick"
-                  >
-                    Hủy
-                  </n-button> -->
-              </n-form-item>
-            </n-gi>
-          </n-grid>
-        </n-form>
-      </n-modal>
-    </n-modal-provider>
+    <DaotaoGiangvienModal
+      @submit="handleFormSubmit"
+      ref="postref"
+      :Brancharray="Brancharray"
+      :PermissionGrouparray="PermissionGrouparray"
+    />
+    <DelModal @confirm-delete="handleConfirmDelete" ref="delref" />
   </div>
 </template>

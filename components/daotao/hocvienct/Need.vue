@@ -242,6 +242,7 @@ onMounted(async () => {
             <n-form-item label="Môn học *" label-placement="left">
               <n-select
                 placeholder="Chọn môn học"
+                multiple
                 v-model:value="formValue.subject_ids"
                 :options="Subjectarray"
                 label-field="name"

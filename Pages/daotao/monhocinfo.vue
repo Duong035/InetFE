@@ -199,7 +199,7 @@ const handleSubmit = async () => {
       const errorCode = error.value?.data?.error;
       const errorMessage =
         ERROR_CODES[errorCode] ||
-        resdel?.value?.message ||
+        resCreate?.value?.message ||
         "Đã xảy ra lỗi, vui lòng thử lại!";
 
       message.warning(errorMessage);
@@ -217,7 +217,7 @@ const handleSubmit = async () => {
       const errorCode = error.value?.data?.error;
       const errorMessage =
         ERROR_CODES[errorCode] ||
-        resdel?.value?.message ||
+        resUpdate?.value?.message ||
         "Đã xảy ra lỗi, vui lòng thử lại!";
 
       message.warning(errorMessage);

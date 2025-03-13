@@ -24,7 +24,6 @@ const API_ENDPOINTS = {
     subject: "/api/admin/subject",
     all_subject: "/api/admin/subject/all",
     classes: "/api/admin/classes",
-    User: "/api/admin/users",
     class: "/api/admin/class",
     permissionGroup: "/api/admin/permission-grp",
     permissionTag: "/api/admin/permission-tags",
@@ -98,11 +97,7 @@ class Request {
       method,
       headers,
       ...options,
-      // onResponse({ response }) {
-      //   if (!response.ok) {
-      //     message.error(`Error: ${response.statusText}`);
-      //   }
-      // },
+      ...this.handleFetch,
     });
   }
 
@@ -154,10 +149,24 @@ class CMSManager {
   async resendOtp(data) {
     return this.request.post(API_ENDPOINTS.cms.resend_otp, data);
   }
-  // user__________________________________________________________________________________________
-  async getUser(data) {
-    return this.request.get(API_ENDPOINTS.cms.User, data);
+  // Staff____________________________________________________________________________________
+  async getStaff(data) {
+    return this.request.get(API_ENDPOINTS.cms.staff, data);
   }
+  async getStaffDetails(data) {
+      return this.request.get(`${API_ENDPOINTS.cms.staff}/${data.id}`, data)
+  }
+  async createStaff(data) {
+    return this.request.post(API_ENDPOINTS.cms.staff, data)
+  }
+  async updateStaff(data) {
+    return this.request.put(`${API_ENDPOINTS.cms.staff}/${data.id}`, data)
+  }
+  async deleteStaff(data) {
+    return this.request.delete(`${API_ENDPOINTS.cms.staff}`, data)
+  }
+  //__________________________________________________________________________________________
+
 
   //Unit______________________________________________________________________________________
   async getUnitInformation(data) {

@@ -1,7 +1,7 @@
 <script lang="ts">
 import type { DataTableColumns, DataTableRowKey } from "naive-ui";
 import { defineComponent, ref, h, reactive, computed, onMounted } from "vue";
-import { NButton, NDataTable, NDropdown, NInputNumber } from "naive-ui";
+import { NButton, NDataTable } from "naive-ui";
 import { useRouter } from "vue-router";
 import axios from "axios";
 import dayjs from "dayjs";
