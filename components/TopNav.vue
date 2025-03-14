@@ -37,7 +37,7 @@ onMounted(() => {
       <!-- Top Navigation -->
       <header class="flex items-center justify-between bg-white p-4 shadow">
         <h1 class="text-lg font-semibold text-gray-700">Logo</h1>
-        <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-4 pr-3">
           <div class="relative">
             <input
               type="text"

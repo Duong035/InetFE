@@ -1,34 +1,132 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { message } from "ant-design-vue";
+import { useRoute } from "vue-router";
 import dayjs from "dayjs";
 
-const formValue = ref({
+// API
+const { restAPI } = useApi();
+
+// Interface
+interface ClassData {
+  id: String | null;
+  image: string;
+  className: string;
+  classCode: string;
+  studyMode: number | null;
+  subjects: string;
+  branches: string;
+  startDate: number | null;
+  endDate: number | null;
+  description: string;
+}
+
+// Dữ liệu reactive
+const route = useRoute();
+const isSubmitting = ref(false);
+const subjects = ref<{ label: string; value: string }[]>([]);
+const branches = ref<{ label: string; value: string }[]>([]);
+const newId = route.query.id;
+
+// Giá trị form
+const formValue = ref<ClassData>({
+  id: null,
   image: "",
-  studyMode: null as Number | null,
-  subjects: "",
-  classCode: "",
   className: "",
+  classCode: "",
+  studyMode: null,
+  subjects: "",
+  branches: "",
   startDate: null,
   endDate: null,
   description: "",
-  branches: "",
 });
 
-const subjects = ref<{ label: string; value: string }[]>([]);
-const branches = ref<{ label: string; value: string }[]>([]);
+//  HÀM LẤY THÔNG TIN LỚP HỌC THEO ID
+const fetchClassData = async () => {
+  try {
+    const { data: resData } = await restAPI.cms.getClassById({
+      id: newId,
+    });
 
-const { restAPI } = useApi();
+    if (resData.value?.status) {
+      console.log("Dữ liệu lớp học:", resData);
+      const data = resData.value?.data;
 
-const isSubmitting = ref(false);
+      formValue.value.id = data?.id || null;
+      formValue.value.image = data?.image || "";
+      formValue.value.className = data?.name || "";
+      formValue.value.classCode = data?.code || "";
+      formValue.value.studyMode = data?.type || null;
+      formValue.value.subjects = data?.subject?.id || "";
+      formValue.value.branches = data?.branch?.id || "";
+      formValue.value.startDate = data?.start_at
+        ? dayjs(data?.start_at).valueOf()
+        : null;
+      formValue.value.endDate = data?.end_at
+        ? dayjs(data?.end_at).valueOf()
+        : null;
+      formValue.value.description = data?.description || "";
+    } else {
+      message.warning("Không tìm thấy thông tin lớp học.");
+    }
+  } catch (error) {
+    console.error("Lỗi khi tải thông tin lớp học:", error);
+    message.error("Lỗi khi tải thông tin lớp học.");
+  }
+};
 
+//  HÀM LẤY DANH SÁCH MÔN HỌC
+const fetchSubjects = async () => {
+  try {
+    const { data: resData, error } = await restAPI.cms.getSubjects({});
+    if (error?.value) {
+      message.error(error?.value?.data?.message || "Lỗi tải dữ liệu môn học");
+      return;
+    }
+
+    subjects.value =
+      resData.value?.data?.subjects?.map((subject: any) => ({
+        label: subject.name,
+        value: subject.id,
+      })) || [];
+  } catch (err) {
+    console.error("Lỗi khi tải danh sách môn học:", err);
+  }
+};
+
+//  HÀM LẤY DANH SÁCH CHI NHÁNH
+const fetchBranches = async () => {
+  try {
+    const { data: resData, error } = await restAPI.cms.getBranches({});
+    if (error?.value) {
+      message.error(
+        error?.value?.data?.message || "Lỗi tải danh sách chi nhánh",
+      );
+      return;
+    }
+
+    branches.value =
+      resData.value?.data?.map((branch: any) => ({
+        label: branch.address,
+        value: branch.id,
+      })) || [];
+  } catch (err) {
+    console.error("Lỗi khi tải danh sách chi nhánh:", err);
+  }
+};
+
+//  HÀM TẠO HOẶC CẬP NHẬT LỚP HỌC
 const handleSubmit = async () => {
+  if (isSubmitting.value) return; // Ngăn chặn gọi API nhiều lần liên tiếp
   isSubmitting.value = true;
 
   try {
     console.log("Giá trị form trước khi gửi:", formValue.value);
 
-    let payload = {
+    const isUpdating = !!formValue.value.id; // Nếu có ID thì là cập nhật
+    const payload = {
+      id: formValue.value.id,
       type: formValue.value.studyMode,
       branch_id: formValue.value.branches,
       subject_id: formValue.value.subjects,
@@ -44,22 +142,37 @@ const handleSubmit = async () => {
       group_url: "",
     };
 
-    console.log("Payload gửi lên API:", payload);
+    console.log(
+      `🔄 ${isUpdating ? "Cập nhật" : "Tạo mới"} lớp học với payload:`,
+      payload,
+    );
 
-    const { data: resData, error } = await restAPI.cms.createClass({
-      body: JSON.stringify(payload), // ✅ Ensure body is set
-    });
+    let resData, error;
+    if (isUpdating) {
+      // Cập nhật lớp học (PATCH)
 
-    console.log(resData);
-    if (error?.value) {
-      message.error(error?.value?.data?.message || "Lỗi khi tạo lớp học");
-      return;
+      ({ data: resData, error } = await restAPI.cms.updateClass({
+        body: JSON.stringify(payload),
+      }));
+    } else {
+      // Tạo mới lớp học (POST)
+      ({ data: resData, error } = await restAPI.cms.createClass({
+        body: JSON.stringify(payload),
+      }));
     }
 
-    message.success("Tạo lớp học thành công!");
+    if (error?.value) {
+      throw new Error(
+        error.value.data?.message ||
+          `Lỗi khi ${isUpdating ? "cập nhật" : "tạo"} lớp học`,
+      );
+    }
 
-    // Reset form sau khi gửi thành công
+    message.success(`${isUpdating ? "Cập nhật" : "Tạo"} lớp học thành công!`);
+
+    // Reset form sau khi hoàn thành
     formValue.value = {
+      id: null,
       image: "",
       studyMode: null,
       subjects: "",
@@ -71,58 +184,25 @@ const handleSubmit = async () => {
       branches: "",
     };
   } catch (err) {
-    console.error("Lỗi khi gửi dữ liệu:", err);
-    message.error("Lỗi khi gửi dữ liệu.");
+    console.error(
+      ` Lỗi khi ${formValue.value.id ? "cập nhật" : "tạo"} lớp học:`,
+      err,
+    );
+    const errorMessage =
+      err instanceof Error ? err.message : "Lỗi khi gửi dữ liệu.";
+    message.error(errorMessage);
   } finally {
     isSubmitting.value = false;
   }
 };
 
-// lấy danh sách môn học
-onMounted(async () => {
-  try {
-    const { data: resData, error } = await restAPI.cms.getSubjects({});
+// CHẠY CÁC HÀM KHI COMPONENT ĐƯỢC MOUNTED
+onMounted(() => {
+  fetchSubjects();
+  fetchBranches();
+  console.log("ID lớp học0:", newId);
 
-    if (error?.value) {
-      message.error(error?.value?.data?.message || "Lỗi tải dữ liệu");
-      return;
-    }
-
-    subjects.value =
-      resData.value?.data?.subjects?.map((subjects: any) => ({
-        label: subjects.name,
-        value: subjects.id,
-      })) || [];
-  } catch (err) {
-    console.error("Lỗi khi tải danh sách môn học:", err);
-  }
-});
-// lấy danh sách chi nhánh
-onMounted(async () => {
-  try {
-    const { data: resData, error } = await restAPI.cms.getBranches({});
-
-    if (error?.value) {
-      message.error(error?.value?.data?.message || "Lỗi tải dữ liệu");
-      return;
-    }
-
-    if (
-      !resData.value ||
-      !resData.value.data ||
-      !Array.isArray(resData.value.data)
-    ) {
-      console.error("Dữ liệu API không hợp lệ:", resData.value);
-      return;
-    }
-
-    branches.value = resData.value.data.map((branch: any) => ({
-      label: branch.address,
-      value: branch.id,
-    }));
-  } catch (err) {
-    console.error("Lỗi khi tải danh sách chi nhánh:", err);
-  }
+  fetchClassData();
 });
 </script>
 
@@ -132,8 +212,6 @@ onMounted(async () => {
 
     <!-- Ảnh đại diện lớp học -->
     <div class="rounded-lg bg-white p-5 shadow-md">
-      <h2 class="mb-4 text-lg font-semibold">Thông tin cơ bản</h2>
-
       <div class="flex items-center gap-5">
         <!-- Ảnh đại diện lớp học -->
         <div class="w-1/3">

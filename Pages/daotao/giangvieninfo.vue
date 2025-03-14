@@ -1,5 +1,7 @@
 <script setup>
-import { ref, watch } from "vue";
+import { ref, reactive } from "vue";
+import { useRouter, useRoute } from "vue-router";
+
 const railStyle = ({ focused, checked }) => {
   const style = {};
   if (checked) {
@@ -10,30 +12,22 @@ const railStyle = ({ focused, checked }) => {
   }
   return style;
 };
-const props = defineProps({
-  Brancharray: Array,
-  PermissionGrouparray: Array,
-});
-const { restAPI } = useApi();
-const emit = defineEmits(["submit"]);
-const isModalVisible = ref(false);
-const is_edit = ref(false);
-const formRef = ref();
+
 const message = useMessage();
+const dayjs = useDayjs();
+const route = useRoute();
+const router = useRouter();
 
-const setAddNew = (value, id) => {
-  isModalVisible.value = true;
-  is_edit.value = value;
-  formValue.id = id;
-  if (id) {
-    fetchStaffData();
-  }
-};
-
-defineExpose({ setAddNew });
+const { restAPI } = useApi();
+const isLoading = ref(false);
+const formRef = ref(null);
+const showSpin = ref(false);
+const Brancharray = ref([]);
+const PermissionGrouparray = ref([]);
+const Subjectarray = ref([]);
 
 const formValue = reactive({
-  id: null,
+  id: computed(() => route.query.id || null),
   full_name: null,
   email: null,
   type: null,
@@ -110,30 +104,6 @@ const rules = {
   },
 };
 
-watch(isModalVisible, (newValue, oldValue) => {
-  if (!newValue) {
-    Object.assign(formValue, {
-      id: null,
-      full_name: null,
-      email: null,
-      type: null,
-      branch_id: null,
-      phone: null,
-      organ_struct_id: null,
-      position: 3,
-      username: null,
-      password: null,
-      introduction: null,
-      permission_grp_id: null,
-      is_active: true,
-      avatar: "https://i.postimg.cc/Pxxp3vpy/cover.png",
-      salary_type: null,
-      salary: null,
-      role_id: 4,
-    });
-  }
-});
-
 const userPosition = [
   { label: "Giảng viên", value: 1 },
   { label: "Trợ giảng", value: 2 },
@@ -147,16 +117,13 @@ const userSalary = [
   { label: "Tính lương theo cả khóa", value: 3 },
 ];
 
-const fetchStaffData = async () => {
-  if (!formValue.id) return;
-
+if (formValue.id) {
+  showSpin.value = true;
   const { data: resData, error } = await restAPI.cms.getStaffDetails({
     id: formValue.id,
   });
-
   if (resData.value?.status) {
     const item = resData.value?.data;
-    formValue.id = item.id || null;
     formValue.full_name = item.full_name;
     formValue.email = item.email;
     formValue.type = item.type;
@@ -176,9 +143,72 @@ const fetchStaffData = async () => {
         ? String(item.salary)
         : "0";
     formValue.role_id = item.role_id;
-    isModalVisible.value = true;
-  } else {
-    message.error("Failed to load user details!");
+  }
+  showSpin.value = false;
+}
+
+const fetchBranch_id = async () => {
+  try {
+    const { data: resData } = await restAPI.cms.getBranches({});
+
+    if (resData.value?.status) {
+      Brancharray.value = resData.value.data
+        .map(({ id, Name, address }) => ({
+          id,
+          display: `${Name}: ${address}`,
+        }))
+        .sort((a, b) => a.display.localeCompare(b.display));
+    } else {
+      message.error("Failed to load Branches!");
+      Brancharray.value = [];
+    }
+  } catch (err) {
+    message.error("Error fetching Branches!");
+    console.error(err);
+    Brancharray.value = [];
+  }
+};
+
+const fetchPermissonGroup = async () => {
+  try {
+    const { data: resData } = await restAPI.cms.getPermissionGroups({});
+    if (resData.value?.status) {
+      PermissionGrouparray.value = resData.value.data.data
+        .map(({ id, name }) => ({
+          id,
+          name,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      message.error("Failed to load permission group!");
+      PermissionGrouparray.value = [];
+    }
+  } catch (err) {
+    message.error("Error fetching permission group!");
+    console.error(err);
+    PermissionGrouparray.value = [];
+  }
+};
+
+const fetchSubjects = async () => {
+  try {
+    const { data: resData, error } = await restAPI.cms.getAllSubject({});
+    const rawData = toRaw(resData.value.data);
+    if (resData.value.status) {
+      Subjectarray.value = rawData
+        .map(({ id, name }) => ({
+          id,
+          name,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      message.error("Failed to load subjects!");
+      Subjectarray.value = [];
+    }
+  } catch (err) {
+    message.error("Error fetching subjects!");
+    console.error(err);
+    Subjectarray.value = [];
   }
 };
 
@@ -195,9 +225,9 @@ const handleImageUpload = () => {
 };
 
 const handleSubmit = async (e) => {
+  if (isLoading.value) return;
+  isLoading.value = true;
   e.preventDefault();
-  const valid = await formRef.value.validate();
-  if (!valid) return;
   const {
     id,
     full_name,
@@ -236,38 +266,76 @@ const handleSubmit = async (e) => {
     salary: Number(salary) || 0,
     role_id,
   };
-  console.log("Request body:", JSON.stringify(body, null, 2));
+  try {
+    await formRef.value?.validate();
+    if (id) {
+      const { data: resUpdate, error } = await restAPI.cms.updateStaff({
+        id,
+        body,
+      });
+      if (resUpdate?.value?.status) {
+        message.success("Cập nhật nhân viên thành công!");
+      } else {
+        const errorCode = error.value?.data?.error;
+        const errorMessage =
+          ERROR_CODES[errorCode] ||
+          resUpdate?.value?.message ||
+          "Đã xảy ra lỗi, vui lòng thử lại!";
 
-  emit("submit", body);
-  closeModal();
+        message.warning(errorMessage);
+      }
+    } else {
+      const { data: resCreate, error } = await restAPI.cms.createStaff({
+        body,
+      });
+      if (resCreate?.value?.status) {
+        message.success("Tạo nhân viên thành công!");
+      } else {
+        const errorCode = error.value?.data?.error;
+        const errorMessage =
+          ERROR_CODES[errorCode] ||
+          resCreate?.value?.message ||
+          "Đã xảy ra lỗi, vui lòng thử lại!";
+        message.warning(errorMessage);
+      }
+    }
+  } catch (err) {
+    message.error("Vui lòng kiểm tra lại thông tin!");
+    console.error("API error:", err);
+  } finally {
+    isLoading.value = false;
+  }
 };
-const closeModal = () => {
-  isModalVisible.value = false;
-};
+onMounted(() => {
+  fetchBranch_id();
+  fetchPermissonGroup();
+  fetchSubjects();
+});
 </script>
 <template>
-  <n-modal-provider>
-    <n-modal
-      v-model:show="isModalVisible"
-      preset="card"
-      style="
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 100%;
-        max-width: 1200px;
-      "
-      :header-style="{ padding: '10px' }"
-      :closable="false"
-    >
+  <div class="flex h-full w-full overflow-auto rounded-2xl bg-gray-50">
+    <!-- Main Content -->
+    <div class="flex-1 px-5 py-5">
+      <h1
+        v-if="formValue.id === null"
+        class="mb-5 text-4xl font-bold text-[#133D85]"
+      >
+        Thêm mới nhân sự
+      </h1>
+      <h1 v-else class="mb-5 text-4xl font-bold text-[#133D85]">
+        Chỉnh sửa nhân sự
+      </h1>
+      <br />
       <n-form :model="formValue" ref="formRef" :rules="rules">
         <n-grid cols="3" :x-gap="20" responsive="screen">
           <n-gi span="2">
             <n-grid cols="2" :x-gap="20" responsive="screen">
               <n-gi>
                 <n-form-item label="Họ tên nhân sự" path="full_name">
-                  <n-input v-model:value="formValue.full_name" />
+                  <n-input
+                    v-model:value="formValue.full_name"
+                    placeholder="Nhập họ tên nhân sự"
+                  />
                 </n-form-item>
               </n-gi>
 
@@ -284,7 +352,10 @@ const closeModal = () => {
 
               <n-gi>
                 <n-form-item label="Email" path="email">
-                  <n-input v-model:value="formValue.email" />
+                  <n-input
+                    v-model:value="formValue.email"
+                    placeholder="Nhập Email"
+                  />
                 </n-form-item>
               </n-gi>
 
@@ -339,7 +410,7 @@ const closeModal = () => {
             <n-form-item label="Chi nhánh" path="branch_id">
               <n-select
                 v-model:value="formValue.branch_id"
-                :options="props.Brancharray"
+                :options="Brancharray"
                 label-field="display"
                 value-field="id"
                 placeholder="Chọn chi nhánh"
@@ -349,7 +420,10 @@ const closeModal = () => {
 
           <n-gi>
             <n-form-item label="Cơ cấu tổ chức" path="organ_struct_id">
-              <n-select v-model:value="formValue.organ_struct_id" />
+              <n-select
+                v-model:value="formValue.organ_struct_id"
+                placeholder="Chọn cơ cấu tổ chức"
+              />
             </n-form-item>
           </n-gi>
 
@@ -357,7 +431,7 @@ const closeModal = () => {
             <n-form-item label="Nhóm quyền" path="permission_grp_id">
               <n-select
                 v-model:value="formValue.permission_grp_id"
-                :options="props.PermissionGrouparray"
+                :options="PermissionGrouparray"
                 label-field="name"
                 value-field="id"
                 placeholder="Chọn nhóm quyền"
@@ -367,7 +441,11 @@ const closeModal = () => {
 
           <n-gi>
             <n-form-item label="Tên tài khoản" path="username">
-              <n-input v-model:value="formValue.username" :disabled="is_edit" />
+              <n-input
+                v-model:value="formValue.username"
+                :disabled="formValue.id !== null"
+                placeholder="Nhập tên tài khoản"
+              />
             </n-form-item>
           </n-gi>
 
@@ -377,7 +455,8 @@ const closeModal = () => {
                 v-model:value="formValue.password"
                 type="password"
                 show-password-on="click"
-                :disabled="is_edit"
+                :disabled="formValue.id !== null"
+                placeholder="Nhập mật khẩu"
               />
             </n-form-item>
           </n-gi>
@@ -394,41 +473,89 @@ const closeModal = () => {
               />
             </n-form-item>
           </n-gi>
-          <n-gi>
-            <n-form-item label="Cách tính lương" path="salary" v-show="is_edit">
-              <n-select
-                v-model:value="formValue.salary_type"
-                :options="userSalary"
-                label-field="label"
-                value-field="value"
-              />
-            </n-form-item>
-          </n-gi>
-          <n-gi>
-            <n-form-item
-              label="Số tiền tính lương (VNĐ)"
-              path="salary"
-              v-show="is_edit"
-            >
-              <n-input v-model:value="formValue.salary" type="number" />
-            </n-form-item>
-          </n-gi>
+
           <n-gi span="2">
             <n-form-item label="Giới thiệu">
               <n-input
                 v-model:value="formValue.introduction"
                 type="textarea"
                 class="w-full"
+                placeholder="Giới thiệu"
               />
             </n-form-item>
           </n-gi>
-
+          <n-gi span="2" v-show="formValue.id !== null">
+            <n-grid cols="2" :x-gap="20" responsive="screen">
+              <n-gi span="2">
+                <h1 class="text-2xl font-bold text-[#133D85]">
+                  Đăng ký lịch dạy
+                </h1>
+              </n-gi>
+              <n-gi class="mt-7">
+                <n-form-item
+                  label="Hình thức dạy học"
+                  label-placement="left"
+                  :show-feedback="false"
+                >
+                  <n-space item-style="display: flex;">
+                    <n-checkbox
+                      label="Học online"
+                      v-model:checked="formValue.is_online_form"
+                    />
+                    <n-checkbox
+                      label="Học offline"
+                      v-model:checked="formValue.is_offline_form"
+                    />
+                  </n-space>
+                </n-form-item>
+              </n-gi>
+              <n-gi span="1 ">
+                <n-form-item label="Môn học" :show-feedback="false">
+                  <n-select
+                    placeholder="Chọn môn học"
+                    multiple
+                    v-model:value="formValue.subject_ids"
+                    :options="Subjectarray"
+                    label-field="name"
+                    value-field="id"
+                    clearable
+                  />
+                </n-form-item>
+              </n-gi>
+              <n-gi span="2">
+                <n-form-item>
+                  <DaotaoGiangvienSchedule />
+                </n-form-item>
+              </n-gi>
+              <n-gi>
+                <n-form-item label="Cách tính lương" path="salary_type">
+                  <n-select
+                    v-model:value="formValue.salary_type"
+                    :options="userSalary"
+                    label-field="label"
+                    value-field="value"
+                  />
+                </n-form-item>
+              </n-gi>
+              <n-gi>
+                <n-form-item label="Số tiền tính lương(VNĐ)" path="salary">
+                  <n-input v-model:value="formValue.salary" />
+                </n-form-item>
+              </n-gi>
+              <n-gi span="2">
+                <n-form-item label="Ghi chú">
+                  <n-input type="textarea" class="w-full" placeholder="Note" />
+                </n-form-item>
+              </n-gi>
+            </n-grid>
+          </n-gi>
           <n-gi span="2">
             <n-form-item class="flex gap-5">
               <n-button
                 type="info"
                 class="mr-5 h-12 w-48 rounded-2xl text-lg"
-                @click="handleSubmit"
+                :loading="isLoading"
+                @click.prevent="handleSubmit"
               >
                 Lưu
               </n-button>
@@ -436,6 +563,6 @@ const closeModal = () => {
           </n-gi>
         </n-grid>
       </n-form>
-    </n-modal>
-  </n-modal-provider>
+    </div>
+  </div>
 </template>

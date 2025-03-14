@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, nextTick, defineExpose } from "vue";
+import { ref, watch, nextTick } from "vue";
 
 const { restAPI } = useApi();
 const emit = defineEmits(["submit"]);
@@ -103,13 +103,12 @@ const handleSubmit = async (e) => {
   const valid = await formRef.value.validate();
   if (!valid) return;
 
-  const { id, name, url, type, position, is_live } = formValue;
+  const { id, name, url, type, position } = formValue;
   let body = {
     name,
     url,
     type,
     position,
-    is_live,
   };
 
   if (!is_addnew.value) {
@@ -193,6 +192,7 @@ const closeModal = () => {
                   round
                   type="info"
                   class="h-12 w-full rounded-2xl text-lg"
+                  @click.prevent="handleSubmit"
                 >
                   Lưu
                 </n-button>

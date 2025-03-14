@@ -106,6 +106,7 @@ function addContentToLesson(lessonId, content) {
 }
 
 function editContent(contentId, content) {
+  console.log(contentId);
   switch (content) {
     case 1:
       if (ytref.value) {
@@ -211,6 +212,7 @@ async function editCLesson(value) {
   isModalVisible.value = true;
 }
 const handleFormSubmit = async (body) => {
+  body.lesson_id = lessonDataID;
   if (body.id) {
     await updateLesson(body);
   } else {

@@ -10,19 +10,15 @@ import {
   toRaw,
 } from "vue";
 import { NButton, NDataTable, useMessage } from "naive-ui";
+import { useRouter } from "vue-router";
 
 export default defineComponent({
   setup() {
-    const postref = ref<{
-      setAddNew: (value: boolean, id: RowData | string) => void;
-    } | null>(null);
     const delref = ref<{
       setAddNew: (title: string) => void;
     } | null>(null);
     const itemId = ref<string | null>(null);
-    const showModal = (value: boolean, id: RowData | string) => {
-      postref.value?.setAddNew(value, id);
-    };
+
     const message = useMessage();
     const loading = ref(false);
     const paginationReactive = reactive({
@@ -42,6 +38,7 @@ export default defineComponent({
 
     const dayjs = useDayjs();
     const { restAPI } = useApi();
+    const router = useRouter();
     const checkedRowKeysRef = ref<DataTableRowKey[]>([]);
     const dataTableInstRef = ref<InstanceType<typeof NDataTable> | null>(null);
     const activeItem = ref("Tất cả trạng thái");
@@ -52,12 +49,17 @@ export default defineComponent({
     const selectedBranch = ref(null);
     const selectedPosition = ref(null);
     const selectedPermission_grp = ref(null);
-    onMounted(async () => {
+    onMounted(() => {
       loadData();
       fetchBranch_id();
       fetchPermissonGroup();
     });
-
+    function edit(value: RowData) {
+      router.push({
+        path: "giangvieninfo",
+        query: { id: value.id },
+      });
+    }
     function createColumns(): DataTableColumns<RowData> {
       return [
         {
@@ -142,7 +144,7 @@ export default defineComponent({
                   size: "small",
                   quaternary: true,
                   style: { backgroundColor: "transparent", color: "blue" },
-                  onClick: () => showModal(true, row.id),
+                  onClick: () => edit(row),
                 },
                 {
                   default: () =>
@@ -255,11 +257,23 @@ export default defineComponent({
 
         if (resData.value?.status) {
           Brancharray.value = resData.value.data
-            .map(({ id, Name, address }) => ({
-              id,
-              display: `${Name}: ${address}`,
-            }))
-            .sort((a, b) => a.display.localeCompare(b.display));
+            .map(
+              ({
+                id,
+                Name,
+                address,
+              }: {
+                id: string;
+                Name: string;
+                address: string;
+              }) => ({
+                id,
+                display: `${Name}: ${address}`,
+              }),
+            )
+            .sort((a: { display: string }, b: { display: string }) =>
+              a.display.localeCompare(b.display),
+            );
         } else {
           message.error("Failed to load Branches!");
           Brancharray.value = [];
@@ -276,11 +290,13 @@ export default defineComponent({
         const { data: resData } = await restAPI.cms.getPermissionGroups({});
         if (resData.value?.status) {
           PermissionGrouparray.value = resData.value.data.data
-            .map(({ id, name }) => ({
+            .map(({ id, name }: { id: string; name: string }) => ({
               id,
               name,
             }))
-            .sort((a, b) => a.name.localeCompare(b.name));
+            .sort((a: { name: string }, b: { name: string }) =>
+              a.name.localeCompare(b.name),
+            );
         } else {
           message.error("Failed to load permission group!");
           PermissionGrouparray.value = [];
@@ -372,15 +388,14 @@ export default defineComponent({
       selectedPermission_grp,
       Brancharray,
       PermissionGrouparray,
-      postref,
       delref,
       handleConfirmDelete,
       handleFormSubmit,
-      showModal,
       activeItem,
       accountStatus,
       filteredData,
       loading,
+      edit,
       columns: createColumns(),
       dataTableInst: dataTableInstRef,
       checkedRowKeys: checkedRowKeysRef,
@@ -520,7 +535,7 @@ interface RowData {
                     round
                     type="info"
                     class="h-12 w-48 rounded-2xl text-xl"
-                    @click="showModal(false, '')"
+                    @click="$router.push('giangvieninfo')"
                   >
                     Thêm mới
                     <i class="fa-solid fa-plus ml-3"></i>
@@ -567,12 +582,6 @@ interface RowData {
         </n-card>
       </div>
     </div>
-    <DaotaoGiangvienModal
-      @submit="handleFormSubmit"
-      ref="postref"
-      :Brancharray="Brancharray"
-      :PermissionGrouparray="PermissionGrouparray"
-    />
     <DelModal @confirm-delete="handleConfirmDelete" ref="delref" />
   </div>
 </template>

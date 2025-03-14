@@ -330,15 +330,15 @@ class CMSManager {
   }
 
   async getClassById(data) {
-    return this.request.get(`${API_ENDPOINTS.cms.class}/${id}`, data);
+    return this.request.get(`${API_ENDPOINTS.cms.class}/${data.id}`, data);
   }
 
   async updateClass(data) {
-    return this.request.patch(`${API_ENDPOINTS.cms.class}/${id}`, data);
+    return this.request.patch(API_ENDPOINTS.cms.class, data);
   }
 
   async deleteClass(data) {
-    return this.request.delete(`${API_ENDPOINTS.cms.class}/${id}`, data);
+    return this.request.delete(`${API_ENDPOINTS.cms.class}/${data.id}`, data);
   }
   
   //__________________________________________________________________________________________

@@ -1,22 +1,28 @@
 <script setup>
 import { ref, computed, watch, onMounted, watchEffect } from "vue";
 import dayjs from "dayjs";
-// const props = defineProps(["timeSlots", "shortShifts", "studying_start_date"]);
-const props = defineProps({
-  studying_start_date: String,
-  timeSlots: Array,
-  shortShifts: Array,
-  localBranchId: [String, Number],
-  stt: Number,
-  queryId: String,
-  NeedId: String,
-});
-const emit = defineEmits([
-  "update:timeSlots",
-  "update:shortShifts",
-  "update:studying_start_date",
-]);
 
+const formValue = reactive({
+  user_id: computed(() => route.query.id || null),
+  is_online: false,
+  is_offline: false,
+  notes: null,
+  start_date: null,
+  end_date: null,
+  time_slots: [
+    {
+      work_session_id: null,
+      start_time: null,
+      end_time: null,
+    },
+  ],
+  user_shifts: [
+    {
+      work_session_id: null,
+      day_of_week: 2,
+    },
+  ],
+});
 const { restAPI } = useApi();
 const listChecked = ref([]);
 const listCheckedShifts = ref([]);
@@ -369,20 +375,26 @@ defineExpose({
   scheduleSubmit,
 });
 
-const selectedDate = ref(
-  props.studying_start_date ? new Date(props.studying_start_date) : null,
-);
+const startDate = ref();
+// props.studying_start_date ? new Date(props.studying_start_date) : null,
+const endDate = ref(null);
+// watch(
+//   () => props.studying_start_date,
+//   (newDate) => {
+//     startDate.value = newDate ? new Date(newDate) : null;
+//   },
+// );
 
-watch(
-  () => props.studying_start_date,
-  (newDate) => {
-    selectedDate.value = newDate ? new Date(newDate) : null;
-  },
-);
+const disablePastDates = (date) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Reset time for correct comparisons
+  return date < today;
+};
 
-const disablePastDates = (timestamp) => {
-  const today = new Date().setHours(0, 0, 0, 0);
-  return timestamp < today;
+// Function to disable dates before the selected start date in the second date picker
+const disableBeforeStartDate = (date) => {
+  if (!startDate.value) return false; // If no start date, allow all dates
+  return date < new Date(startDate.value);
 };
 
 function formatHM(dateTimeString) {
@@ -531,23 +543,34 @@ watchEffect(() => {
       <n-form-item
         label="Ngày mong muốn bắt đầu học:"
         label-placement="left"
-        style="margin-bottom: -30px"
+        class="flex items-center space-x-2"
+        :label-style="{ display: 'flex', alignItems: 'center' }"
       >
         <n-date-picker
           type="date"
           :is-date-disabled="disablePastDates"
           placeholder="Chọn ngày"
-          v-model:value="selectedDate"
+          v-model:value="startDate"
+          format="dd-MM-yyyy"
+          value-format="yyyy-MM-dd"
+        />
+        <i class="fa-solid fa-arrow-right px-1 text-[#133D85]"></i>
+        <n-date-picker
+          type="date"
+          :is-date-disabled="disableBeforeStartDate"
+          placeholder="Chọn ngày"
+          v-model:value="endDate"
           format="dd-MM-yyyy"
           value-format="yyyy-MM-dd"
         />
       </n-form-item>
     </n-gi>
 
-    <n-gi :span="4" class="font-500 mr-8 text-[#133D85]">Lịch trống:</n-gi>
+    <n-gi :span="4" class="font-500 text-[#133D85]">Lịch trống:</n-gi>
     <n-gi v-for="day in daysOfWeek" :key="day.value">
       <n-checkbox
         :label="day.label"
+        class="whitespace-nowrap"
         v-model:checked="listChecked[day.value]"
         @update:checked="(checked) => handleCheckedDay(day.value, checked)"
       />

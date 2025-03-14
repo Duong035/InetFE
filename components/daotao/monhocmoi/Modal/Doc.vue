@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, nextTick, defineExpose } from "vue";
+import { ref, watch, nextTick } from "vue";
 
 const { restAPI } = useApi();
 const emit = defineEmits(["submit"]);
@@ -198,6 +198,7 @@ const closeModal = () => {
                   round
                   type="info"
                   class="h-12 w-full rounded-2xl text-lg"
+                  @click.prevent="handleSubmit"
                 >
                   Lưu
                 </n-button>
