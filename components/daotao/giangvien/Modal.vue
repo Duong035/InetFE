@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, defineExpose } from "vue";
+import { ref, watch } from "vue";
 const railStyle = ({ focused, checked }) => {
   const style = {};
   if (checked) {

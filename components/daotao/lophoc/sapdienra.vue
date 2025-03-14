@@ -2,18 +2,21 @@
 import type { DataTableColumns } from "naive-ui";
 import dayjs from "dayjs";
 import { defineComponent, ref, h, reactive, onMounted, watchEffect } from "vue";
+import { NDataTable, NButton } from "naive-ui";
 import { message } from "ant-design-vue";
 
 export default defineComponent({
   setup() {
     interface RowData {
-      stt: number;
       id: string;
       subjectName: string;
       classType: string;
       startAt: string;
+      status: string;
       endAt: string;
-      status: number;
+      name: string;
+      code: string;
+      totalLessons: number;
     }
 
     const pagination = reactive({
@@ -32,21 +35,26 @@ export default defineComponent({
     const { restAPI } = useApi();
     const data = ref<RowData[]>([]);
     const isLoading = ref(false);
-
-    const classTypeMap: Record<number, string> = {
-      1: "Online",
-      2: "Offline",
-      3: "Hybrid",
-    };
+    const router = useRouter();
+    const selectedSubject = ref("");
+    const selectedClassType = ref("");
+    // lọc theo môn học
+    const subjectOptions = ref<{ label: string; value: string }[]>([
+      { label: "Tất cả môn học", value: "" },
+    ]);
+    //lọc theo loại lớp học
+    const classTypeOptions = [
+      { label: "Tất cả loại lớp học", value: "" },
+      { label: "Online", value: "1" },
+      { label: "Offline", value: "2" },
+      { label: "Hybrid", value: "3" },
+    ];
 
     const statusMap: Record<
       number,
       { text: string; color: string; bg: string }
     > = {
       1: { text: "Sắp diễn ra", color: "#FFA500", bg: "#FFF8E5" },
-      2: { text: "Đang diễn ra", color: "#00974F", bg: "#F0FFF8" },
-      3: { text: "Đã kết thúc", color: "#4D6FA8", bg: "#ECF1F9" },
-      4: { text: "Đã hủy", color: "#D32F2F", bg: "#FDECEA" },
     };
 
     const loadData = async () => {
@@ -58,16 +66,19 @@ export default defineComponent({
 
         const rawData = resData.value?.data?.classes || [];
         data.value = rawData
-          .map((item: any, index: number) => ({
-            stt: index + 1,
+          .map((item: any) => ({
+            code: item.code || "N/A",
             id: item.id || "N/A",
             subjectName: item.subject?.name || "N/A",
-            classType: classTypeMap[item.type] || "Không xác định",
+            classType: item.type ? `${item.type}` : "N/A",
             startAt: item.start_at ? item.start_at.split("T")[0] : "N/A",
             endAt: item.end_at ? item.end_at.split("T")[0] : "N/A",
             status: item.status,
+            name: item.name,
+            totalLessons: item.subject?.total_lessons,
           }))
-          .filter((row: RowData) => row.status === 1);
+          .filter((row: any) => row.status === 1);
+
         pagination.itemCount = data.value.length;
       } catch (err) {
         console.error("Error loading data:", err);
@@ -77,37 +88,159 @@ export default defineComponent({
       }
     };
 
+    function convertClassType(classType: number): string {
+      const ClassTypeMap: Record<number, string> = {
+        1: "Online",
+        2: "Offline",
+        3: "Hybrid",
+      };
+      return ClassTypeMap[classType] || "Không xác định";
+    }
+
+    function getClassStatus(status: number): string {
+      const statusMap: Record<number, string> = {
+        1: "Sắp diễn ra",
+        2: "Đang diễn ra",
+        3: "Đã kết thúc",
+        4: "Đã hủy",
+      };
+
+      return statusMap[status] || "Không xác định";
+    }
+
+    const editRow = (row: any) => {
+      if (!row.id) {
+        console.error("ID lớp học không hợp lệ:", row);
+        return;
+      }
+
+      console.log("Edit:", row);
+      router.push({
+        path: "lophocinfo",
+        query: { id: row.id.toString() },
+      });
+      message.success(`Chỉnh sửa lớp học: ${row.name}`);
+    };
+
+    const deleteRow = (row: RowData) => {
+      console.log("Delete:", row);
+      message.warning(`Dừng hoạt động lớp: ${row.name}`);
+    };
+
+    const addRow = (row: RowData) => {
+      console.log("Add:", row);
+      message.info(`Thêm lớp học liên quan đến: ${row.name}`);
+    };
+
     const columns: DataTableColumns<RowData> = [
-      { title: "STT", key: "stt", align: "center" },
-      { title: "Tên môn học", key: "subjectName" },
-      { title: "Loại lớp học", key: "classType" },
+      { title: "Mã lớp học", key: "code", titleAlign: "center" },
+      { title: "Tên Lớp học", key: "name", titleAlign: "center" },
+      { title: "Tên môn học", key: "subjectName", titleAlign: "center" },
+      {
+        title: "Loại lớp học",
+        key: "classType",
+        titleAlign: "center",
+        render(row) {
+          return convertClassType(Number(row.classType));
+        },
+      },
+      {
+        title: "Số buổi học",
+        key: "totalLessons",
+        titleAlign: "center",
+      },
       {
         title: "Thời gian học",
         key: "timeRange",
+        align: "center",
         render: (row) =>
           `${dayjs(row.startAt).format("DD/MM/YYYY")} - ${dayjs(row.endAt).format("DD/MM/YYYY")}`,
       },
       {
         title: "Trạng thái",
+        align: "center",
         key: "status",
-        render: (row) => {
-          const { text, color, bg } = statusMap[row.status] || {
-            text: "Không xác định",
-            color: "#000",
-            bg: "#FFF",
+        render(row) {
+          const status = getClassStatus(Number(row.status));
+          const statusStyles: Record<
+            string,
+            { color: string; background: string }
+          > = {
+            "Đang diễn ra": { color: "#00974F", background: "#F0FFF8" },
+            "Sắp diễn ra": { color: "#FFA500", background: "#FFF8E5" },
+            "Đã kết thúc": { color: "#4D6FA8", background: "#ECF1F9" },
+            "Đã hủy": { color: "#D32F2F", background: "#FDECEA" },
           };
+
           return h(
             "span",
             {
               style: {
                 padding: "5px 10px",
                 borderRadius: "10px",
-                color,
-                background: bg,
+                ...(statusStyles[status] || {
+                  color: "#000",
+                  background: "#FFF",
+                }),
               },
             },
-            text,
+            status,
           );
+        },
+      },
+      {
+        title: "Hành động",
+        key: "actions",
+        align: "center",
+        render(row) {
+          return h("div", { class: "flex gap-2 justify-center" }, [
+            h(
+              NButton,
+              {
+                size: "small",
+                type: "primary",
+                quaternary: true,
+                onClick: () => editRow(row),
+              },
+              {
+                default: () =>
+                  h("i", {
+                    class: "fa-regular fa-pen-to-square",
+                    style: "color: green;",
+                  }),
+              },
+            ),
+            h(
+              NButton,
+              {
+                size: "small",
+                type: "error",
+                quaternary: true,
+                onClick: () => deleteRow(row),
+              },
+              {
+                default: () =>
+                  h("i", { class: "fas fa-ban", style: "color: red;" }),
+              },
+            ),
+            h(
+              NButton,
+              {
+                size: "small",
+                type: "warning",
+                quaternary: true,
+
+                onClick: () => addRow(row),
+              },
+              {
+                default: () =>
+                  h("i", {
+                    class: "fa-solid fa-square-plus",
+                    style: "color: orange;",
+                  }),
+              },
+            ),
+          ]);
         },
       },
     ];
@@ -115,25 +248,45 @@ export default defineComponent({
     onMounted(loadData);
     watchEffect(() => (pagination.itemCount = data.value.length));
 
-    return { isLoading, data, columns, pagination };
+    return {
+      isLoading,
+      data,
+      columns,
+      pagination,
+      classTypeOptions,
+      selectedClassType,
+      subjectOptions,
+      selectedSubject,
+    };
   },
 });
 </script>
 
 <template>
-  <div class="flex h-full w-full overflow-auto rounded-2xl bg-white">
-    <div class="flex-1">
-      <div class="h-full bg-white text-black">
-        <n-data-table
-          :bordered="false"
-          :single-line="false"
-          :columns="columns"
-          :data="data"
-          :loading="isLoading"
-          :scroll-x="1000"
-          :pagination="pagination"
-        />
-      </div>
+  <div class="h-full w-full overflow-auto rounded-2xl bg-white">
+    <div class="flex gap-4 p-4">
+      <n-select
+        v-model:value="selectedSubject"
+        :options="subjectOptions"
+        style="width: 200px"
+      />
+      <n-select
+        v-model:value="selectedClassType"
+        :options="classTypeOptions"
+        style="width: 200px"
+      />
+    </div>
+
+    <div class="h-full bg-white text-black">
+      <n-data-table
+        :bordered="false"
+        :single-line="false"
+        :columns="columns"
+        :data="data"
+        :loading="isLoading"
+        :scroll-x="1000"
+        :pagination="pagination"
+      />
     </div>
   </div>
 </template>

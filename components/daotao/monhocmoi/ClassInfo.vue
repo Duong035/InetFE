@@ -72,6 +72,7 @@ const loadTeacher = async () => {
     const { data: resData } = await restAPI.cms.getStaff({});
     if (resData.value?.status) {
       Staffarray.value = resData.value.data.data
+        .filter((staff) => staff.is_active && staff.position === 1)
         .map(({ id, full_name }) => ({
           id,
           full_name,
@@ -123,8 +124,8 @@ if (formValue.id) {
     formValue.name = data?.name;
     formValue.category_id = data?.category?.id;
     formValue.teacher_ids = Array.isArray(data.teachers)
-      ? data.teachers[0].full_name
-      : data.teachers.full_name;
+      ? data.teachers[0].id
+      : "";
     formValue.fee_type = String(data?.fee_type);
     formValue.origin_fee = data?.origin_fee;
     formValue.discount_fee = data?.discount_fee;
@@ -175,12 +176,12 @@ const handleSubmit = async (e) => {
     output_require,
     is_active,
   };
+  console.log(JSON.stringify(body, null, 2));
 
   try {
     // validate
     if (id) {
       console.log(id);
-      console.log(JSON.stringify(body, null, 2));
       const { data: resUpdate, error } = await restAPI.cms.updateSubject({
         id,
         body,
@@ -199,7 +200,12 @@ const handleSubmit = async (e) => {
         const newId = resCreate.value.data.id;
         router.push({ path: window.location.pathname, query: { id: newId } });
       } else {
-        message.error(error.value.data.message);
+        const errorCode = error.value.data.error;
+        const errorMessage =
+          ERROR_CODES[errorCode] ||
+          resCreate.value?.message ||
+          "Đã xảy ra lỗi, vui lòng thử lại!";
+        message.warning(errorMessage);
       }
     }
   } catch {

@@ -3,7 +3,8 @@
     <header class="hero w-100px xl-bg-bottom flex bg-cover bg-top lg:bg-center">
       <TopNav />
     </header>
-    <div class="mt-3 flex w-[calc(100%)] overflow-auto">
+    <div class="mt-3 flex w-[calc(100%)]">
+      <!-- overflow-auto -->
       <Sidebar />
       <!-- <Test /> -->
       <main class="mx-5 mb-5 mt-5 w-full rounded-2xl">
