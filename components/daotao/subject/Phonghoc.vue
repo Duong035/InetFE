@@ -1,21 +1,12 @@
 <script lang="ts">
 import { NButton, type DataTableColumns } from "naive-ui";
-import {
-  defineComponent,
-  ref,
-  h,
-  reactive,
-  computed,
-  onMounted,
-  toRaw,
-} from "vue";
+import { defineComponent, ref, h, reactive, computed, onMounted } from "vue";
 import { message } from "ant-design-vue";
 
 export default defineComponent({
   setup() {
     interface Classrooms {
       id: string;
-      stt: number;
       name: string;
       slots: number;
       is_active: boolean;
@@ -51,6 +42,10 @@ export default defineComponent({
     const center = ref<{ label: string; value: string }[]>([]);
     const data = ref<Classrooms[]>([]);
     const isLoading = ref(false);
+    const showAddClassroomModal = ref(false);
+
+    const selectedStatus = ref<string | null>("All");
+    const selectedRoomType = ref<string | null>("All");
 
     const loadClassrooms = async () => {
       try {
@@ -64,22 +59,19 @@ export default defineComponent({
         }
 
         classrooms.value = resData.value?.data?.data || [];
-        data.value = classrooms.value.map(
-          (classroom: Classrooms, index: number) => {
-            return {
-              id: classroom.id,
-              stt: index + 1, // Gán số thứ tự
-              name: classroom.name,
-              slots: classroom.slots,
-              is_active: classroom.is_active,
-              room_type: classroom.room_type,
-              branch_id: classroom.branch_id,
-              center_id: classroom.center_id,
-              branches: classroom.branches,
-              center: classroom.center,
-            };
-          },
-        );
+        data.value = classrooms.value.map((classroom: Classrooms) => {
+          return {
+            id: classroom.id,
+            name: classroom.name,
+            slots: classroom.slots,
+            is_active: classroom.is_active,
+            room_type: classroom.room_type,
+            branch_id: classroom.branch_id,
+            center_id: classroom.center_id,
+            branches: classroom.branches,
+            center: classroom.center,
+          };
+        });
       } catch (err) {
         console.error("Error loading data:", err);
         message.error("Lỗi tải dữ liệu.");
@@ -134,28 +126,75 @@ export default defineComponent({
       }
     };
 
-    const addClassroom = async (newClassroom) => {
-      try {
-        const { error } = await restAPI.cms.createClassroom(newClassroom);
-        if (error?.value)
-          throw new Error(
-            error.value.data?.message || "Lỗi khi thêm phòng học",
-          );
+    // lọc dữ liệu
 
-        message.success("Thêm phòng học thành công");
+    const statusOptions = [
+      { label: "Tất cả trạng thái", value: "All" },
+      { label: "Còn trống", value: "true" },
+      { label: "Đã có lớp", value: "false" },
+    ];
+
+    const roomTypeOptions = [
+      { label: "Tất cả loại phòng", value: "All" },
+      { label: "Zoom", value: "Zoom" },
+      { label: "Live class", value: "Live class" },
+      { label: "Google Meet", value: "Google Meet" },
+      { label: "practicing", value: "practicing" },
+      { label: "theory", value: "theory" },
+    ];
+
+    // Lọc dữ liệu dựa vào trạng thái và loại phòng
+    const filteredClassrooms = computed(() => {
+      return classrooms.value.filter((room) => {
+        const matchesStatus =
+          selectedStatus.value === "All" ||
+          room.is_active === (selectedStatus.value === "true");
+
+        const matchesRoomType =
+          selectedRoomType.value === "All" ||
+          room.room_type === selectedRoomType.value;
+
+        return matchesStatus && matchesRoomType;
+      });
+    });
+
+    const newClassroom = reactive({
+      branch_id: "",
+      name: "",
+      is_online: false,
+      room_type: "",
+      metadata: {
+        notes: "",
+      },
+      slots: 50,
+      is_active: true,
+    });
+
+    const addClassroom = async () => {
+      try {
+        const { data: resCreate, error } = await restAPI.cms.createClassroom({
+          body: newClassroom,
+        });
+        if (resCreate?.value?.status) {
+          message.success("Tạo nhu cầu học tập thành công!");
+        } else {
+          const errorMessage =
+            ERROR_CODES[error.value.data.error as keyof typeof ERROR_CODES] ||
+            resCreate.value?.message ||
+            "Đã xảy ra lỗi, vui lòng thử lại!";
+          message.warning(errorMessage);
+        }
         loadClassrooms();
-      } catch (error) {
-        message.error(error.message || "Lỗi khi thêm phòng học");
-        console.error(error);
+        showAddClassroomModal.value = false;
+      } catch (err) {
+        // message.error((error as any).message || "Lỗi khi thêm lớp học");
+        // console.error(error);
       }
     };
 
-    const editClassroom = async (updatedClassroom) => {
+    const editClassroom = async (updatedClassroom: any) => {
       try {
-        const { error } = await restAPI.cms.updateClassroom(
-          updatedClassroom.id,
-          updatedClassroom,
-        );
+        const { error } = await restAPI.cms.updateClassroom(updatedClassroom);
         if (error?.value)
           throw new Error(
             error.value.data?.message || "Lỗi khi cập nhật phòng học",
@@ -164,12 +203,12 @@ export default defineComponent({
         message.success("Cập nhật phòng học thành công");
         loadClassrooms();
       } catch (error) {
-        message.error(error.message || "Lỗi khi cập nhật phòng học");
+        message.error((error as any).message || "Lỗi khi cập nhật phòng học");
         console.error(error);
       }
     };
 
-    const deleteClassroom = async (id) => {
+    const deleteClassroom = async (id: any) => {
       try {
         const { error } = await restAPI.cms.deleteClassroom(id);
         if (error?.value)
@@ -178,19 +217,19 @@ export default defineComponent({
         message.success("Xóa phòng học thành công");
         loadClassrooms();
       } catch (error) {
-        message.error(error.message || "Lỗi khi xóa phòng học");
+        message.error((error as any).message || "Lỗi khi xóa phòng học");
         console.error(error);
       }
     };
 
     function createColumns(): DataTableColumns<Classrooms> {
       return [
-        { title: "STT", key: "stt" },
-        { title: "Tên phòng học", key: "name" },
+        { title: "Tên phòng học", key: "name", titleAlign: "center" },
         { title: "Sức chứa", key: "slots" },
         {
           title: "Chi nhánh",
           key: "branch_id",
+          titleAlign: "center",
           render(row) {
             return computed(() => {
               const branch = branches.value.find(
@@ -203,6 +242,7 @@ export default defineComponent({
         {
           title: "Trung tâm",
           key: "center_id",
+          titleAlign: "center",
           render(row) {
             return computed(() => {
               const cen = center.value.find((c) => c.value === row.center_id);
@@ -214,6 +254,7 @@ export default defineComponent({
         {
           title: "Loại phòng",
           key: "room_type",
+          titleAlign: "center",
           render(row) {
             const onlineTypes = ["Zoom", "Live class", "Google Meet"];
             const offlineTypes = ["practicing", "theory"];
@@ -230,8 +271,31 @@ export default defineComponent({
         {
           title: "Trạng thái",
           key: "is_active",
+          align: "center",
           render(row) {
-            return row.is_active ? "Còn trống" : "Đã có lớp";
+            let color = "";
+            let background = "";
+
+            if (row.is_active) {
+              color = "#00974F";
+              background = "#F0FFF8";
+            } else {
+              color = "#4D6FA8";
+              background = "#ECF1F9";
+            }
+
+            return h(
+              "span",
+              {
+                style: {
+                  padding: "5px 10px",
+                  borderRadius: "10px",
+                  color,
+                  background,
+                },
+              },
+              row.is_active ? "Còn trống" : "Đã có lớp",
+            );
           },
         },
         {
@@ -244,19 +308,21 @@ export default defineComponent({
                 NButton,
                 {
                   size: "small",
-                  type: "primary",
-                  // onClick: () => editClassroom(row),
+                  quaternary: true,
+                  style: { backgroundColor: "transparent", color: "green" },
+                  onClick: () => editClassroom(row),
                 },
-                "Sửa",
+                () => h("i", { class: "fa-regular fa-pen-to-square" }),
               ),
               h(
                 NButton,
                 {
                   size: "small",
-                  type: "error",
-                  // onClick: () => deleteClassroom(row.id),
+                  quaternary: true,
+                  style: { backgroundColor: "transparent", color: "red" },
+                  onClick: () => deleteClassroom(row.id),
                 },
-                "Xóa",
+                () => h("i", { class: "fa-solid fa-trash" }),
               ),
             ]);
           },
@@ -273,21 +339,103 @@ export default defineComponent({
     return {
       isLoading,
       classrooms,
+      filteredClassrooms,
       columns: createColumns(),
       pagination: paginationReactive,
+      selectedStatus,
+      selectedRoomType,
+      statusOptions,
+      showAddClassroomModal,
+      roomTypeOptions,
+      newClassroom,
+      addClassroom,
+      branches,
     };
   },
 });
 </script>
 <template>
-  <div class="h-full w-full overflow-auto rounded-2xl bg-white p-4">
+  <div class="rounded-2xl bg-white p-4">
+    <!-- Bộ lọc -->
+    <div class="mb-4 flex gap-4">
+      <n-select
+        v-model:value="selectedStatus"
+        :options="statusOptions"
+        placeholder="Lọc theo trạng thái"
+      />
+      <n-select
+        v-model:value="selectedRoomType"
+        :options="roomTypeOptions"
+        placeholder="Lọc theo loại phòng"
+      />
+      <n-button type="info" @click="showAddClassroomModal = true">
+        Thêm lớp học <i class="fa-solid fa-plus ml-1 px-2"></i>
+      </n-button>
+    </div>
+
+    <!-- Bảng -->
     <n-data-table
       :bordered="false"
       :single-line="false"
       :columns="columns"
-      :data="classrooms"
+      :data="filteredClassrooms"
       :loading="isLoading"
       :pagination="pagination"
     />
   </div>
+
+  <n-modal v-model:show="showAddClassroomModal">
+    <n-card
+      title="Thêm lớp học"
+      style="width: 500px"
+      :bordered="false"
+      size="medium"
+    >
+      <n-form>
+        <n-form-item label="Tên lớp học">
+          <n-input
+            v-model:value="newClassroom.name"
+            placeholder="Nhập tên lớp học"
+          />
+        </n-form-item>
+
+        <n-form-item label="Loại phòng">
+          <n-select
+            v-model:value="newClassroom.room_type"
+            :options="roomTypeOptions"
+            placeholder="Chọn loại phòng"
+          />
+        </n-form-item>
+        <n-form-item label="Chi nhánh">
+          <n-select
+            v-model:value="newClassroom.branch_id"
+            :options="branches"
+            placeholder="Chọn chi nhánh"
+          />
+        </n-form-item>
+
+        <n-form-item label="Số lượng chỗ ngồi">
+          <n-input-number v-model:value="newClassroom.slots" :min="1" />
+        </n-form-item>
+
+        <n-form-item label="Ghi chú">
+          <n-input
+            v-model:value="newClassroom.metadata.notes"
+            placeholder="Nhập ghi chú"
+          />
+        </n-form-item>
+
+        <n-form-item label="Trạng thái">
+          <n-switch v-model:value="newClassroom.is_active" />
+        </n-form-item>
+      </n-form>
+
+      <template #footer>
+        <n-space>
+          <n-button @click="showAddClassroomModal = false">Hủy</n-button>
+          <n-button type="primary" @click="addClassroom">Lưu</n-button>
+        </n-space>
+      </template>
+    </n-card>
+  </n-modal>
 </template>

@@ -112,6 +112,7 @@ export default defineComponent({
           status: subject.is_active ? "Hoạt động" : "Không hoạt động",
           color: subject.metadata?.color || "",
         }));
+        console.log(data.value);
 
         // Lấy danh mục từ subjects
         const categorySet = new Set<string>();

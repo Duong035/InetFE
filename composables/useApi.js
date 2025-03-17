@@ -364,6 +364,13 @@ class CMSManager {
   }
   //__________________________________________________________________________________________
 
+  async getCenter(data) {
+    return this.request.get(API_ENDPOINTS.cms.center, data);
+  }
+  async updateCenter(data) {
+    return this.request.put(API_ENDPOINTS.cms.center, data);
+  }
+
   // Permissions groups_______________________________________________________________________
   async getPermissionGroups(data) {
     return this.request.get(API_ENDPOINTS.cms.permissionGroup, data)

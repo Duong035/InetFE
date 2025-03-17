@@ -1,7 +1,6 @@
 <script setup>
 import { ref, watch, onMounted, reactive, nextTick, toRaw } from "vue";
 import { useRoute } from "vue-router";
-import Schedule from "@/components/daotao/hocvienct/Schedule.vue";
 const message = useMessage();
 const emit = defineEmits(["apiSuccess"]);
 const route = useRoute();
@@ -102,6 +101,7 @@ if (localNeedId.value && localNeedId.value !== "") {
 
     message.warning(errorMessage);
   }
+  console.log(formValue);
   showSpin.value = false;
 } else {
   showSpin.value = false;

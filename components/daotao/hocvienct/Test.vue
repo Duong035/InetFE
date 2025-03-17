@@ -1,22 +1,44 @@
 <script setup>
-import { ref, computed, watch, defineExpose, onMounted } from "vue";
-import { NTimePicker } from "naive-ui";
+import { ref, computed, watch, onMounted, watchEffect } from "vue";
 import dayjs from "dayjs";
-const props = defineProps(["timeSlots", "shortShifts", "studying_start_date"]);
-const emit = defineEmits([
-  "update:timeSlots",
-  "update:shortShifts",
-  "update:studying_start_date",
-]);
+
+const formValue = reactive({
+  user_id: computed(() => route.query.id || null),
+  is_online: false,
+  is_offline: false,
+  notes: null,
+  start_date: null,
+  end_date: null,
+  time_slots: [
+    {
+      work_session_id: null,
+      start_time: null,
+      end_time: null,
+    },
+  ],
+  user_shifts: [
+    {
+      work_session_id: null,
+      day_of_week: 2,
+    },
+  ],
+});
+const { restAPI } = useApi();
 const listChecked = ref([]);
 const listCheckedShifts = ref([]);
+const selectedTimes = ref({});
+const daysOfWeek = ref(createDaysOfWeek());
 
+const shifts = ref([]);
 const shift = ref([
   {
     id: 0,
     name: "Sáng",
     start: "6",
     end: "12",
+    start_time: "",
+    end_time: "",
+    work_session_id: "",
     session: [
       { value: 1, checked: false },
       { value: 2, checked: false },
@@ -32,6 +54,9 @@ const shift = ref([
     name: "Chiều",
     start: "12",
     end: "18",
+    start_time: "",
+    end_time: "",
+    work_session_id: "",
     session: [
       { value: 1, checked: false },
       { value: 2, checked: false },
@@ -47,6 +72,9 @@ const shift = ref([
     name: "Tối",
     start: "18",
     end: "23",
+    start_time: "",
+    end_time: "",
+    work_session_id: "",
     session: [
       { value: 1, checked: false },
       { value: 2, checked: false },
@@ -59,8 +87,7 @@ const shift = ref([
   },
 ]);
 
-const daysOfWeek = ref(createDaysOfWeek());
-
+//Timepicker_format____________________________________________________________________
 const getStartHours = computed(() => {
   return shift.value.reduce((acc, s) => {
     acc[s.id] = Array.from(
@@ -160,122 +187,20 @@ const getDisabledMinutes = (selectedHour, shiftId, isEndPicker = false) => {
   return [];
 };
 
-const handleCheckedDay = (day, checked) => {
-  shift.value.forEach((s) => {
-    const dayElement = s.session.find((element) => element.value === day);
-
-    if (dayElement) {
-      const start = selectedTimes.value[s.id]?.start;
-      const end = selectedTimes.value[s.id]?.end;
-
-      const isValidTime =
-        start !== null &&
-        end !== null &&
-        start !== "Invalid Date" &&
-        end !== "Invalid Date";
-
-      dayElement.checked = isValidTime ? checked : false;
-    }
-  });
-
-  const found = daysOfWeek.value.find((e) => e.value === day);
-  if (found) {
-    found.checked = checked;
-  }
-
-  listChecked.value[day] = checked;
-
-  if (checked) {
-    listCheckedShifts.value[day] = shift.value
-      .filter((s) => {
-        const start = selectedTimes.value[s.id]?.start;
-        const end = selectedTimes.value[s.id]?.end;
-        return (
-          start !== null &&
-          end !== null &&
-          start !== "Invalid Date" &&
-          end !== "Invalid Date"
-        );
-      })
-      .map((s) => s.id);
-  } else {
-    listCheckedShifts.value[day] = [];
-  }
-};
-
-const handleCheckedValue = (day, checked, id) => {
-  if (!Array.isArray(listCheckedShifts.value[day])) {
-    listCheckedShifts.value[day] = [];
-  }
-
-  if (checked) {
-    if (!listCheckedShifts.value[day].includes(id)) {
-      listCheckedShifts.value[day].push(id);
-    }
-  } else {
-    listCheckedShifts.value[day] = listCheckedShifts.value[day].filter(
-      (e) => e !== id,
-    );
-
-    if (listCheckedShifts.value[day].length === 0) {
-      delete listCheckedShifts.value[day];
-    }
-  }
-
-  const found = daysOfWeek.value.find((e) => e.value === day);
-  if (found) {
-    found.checked = listCheckedShifts.value[day]?.length === shift.value.length;
-  }
-};
-
-const selectedTimes = ref({});
-
 const updateSelectedTime = (index, type, value) => {
   if (!selectedTimes.value[index]) return;
-  selectedTimes.value[index][type] = value ? formatTime(value) : "Invalid Date";
-  console.log(selectedTimes);
+
+  if (!value || isNaN(new Date(value).getTime())) {
+    selectedTimes.value[index][type] = null; // Set to null if value is invalid
+    return;
+  }
+
+  selectedTimes.value[index][type] = formatTime(value);
 };
 
 const formatTime = (time) => {
   if (!time) return null;
   return dayjs(time).format("YYYY-MM-DDTHH:mm:ss");
-};
-
-const scheduleSubmit = async (e) => {
-  const validTimeSlots = Object.entries(selectedTimes.value).reduce(
-    (acc, [shiftId, t]) => {
-      if (
-        t.start !== null &&
-        t.end !== null &&
-        t.start !== "Invalid Date" &&
-        t.end !== "Invalid Date"
-      ) {
-        acc[shiftId] = { start: t.start, end: t.end };
-      }
-      return acc;
-    },
-    {},
-  );
-  emit("update:timeSlots", validTimeSlots);
-
-  const validWork = Array(3)
-    .fill(null)
-    .map(() => []);
-
-  listCheckedShifts.value.forEach((shifts, dayIndex) => {
-    shifts.forEach((shift) => {
-      validWork[shift].push(dayIndex);
-    });
-  });
-
-  const filteredValidWork = validWork.reduce((acc, shiftDays, index) => {
-    if (shiftDays.length > 0) {
-      acc[index] = shiftDays;
-    }
-    return acc;
-  }, {});
-  emit("update:shortShifts", filteredValidWork);
-  emit("update:studying_start_date", selectedDate.value);
 };
 
 watch(
@@ -317,47 +242,78 @@ watch(
   { deep: true },
 );
 
-defineExpose({
-  scheduleSubmit,
-});
-
-const selectedDate = ref(props.studying_start_date || null);
-
-watch(
-  () => props.studying_start_date,
-  (newDate) => {
-    selectedDate.value = newDate;
-  },
-);
-
-const disablePastDates = (timestamp) => {
-  const today = new Date().setHours(0, 0, 0, 0);
-  return timestamp < today;
+const parseTime = (timeString) => {
+  if (!timeString || timeString.trim() === "") return null;
+  const [hours, minutes] = timeString.split(":").map(Number);
+  const date = new Date();
+  date.setHours(hours, minutes, 0, 0);
+  return date;
 };
 
-const formatHM = (time) => {
-  // Parse the ISO string into a Date object
-  const date = new Date(time);
-  // Format the time in "HH:mm" format (24-hour format)
-  return date.toLocaleTimeString([], {
+const shiftTimes = ref(
+  Object.fromEntries(
+    shift.value.map((s) => [
+      s.id,
+      {
+        start: parseTime(s.start_time),
+        end: parseTime(s.end_time),
+      },
+    ]),
+  ),
+);
+//_____________________________________________________________________________________
+
+//Checkbox_____________________________________________________________________________
+const handleCheckedDay = (day, checked) => {
+  shift.value.forEach((s) => {
+    const dayElement = s.session.find((element) => element.value === day);
+    if (dayElement) {
+      dayElement.checked = checked;
+    }
+  });
+
+  if (!checked) {
+    listChecked.value[day] = false;
+  }
+};
+
+const handleCheckedValue = (day) => {
+  const allShifts = shift.value
+    .map((s) => s.session.find((el) => el.value === day))
+    .filter(Boolean);
+  const allChecked = allShifts.every((el) => el.checked);
+
+  listChecked.value[day] = allChecked;
+};
+//_____________________________________________________________________________________
+
+// Date picker_________________________________________________________________________
+const startDate = ref();
+const endDate = ref(null);
+
+const disablePastDates = (date) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return date < today;
+};
+
+const disableBeforeStartDate = (date) => {
+  if (!startDate.value) return false;
+  return date < new Date(startDate.value);
+};
+
+function formatHM(dateTimeString) {
+  const date = new Date(dateTimeString);
+  return new Intl.DateTimeFormat("en-GB", {
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
-  });
-};
-onMounted(() => {
-  props.timeSlots.forEach((timeSlot, index) => {
-    // Format the start and end times to HH:mm format
-    const formattedStart = formatHM(timeSlot.start_time);
-    const formattedEnd = formatHM(timeSlot.end_time);
+    hourCycle: "h23",
+  }).format(date);
+}
+//_____________________________________________________________________________________
 
-    // Initialize selectedTimes for each shift based on the index
-    selectedTimes.value[index] = {
-      start: formattedStart,
-      end: formattedEnd,
-    };
-  });
-  console.log(toRaw(selectedTimes.value)[0].end);
+onMounted(async () => {
+  selectedTimes.value = [{ start: null, end: null, session: "NO_SESSION" }];
 });
 </script>
 
@@ -367,21 +323,34 @@ onMounted(() => {
       <n-form-item
         label="Ngày mong muốn bắt đầu học:"
         label-placement="left"
-        style="margin-bottom: -30px"
+        class="flex items-center space-x-2"
+        :label-style="{ display: 'flex', alignItems: 'center' }"
       >
         <n-date-picker
           type="date"
           :is-date-disabled="disablePastDates"
           placeholder="Chọn ngày"
-          v-model:value="selectedDate"
+          v-model:value="startDate"
+          format="dd-MM-yyyy"
+          value-format="yyyy-MM-dd"
+        />
+        <i class="fa-solid fa-arrow-right px-1 text-[#133D85]"></i>
+        <n-date-picker
+          type="date"
+          :is-date-disabled="disableBeforeStartDate"
+          placeholder="Chọn ngày"
+          v-model:value="endDate"
+          format="dd-MM-yyyy"
+          value-format="yyyy-MM-dd"
         />
       </n-form-item>
     </n-gi>
 
-    <n-gi :span="4" class="font-500 mr-8 text-[#133D85]">Lịch trống:</n-gi>
+    <n-gi :span="4" class="font-500 text-[#133D85]">Lịch trống:</n-gi>
     <n-gi v-for="day in daysOfWeek" :key="day.value">
       <n-checkbox
         :label="day.label"
+        class="whitespace-nowrap"
         v-model:checked="listChecked[day.value]"
         @update:checked="(checked) => handleCheckedDay(day.value, checked)"
       />
@@ -396,13 +365,13 @@ onMounted(() => {
               arrowClass: '!bg-white',
             }"
             :line-clamp="2"
-            >{{ s.name + ":" + s.id }}
+            >{{ s.name + ":" }}
           </n-ellipsis>
           <n-input-group
             class="rounded-15px -ml-5 mr-3 w-fit shrink-0 bg-white"
           >
             <n-time-picker
-              v-model="s.start"
+              v-model:value="shiftTimes[s.id].start"
               format="HH:mm"
               :hours="getStartHours[s.id] || []"
               :is-minute-disabled="
@@ -412,7 +381,7 @@ onMounted(() => {
               @update:value="(val) => updateSelectedTime(s.id, 'start', val)"
             />
             <n-time-picker
-              v-model="s.end"
+              v-model:value="shiftTimes[s.id].end"
               format="HH:mm"
               :hours="getEndHours[s.id] || []"
               :is-minute-disabled="
@@ -420,10 +389,6 @@ onMounted(() => {
                   getDisabledMinutes(hour, s.id, true).includes(minute)
               "
               @update:value="(val) => updateSelectedTime(s.id, 'end', val)"
-              :disabled="
-                !selectedTimes[s.id]?.start ||
-                selectedTimes[s.id]?.start === 'Invalid Date'
-              "
             />
           </n-input-group>
         </n-flex>
@@ -432,14 +397,6 @@ onMounted(() => {
         <n-checkbox
           v-model:checked="day.checked"
           class="custom-checkbox-no-disabled"
-          :disabled="
-            !listChecked[day.value] || // Day checkbox must be checked
-            !selectedTimes[s.id] || // Shift must exist
-            selectedTimes[s.id].start === null ||
-            selectedTimes[s.id].end === null ||
-            selectedTimes[s.id].start === 'Invalid Date' ||
-            selectedTimes[s.id].end === 'Invalid Date' // Ensure shift time is valid
-          "
           @update:checked="
             (checked) => handleCheckedValue(day.value, checked, s.id)
           "

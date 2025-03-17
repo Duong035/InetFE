@@ -12,11 +12,9 @@ const railStyle = ({ focused, checked }) => {
   }
   return style;
 };
-
+const scheduleRef = ref(null);
 const message = useMessage();
-const dayjs = useDayjs();
 const route = useRoute();
-const router = useRouter();
 
 const { restAPI } = useApi();
 const isLoading = ref(false);
@@ -24,7 +22,6 @@ const formRef = ref(null);
 const showSpin = ref(false);
 const Brancharray = ref([]);
 const PermissionGrouparray = ref([]);
-const Subjectarray = ref([]);
 
 const formValue = reactive({
   id: computed(() => route.query.id || null),
@@ -190,28 +187,6 @@ const fetchPermissonGroup = async () => {
   }
 };
 
-const fetchSubjects = async () => {
-  try {
-    const { data: resData, error } = await restAPI.cms.getAllSubject({});
-    const rawData = toRaw(resData.value.data);
-    if (resData.value.status) {
-      Subjectarray.value = rawData
-        .map(({ id, name }) => ({
-          id,
-          name,
-        }))
-        .sort((a, b) => a.name.localeCompare(b.name));
-    } else {
-      message.error("Failed to load subjects!");
-      Subjectarray.value = [];
-    }
-  } catch (err) {
-    message.error("Error fetching subjects!");
-    console.error(err);
-    Subjectarray.value = [];
-  }
-};
-
 const handleImageUpload = () => {
   const file = event.target.files[0];
   const reader = new FileReader();
@@ -226,90 +201,97 @@ const handleImageUpload = () => {
 
 const handleSubmit = async (e) => {
   if (isLoading.value) return;
-  isLoading.value = true;
-  e.preventDefault();
-  const {
-    id,
-    full_name,
-    email,
-    type,
-    branch_id,
-    phone,
-    organ_struct_id,
-    position,
-    username,
-    password,
-    introduction,
-    permission_grp_id,
-    is_active,
-    avatar,
-    salary_type,
-    salary,
-    role_id,
-  } = formValue;
-  let body = {
-    id,
-    full_name,
-    email,
-    type,
-    branch_id,
-    phone,
-    organ_struct_id,
-    position,
-    username,
-    password,
-    introduction,
-    permission_grp_id,
-    is_active,
-    avatar,
-    salary_type,
-    salary: Number(salary) || 0,
-    role_id,
-  };
-  try {
-    await formRef.value?.validate();
-    if (id) {
-      const { data: resUpdate, error } = await restAPI.cms.updateStaff({
-        id,
-        body,
-      });
-      if (resUpdate?.value?.status) {
-        message.success("Cập nhật nhân viên thành công!");
-      } else {
-        const errorCode = error.value?.data?.error;
-        const errorMessage =
-          ERROR_CODES[errorCode] ||
-          resUpdate?.value?.message ||
-          "Đã xảy ra lỗi, vui lòng thử lại!";
+  if (scheduleRef.value) {
+    try {
+      await scheduleRef.value.scheduleSubmit();
+      console.log("Form validation passed");
+      // isLoading.value = true;
+      // e.preventDefault();
+      // const {
+      //   id,
+      //   full_name,
+      //   email,
+      //   type,
+      //   branch_id,
+      //   phone,
+      //   organ_struct_id,
+      //   position,
+      //   username,
+      //   password,
+      //   introduction,
+      //   permission_grp_id,
+      //   is_active,
+      //   avatar,
+      //   salary_type,
+      //   salary,
+      //   role_id,
+      // } = formValue;
+      // let body = {
+      //   id,
+      //   full_name,
+      //   email,
+      //   type,
+      //   branch_id,
+      //   phone,
+      //   organ_struct_id,
+      //   position,
+      //   username,
+      //   password,
+      //   introduction,
+      //   permission_grp_id,
+      //   is_active,
+      //   avatar,
+      //   salary_type,
+      //   salary: Number(salary) || 0,
+      //   role_id,
+      // };
+      // try {
+      //   await formRef.value?.validate();
+      //   if (id) {
+      //     const { data: resUpdate, error } = await restAPI.cms.updateStaff({
+      //       id,
+      //       body,
+      //     });
+      //     if (resUpdate?.value?.status) {
+      //       message.success("Cập nhật nhân viên thành công!");
+      //     } else {
+      //       const errorCode = error.value?.data?.error;
+      //       const errorMessage =
+      //         ERROR_CODES[errorCode] ||
+      //         resUpdate?.value?.message ||
+      //         "Đã xảy ra lỗi, vui lòng thử lại!";
 
-        message.warning(errorMessage);
-      }
-    } else {
-      const { data: resCreate, error } = await restAPI.cms.createStaff({
-        body,
-      });
-      if (resCreate?.value?.status) {
-        message.success("Tạo nhân viên thành công!");
-      } else {
-        const errorCode = error.value?.data?.error;
-        const errorMessage =
-          ERROR_CODES[errorCode] ||
-          resCreate?.value?.message ||
-          "Đã xảy ra lỗi, vui lòng thử lại!";
-        message.warning(errorMessage);
-      }
+      //       message.warning(errorMessage);
+      //     }
+      //   } else {
+      //     const { data: resCreate, error } = await restAPI.cms.createStaff({
+      //       body,
+      //     });
+      //     if (resCreate?.value?.status) {
+      //       message.success("Tạo nhân viên thành công!");
+      //     } else {
+      //       const errorCode = error.value?.data?.error;
+      //       const errorMessage =
+      //         ERROR_CODES[errorCode] ||
+      //         resCreate?.value?.message ||
+      //         "Đã xảy ra lỗi, vui lòng thử lại!";
+      //       message.warning(errorMessage);
+      //     }
+      //   }
+      // } catch (err) {
+      //   message.error("Vui lòng kiểm tra lại thông tin!");
+      //   console.error("API error:", err);
+      // } finally {
+      //   isLoading.value = false;
+      // }
+    } catch (error) {
+      console.log("Form validation failed");
     }
-  } catch (err) {
-    message.error("Vui lòng kiểm tra lại thông tin!");
-    console.error("API error:", err);
-  } finally {
-    isLoading.value = false;
   }
 };
 onMounted(() => {
   fetchBranch_id();
   fetchPermissonGroup();
-  fetchSubjects();
 });
 </script>
 <template>
@@ -487,45 +469,10 @@ onMounted(() => {
           <n-gi span="2" v-show="formValue.id !== null">
             <n-grid cols="2" :x-gap="20" responsive="screen">
               <n-gi span="2">
-                <h1 class="text-2xl font-bold text-[#133D85]">
-                  Đăng ký lịch dạy
-                </h1>
-              </n-gi>
-              <n-gi class="mt-7">
-                <n-form-item
-                  label="Hình thức dạy học"
-                  label-placement="left"
-                  :show-feedback="false"
-                >
-                  <n-space item-style="display: flex;">
-                    <n-checkbox
-                      label="Học online"
-                      v-model:checked="formValue.is_online_form"
-                    />
-                    <n-checkbox
-                      label="Học offline"
-                      v-model:checked="formValue.is_offline_form"
-                    />
-                  </n-space>
-                </n-form-item>
-              </n-gi>
-              <n-gi span="1 ">
-                <n-form-item label="Môn học" :show-feedback="false">
-                  <n-select
-                    placeholder="Chọn môn học"
-                    multiple
-                    v-model:value="formValue.subject_ids"
-                    :options="Subjectarray"
-                    label-field="name"
-                    value-field="id"
-                    clearable
-                  />
-                </n-form-item>
-              </n-gi>
-              <n-gi span="2">
-                <n-form-item>
-                  <DaotaoGiangvienSchedule />
-                </n-form-item>
+                <DaotaoGiangvienSchedule
+                  ref="scheduleRef"
+                  :branch_id="formValue.branch_id"
+                />
               </n-gi>
               <n-gi>
                 <n-form-item label="Cách tính lương" path="salary_type">
@@ -540,11 +487,6 @@ onMounted(() => {
               <n-gi>
                 <n-form-item label="Số tiền tính lương(VNĐ)" path="salary">
                   <n-input v-model:value="formValue.salary" />
-                </n-form-item>
-              </n-gi>
-              <n-gi span="2">
-                <n-form-item label="Ghi chú">
-                  <n-input type="textarea" class="w-full" placeholder="Note" />
                 </n-form-item>
               </n-gi>
             </n-grid>
