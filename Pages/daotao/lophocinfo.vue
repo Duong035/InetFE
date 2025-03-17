@@ -3,7 +3,7 @@ import { DaotaoLophocDanhsach } from "#components";
 import { reactive, ref } from "vue";
 
 const dropdowns = reactive<{ [key: string]: boolean }>({
-  coban: false,
+  coban: true,
   noidung: false,
   xeplich: false,
   danhsach: false,

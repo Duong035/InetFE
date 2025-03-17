@@ -6,7 +6,7 @@
     <div class="flex-1">
       <!-- Top Navigation -->
       <header class="flex items-center justify-between bg-white p-4 shadow">
-        <h1 class="text-lg font-semibold text-gray-700">Danh sách nhân sự</h1>
+        <h1 class="text-lg font-semibold text-gray-700"></h1>
         <div class="flex items-center space-x-4">
           <div class="relative">
             <input

@@ -31,7 +31,7 @@ export default defineComponent({
 
     const paginationReactive = reactive({
       page: 1,
-      pageSize: 5,
+      pageSize: 7,
       showSizePicker: true,
       pageSizes: [3, 5, 7],
       itemCount: computed(() => filteredData.value.length),
@@ -54,9 +54,10 @@ export default defineComponent({
     const showSchedule = ref(false);
     // Lưu thông tin lớp học được chọn để xếp lịch
     const currentClass = ref<RowData | null>(null);
-    const scheduleMode = ref<"date" | "week">("week");
+    const scheduleMode = ref<"date" | "week">("date");
     const displayDate = ref<Date>(new Date());
     const selectedValue = ref<Date | null>(null);
+    const activeTab = ref("lichhoc");
 
     //lọc theo loại lớp học
     const classTypeOptions = [
@@ -155,7 +156,7 @@ export default defineComponent({
       showSchedule.value = false;
       currentClass.value = null;
       selectedValue.value = null;
-      scheduleMode.value = "week";
+      scheduleMode.value = "date";
       dates.value = [];
     };
 
@@ -170,12 +171,13 @@ export default defineComponent({
     };
     function createColumns(): DataTableColumns<RowData> {
       return [
-        { title: "STT", key: "stt", titleAlign: "center" },
-        { title: "tên Lớp học", key: "name" },
-        { title: "Tên môn học", key: "subjectName" },
+        { title: "STT", key: "stt", align: "center" },
+        { title: "tên Lớp học", key: "name", titleAlign: "center" },
+        { title: "Tên môn học", key: "subjectName", titleAlign: "center" },
         {
           title: "Loại lớp học",
           key: "classType",
+          align: "center",
           render(row) {
             return convertClassType(Number(row.classType));
           },
@@ -183,6 +185,7 @@ export default defineComponent({
         {
           title: "Thời gian học",
           key: "timeRange",
+          align: "center",
           render(row) {
             return (
               dayjs(row.startAt).format("DD/MM/YYYY") +
@@ -194,6 +197,7 @@ export default defineComponent({
         {
           title: "Trạng thái",
           key: "status",
+          align: "center",
           render(row) {
             const status = getClassStatus(Number(row.status));
             const statusStyles: Record<
@@ -267,71 +271,122 @@ export default defineComponent({
       handleSave,
       VueDatePicker,
       handleClose,
+      activeTab,
     };
   },
 });
 </script>
 
 <template>
-  <div class="h-full w-full overflow-auto rounded-2xl bg-white">
-    <n-data-table
-      :columns="columns"
-      :data="data"
-      :bordered="false"
-      :single-line="false"
-      :pagination="pagination"
-    />
-    <div v-show="showSchedule" class="mt-4 rounded-md border p-4">
-      <h2 class="mb-2 text-xl font-bold">
-        Xếp lịch học cho lớp: {{ currentClass?.name }}
-      </h2>
-
-      <div>
-        <!-- Chọn chế độ: Tuần / Chọn ngày -->
-        <div class="mb-4 flex items-center gap-3">
-          <n-radio-group v-model:value="scheduleMode">
-            <n-space>
-              <n-radio value="week">Tuần</n-radio>
-              <n-radio value="date"> Chọn ngày </n-radio>
-            </n-space>
-          </n-radio-group>
-          <!-- Ghi chú hiển thị khi chọn 'date' -->
-          <span v-if="scheduleMode === 'date'" class="text-xs text-gray-400">
-            (Hệ thống sẽ không tự tạo buổi học theo lịch tuần)
-          </span>
-        </div>
-
-        <!-- Lịch -->
-        <VueDatePicker
-          v-model="dates"
-          :min-date="currentClass?.startAt"
-          :max-date="currentClass?.endAt"
-          multi-dates
-          inline
-          auto-apply
-        />
-
-        <!-- Thông tin số buổi -->
-        <div class="mt-4 flex items-center justify-between">
-          <span>Số buổi cuối tháng: 0 buổi</span>
-          <span>Số buổi của lớp: {{ currentClass?.totalLessons }}</span>
-        </div>
-      </div>
-
-      <div class="mt-4">
-        <n-button
-          type="primary"
-          @click="
-            () => {
-              handleSave();
-              showSchedule = false;
-            }
-          "
+  <div class="h-min-fit flex w-full overflow-auto rounded-2xl bg-white">
+    <!-- Main Content -->
+    <div class="flex-1">
+      <!-- Content Area -->
+      <div class="flex w-full px-7 pt-6 text-[#133D85]">
+        <button
+          class="text-4xl font-bold"
+          @click="activeTab = 'lichhoc'"
+          :class="[
+            'font-lichhoc px-6 py-2',
+            activeTab === 'lichhoc'
+              ? 'border-b-2 border-blue-500 text-blue-500'
+              : 'text-gray-600',
+          ]"
         >
-          Lưu
+          Lịch học
+        </button>
+        <button
+          class="text-4xl font-bold"
+          @click="activeTab = 'xeplop'"
+          :class="[
+            'px-6 py-2 font-medium',
+            activeTab === 'xeplop'
+              ? 'border-b-2 border-blue-500 text-blue-500'
+              : 'text-gray-600',
+          ]"
+        >
+          Xếp lớp
+        </button>
+        <n-button
+          type="info"
+          class="ml-auto h-12 w-40 text-xl"
+          @click="$router.push('lophocinfo')"
+        >
+          Thêm mới
+          <i class="fa-solid fa-plus ml-1 px-2"></i>
         </n-button>
-        <n-button class="ml-2" @click="handleClose"> Đóng </n-button>
       </div>
+      <main
+        class="mb-10 mr-5 mt-10 box-border flex"
+        v-if="activeTab === 'xeplop'"
+      >
+        <div class="h-full w-full overflow-auto rounded-2xl bg-white">
+          <n-data-table
+            :columns="columns"
+            :data="data"
+            :bordered="false"
+            :single-line="false"
+            :pagination="pagination"
+          />
+          <div v-show="showSchedule" class="mt-4 rounded-md border p-4">
+            <h2 class="mb-2 text-xl font-bold">
+              Xếp lịch học cho lớp: {{ currentClass?.name }}
+            </h2>
+
+            <div>
+              <!-- Chọn chế độ: Tuần / Chọn ngày -->
+              <div class="mb-4 flex items-center gap-3">
+                <n-radio-group v-model:value="scheduleMode">
+                  <n-space>
+                    <n-radio value="week">Tuần</n-radio>
+                    <n-radio value="date"> Chọn ngày </n-radio>
+                  </n-space>
+                </n-radio-group>
+                <!-- Ghi chú hiển thị khi chọn 'date' -->
+                <span
+                  v-if="scheduleMode === 'date'"
+                  class="text-xs text-gray-400"
+                >
+                  (Hệ thống sẽ không tự tạo buổi học theo lịch tuần)
+                </span>
+              </div>
+
+              <!-- Lịch -->
+
+              <VueDatePicker
+                v-if="scheduleMode === 'date' && currentClass"
+                v-model="dates"
+                :min-date="currentClass?.startAt"
+                :max-date="currentClass?.endAt"
+                multi-dates
+                inline
+                auto-apply
+              />
+
+              <!-- Thông tin số buổi -->
+              <div class="mt-4 flex items-center justify-between">
+                <span>Số buổi cuối tháng: 0 buổi</span>
+                <span>Số buổi của lớp: {{ currentClass?.totalLessons }}</span>
+              </div>
+            </div>
+
+            <div class="mt-4">
+              <n-button
+                type="primary"
+                @click="
+                  () => {
+                    handleSave();
+                    showSchedule = false;
+                  }
+                "
+              >
+                Lưu
+              </n-button>
+              <n-button class="ml-2" @click="handleClose"> Đóng </n-button>
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
   </div>
 </template>

@@ -118,12 +118,15 @@ const fetchBranches = async () => {
 
 //  HÀM TẠO HOẶC CẬP NHẬT LỚP HỌC
 const handleSubmit = async () => {
+  if (isSubmitting.value) return; // Ngăn chặn gọi API nhiều lần liên tiếp
   isSubmitting.value = true;
 
   try {
     console.log("Giá trị form trước khi gửi:", formValue.value);
 
-    let payload = {
+    const isUpdating = !!formValue.value.id; // Nếu có ID thì là cập nhật
+    const payload = {
+      id: formValue.value.id,
       type: formValue.value.studyMode,
       branch_id: formValue.value.branches,
       subject_id: formValue.value.subjects,
@@ -139,18 +142,34 @@ const handleSubmit = async () => {
       group_url: "",
     };
 
-    console.log("Payload gửi lên API:", payload);
+    console.log(
+      ` ${isUpdating ? "Cập nhật" : "Tạo mới"} lớp học với payload:`,
+      payload,
+    );
 
-    const { data: resData, error } = await restAPI.cms.createClass({
-      body: JSON.stringify(payload),
-    });
-
-    if (error?.value) {
-      message.error(error?.value?.data?.message || "Lỗi khi tạo lớp học");
-      return;
+    let resData, error;
+    if (isUpdating) {
+      // Cập nhật lớp học (PATCH)
+      ({ data: resData, error } = await restAPI.cms.updateClass({
+        body: JSON.stringify(payload),
+      }));
+    } else {
+      // Tạo mới lớp học (POST)
+      ({ data: resData, error } = await restAPI.cms.createClass({
+        body: JSON.stringify(payload),
+      }));
     }
 
-    message.success("Tạo lớp học thành công!");
+    if (error?.value) {
+      throw new Error(
+        error.value.data?.message ||
+          `Lỗi khi ${isUpdating ? "cập nhật" : "tạo"} lớp học`,
+      );
+    }
+
+    message.success(`${isUpdating ? "Cập nhật" : "Tạo"} lớp học thành công!`);
+
+    // Reset form sau khi hoàn thành
     formValue.value = {
       id: null,
       image: "",
@@ -164,8 +183,13 @@ const handleSubmit = async () => {
       branches: "",
     };
   } catch (err) {
-    console.error("Lỗi khi gửi dữ liệu:", err);
-    message.error("Lỗi khi gửi dữ liệu.");
+    console.error(
+      ` Lỗi khi ${formValue.value.id ? "cập nhật" : "tạo"} lớp học:`,
+      err,
+    );
+    const errorMessage =
+      err instanceof Error ? err.message : "Lỗi khi gửi dữ liệu.";
+    message.error(errorMessage);
   } finally {
     isSubmitting.value = false;
   }
@@ -228,6 +252,14 @@ onMounted(() => {
         </n-form-item>
 
         <!-- Tên lớp học -->
+        <n-form-item label="Tên lớp học *">
+          <n-input
+            v-model:value="formValue.className"
+            placeholder="Nhập tên lớp học"
+          />
+        </n-form-item>
+
+        <!-- giảng viên -->
         <n-form-item label="Tên lớp học *">
           <n-input
             v-model:value="formValue.className"

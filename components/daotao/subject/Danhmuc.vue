@@ -247,7 +247,7 @@ export default defineComponent({
         is_active,
       };
       try {
-        const { data: resUpdate, error } = await restAPI.cms.deleteCategory({
+        const { data: resUpdate } = await restAPI.cms.deleteCategory({
           id: danhmucId.value,
         });
         if (resUpdate?.value?.status) {

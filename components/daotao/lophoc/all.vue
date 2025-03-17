@@ -22,6 +22,8 @@ export default defineComponent({
       status: string;
       endAt: string;
       name: string;
+      code: string;
+      totalLessons: number;
     }
 
     const paginationReactive = reactive({
@@ -67,39 +69,50 @@ export default defineComponent({
     );
 
     const loadData = async () => {
+      isLoading.value = true;
       try {
         const { data: resData, error } = await restAPI.cms.getClasses({});
 
         if (error?.value) {
-          message.error(error?.value?.data?.message || "Lỗi tải dữ liệu");
-          return;
+          throw new Error(error.value.data?.message || "Lỗi tải dữ liệu");
         }
 
         const rawData = toRaw(resData.value)?.data?.classes;
-        if (Array.isArray(rawData)) {
-          data.value = rawData.map((item: any, index: number) => ({
-            stt: index + 1,
-            id: item.id || "N/A",
-            subjectName: item.subject?.name || "N/A",
-            classType: item.type ? `${item.type}` : "N/A",
-            startAt: item.start_at ? item.start_at.split("T")[0] : "N/A",
-            endAt: item.end_at ? item.end_at.split("T")[0] : "N/A",
-            status: item.status,
-            name: item.name,
-          }));
 
-          // Lấy danh sách môn học từ dữ liệu
-          const subjects = [
-            ...new Set(rawData.map((item: any) => item.subject?.name || "N/A")),
-          ];
-          subjectOptions.value = [
-            { label: "Tất cả môn học", value: "" },
-            ...subjects.map((subject) => ({ label: subject, value: subject })),
-          ];
-        } else {
-          console.error("Unexpected API response:", rawData);
-          message.error("Dữ liệu không hợp lệ từ API.");
-        }
+        data.value = rawData.map((item: any, index: number) => ({
+          stt: index + 1,
+          code: item.code || "N/A",
+          id: item.id || "N/A",
+          subjectName: item.subject?.name || "N/A",
+          classType: item.type ? `${item.type}` : "N/A",
+          startAt: item.start_at ? item.start_at.split("T")[0] : "N/A",
+          endAt: item.end_at ? item.end_at.split("T")[0] : "N/A",
+          status: item.status,
+          name: item.name,
+          totalLessons: item.subject?.total_lessons,
+        }));
+
+        // Lấy danh sách môn học từ dữ liệu
+        const subjects = [
+          ...new Set(
+            rawData
+              .map((item: any) => item.subject?.name)
+              .filter((s: any) => typeof s === "string"),
+          ),
+          ...new Set(
+            rawData
+              .map((item: any) => item.subject?.total_lessons)
+              .filter((s: any) => typeof s === "string"),
+          ),
+        ];
+
+        subjectOptions.value = [
+          { label: "Tất cả môn học", value: "" },
+          ...subjects.map((subject) => ({
+            label: String(subject), // Ép kiểu về string
+            value: String(subject),
+          })),
+        ];
       } catch (err) {
         console.error("Error loading data:", err);
         message.error("Lỗi tải dữ liệu.");
@@ -154,17 +167,25 @@ export default defineComponent({
     function createColumns(): DataTableColumns<RowData> {
       return [
         { title: "STT", key: "stt", titleAlign: "center" },
-        { title: "Tên Lớp học", key: "name" },
-        { title: "Tên môn học", key: "subjectName" },
+        { title: "Mã lớp học", key: "code", titleAlign: "center" },
+        { title: "Tên Lớp học", key: "name", titleAlign: "center" },
+        { title: "Tên môn học", key: "subjectName", titleAlign: "center" },
         {
           title: "Loại lớp học",
           key: "classType",
+          titleAlign: "center",
           render(row) {
             return convertClassType(Number(row.classType));
           },
         },
         {
+          title: "Số buổi học",
+          key: "totalLessons",
+          titleAlign: "center",
+        },
+        {
           title: "Thời gian học",
+          align: "center",
           key: "timeRange",
           render(row) {
             return (
@@ -176,6 +197,7 @@ export default defineComponent({
         },
         {
           title: "Trạng thái",
+          align: "center",
           key: "status",
           render(row) {
             const status = getClassStatus(Number(row.status));

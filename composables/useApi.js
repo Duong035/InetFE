@@ -32,6 +32,9 @@ const API_ENDPOINTS = {
     permissionTag: "/api/admin/permission-tags",
     lessons: "/api/admin/lessons",
     lesson_data: "/api/admin/lesson-data",
+    classrooms: "/api/admin/classrooms",
+    classroom: "/api/admin/classroom",
+    center: "/api/admin/center",
   },
 };
 
@@ -255,12 +258,13 @@ class CMSManager {
   async updateSubject(data) {
     return this.request.patch(API_ENDPOINTS.cms.subject, data);
   }
-
+  async deleteSubject(data) {
+    return this.request.delete(`${API_ENDPOINTS.cms.subject}/${data.id}`, data);
+  }
+  // lesson_________________________________________________________________________________________-
   async getListLesson(data) {
     return this.request.get(API_ENDPOINTS.cms.lessons, data);
   }
-  //__________________________________________________________________________________________
-
   // Shift____________________________________________________________________________________
   async getShift(data) {
     return this.request.get(API_ENDPOINTS.cms.shifts, data);
@@ -301,7 +305,7 @@ class CMSManager {
   }
 
   async updateClass(data) {
-    return this.request.patch(`${API_ENDPOINTS.cms.class}/${id}`, data);
+    return this.request.patch(API_ENDPOINTS.cms.class, data);
   }
 
   async deleteClass(data) {
@@ -337,7 +341,32 @@ class CMSManager {
   async getPermissionTags(data) {
     return this.request.get(API_ENDPOINTS.cms.permissionTag, data);
   }
-  //__________________________________________________________________________________________
+  //__CLassroom________________________________________________________________________________________
+  async getClassrooms(data) {
+    return this.request.get(API_ENDPOINTS.cms.classrooms, data);
+  }
+  async createClassroom(data) {
+    return this.request.post(API_ENDPOINTS.cms.classrooms, data);
+  }
+  async getDetailClassroom(data) {
+    return this.request.get(`${API_ENDPOINTS.cms.classroom}/${data.id}`, data);
+  }
+  async updateClassroom(data) {
+    return this.request.put(`${API_ENDPOINTS.cms.classrooms}/${data.id}`, data);
+  }
+  async deleteClassroom(data) {
+    return this.request.delete(
+      `${API_ENDPOINTS.cms.classrooms}/${data.id}`,
+      data,
+    );
+  }
+  //center ______________________________________________________________________________________
+  async getCenter(data) {
+    return this.request.get(API_ENDPOINTS.cms.center, data);
+  }
+  async updateCenter(data) {
+    return this.request.put(API_ENDPOINTS.cms.center, data);
+  }
 }
 
 class RestAPI {
