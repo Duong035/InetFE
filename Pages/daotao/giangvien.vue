@@ -379,6 +379,19 @@ export default defineComponent({
           message.warning(errorMessage);
         }
         itemId.value = null;
+        const { data } = await restAPI.cms.getShift({});
+        const sessions = data.value.data.data.filter((session) =>
+          session.title.includes(itemId.value),
+        );
+        for (const session of sessions) {
+          try {
+            await restAPI.cms.deleteShift({ id: session.id });
+          } catch (error) {
+            console.error(`Failed to delete session ${session.id}:`, error);
+          }
+        }
+
+        console.log(sessions);
         loadData();
       }
     };

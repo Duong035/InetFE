@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, computed, watch, onMounted, watchEffect } from "vue";
 import { useRoute } from "vue-router";
 import dayjs from "dayjs";
 
@@ -7,6 +7,7 @@ const props = defineProps({
   branch_id: String,
 });
 
+const message = useMessage();
 const Subjectarray = ref([]);
 const formRef = ref(null);
 const route = useRoute();
@@ -17,12 +18,14 @@ const selectedTimes = ref({});
 const daysOfWeek = ref(createDaysOfWeek());
 const is_update = ref(false);
 const formValue = reactive({
+  id: null,
   user_id: computed(() => route.query.id || null),
   is_online: false,
   is_offline: false,
   notes: null,
   start_date: null,
   end_date: null,
+  subject_id: null,
   time_slots: [
     {
       work_session_id: null,
@@ -30,7 +33,6 @@ const formValue = reactive({
       end_time: null,
     },
   ],
-  subject_ids: [],
   user_shifts: [
     {
       work_session_id: null,
@@ -95,47 +97,6 @@ const shift = ref([
     ],
   },
 ]);
-
-//Rule_________________________________________________________________________________
-
-const isSubjectSelected = computed(() => formValue.subject_ids.length > 0);
-
-const rules = ref({
-  startDate: [],
-  endDate: [],
-});
-
-watch(isSubjectSelected, (isSelected) => {
-  if (isSelected) {
-    rules.value = {
-      ...rules.value, // Preserve other rules (if any)
-      startDate: [
-        {
-          required: true,
-          message: "Vui lòng chọn ngày bắt đầu!",
-          trigger: "blur",
-        },
-      ],
-      endDate: [
-        {
-          required: true,
-          message: "Vui lòng chọn ngày kết thúc!",
-          trigger: "blur",
-        },
-      ],
-    };
-  } else {
-    rules.value = {
-      ...rules.value,
-      startDate: [], // Remove validation
-      endDate: [], // Remove validation
-    };
-  }
-
-  // Force validation to update
-  formRef.value?.restoreValidation();
-});
-//_____________________________________________________________________________________
 
 //Subject_______________________________________________________________________________
 const fetchSubjects = async () => {
@@ -326,6 +287,36 @@ const shiftTimes = ref(
   ),
 );
 
+function formatHM(dateTimeString) {
+  const date = new Date(dateTimeString);
+  return new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(date);
+}
+
+watchEffect(() => {
+  shiftTimes.value = Object.fromEntries(
+    shift.value.map((s) => {
+      const startTime = parseTime(s.start_time);
+      const endTime = parseTime(s.end_time);
+
+      // Manually update selectedTimes when shiftTimes updates
+      updateSelectedTime(s.id, "start", startTime);
+      updateSelectedTime(s.id, "end", endTime);
+
+      return [
+        s.id,
+        {
+          start: startTime,
+          end: endTime,
+        },
+      ];
+    }),
+  );
+});
+
 const isAnyChecked = (shiftId) => {
   const shiftData = shift.value.find((s) => s.id === shiftId);
   return shiftData?.session.some((day) => day.checked);
@@ -398,6 +389,15 @@ const disableBeforeStartDate = (date) => {
   if (!startDate.value) return false;
   return date < new Date(startDate.value);
 };
+
+watch(startDate, (newStart) => {
+  if (newStart && endDate.value) {
+    const end = new Date(endDate.value);
+    if (end < new Date(newStart)) {
+      endDate.value = startDate.value;
+    }
+  }
+});
 //_____________________________________________________________________________________
 
 //Shifts_______________________________________________________________________________
@@ -434,11 +434,9 @@ const createShifts = async () => {
 };
 //_____________________________________________________________________________________
 
-//format_______________________________________________________________________________
+//formatdata___________________________________________________________________________
 const formatDate = (timestamp) => {
-  return timestamp
-    ? dayjs(timestamp).format("YYYY-MM-DDTHH:mm:ss.SSS+07:00")
-    : null;
+  return timestamp ? dayjs(timestamp).format("YYYY-MM-DD") : null;
 };
 const workSessionMap = computed(() => {
   return session.value.reduce((acc, s) => {
@@ -473,8 +471,8 @@ const validTimeSlots = computed(() => {
 const formattedTimeSlots = computed(() => {
   return Object.values(validTimeSlots.value).map(
     ({ start, end, work_session_id }) => ({
-      start_time: dayjs(start).format("YYYY-MM-DDTHH:mm:ss.SSS+07:00"),
-      end_time: dayjs(end).format("YYYY-MM-DDTHH:mm:ss.SSS+07:00"),
+      start_time: dayjs(start).utc().format("YYYY-MM-DDTHH:mm:ss.SSS[Z]"),
+      end_time: dayjs(end).utc().format("YYYY-MM-DDTHH:mm:ss.SSS[Z]"),
       work_session_id,
     }),
   );
@@ -506,237 +504,319 @@ const convertToUserShifts = (listCheckedShifts) => {
 };
 //_____________________________________________________________________________________
 
-//Load_________________________________________________________________________________
-const loadData = async () => {
-      loading.value = true;
-      try {
-        const { data: resData, error } = await restAPI.cms.getStaff();
+//Shift/Slot___________________________________________________________________________
+const loadShift = async () => {
+  if (!formValue.time_slots || formValue.time_slots.length === 0) {
+    selectedTimes.value = [{ start: null, end: null, session: "NO_SESSION" }];
+    return;
+  }
 
-        if (error?.value) {
-          message.error(error?.value?.data?.message || "Lỗi tải dữ liệu");
-          return;
-        }
+  selectedTimes.value = formValue.time_slots
+    .map((time_slots) => ({
+      start: time_slots.start_time ? formatHM(time_slots.start_time) : null,
+      end: time_slots.end_time ? formatHM(time_slots.end_time) : null,
+      session: time_slots.work_session_id || "NO_SESSION",
+    }))
+    .filter((slot) => slot.start !== null)
+    .sort((a, b) => (a.start > b.start ? 1 : -1));
 
-        const rawData = toRaw(resData.value)?.data;
-        const Teachersdata = rawData.data;
-        if (Array.isArray(Teachersdata)) {
-          data.value = Teachersdata.map((item: any, index) => ({
-            id: item.id,
-            stt: index + 1,
-            username: item.username,
-            full_name: item.full_name,
-            avatar: item.avatar,
-            created_at: item.created_at ? item.created_at.split("T")[0] : "N/A",
-            salary: item.salary || 0,
-            organ_struct_id: item.organ_struct_id,
-            branch_id: item.branch_id,
-            position: item.position,
-            permission_grp_id: item.permission_grp_id,
-            is_active:
-              item.is_active === true
-                ? "Hoạt động"
-                : item.is_active === false
-                  ? "Không hoạt động"
-                  : "N/A",
-          }));
-        } else {
-          console.error("Unexpected API response:", rawData);
-          message.error("Dữ liệu không hợp lệ từ API.");
-        }
-        loading.value = false;
-      } catch (err) {
-        console.error("Error loading data:", err);
-        message.error("Lỗi tải dữ liệu.");
+  shift.value.forEach((s, index) => {
+    if (selectedTimes.value[index]) {
+      let selectedStart = selectedTimes.value[index].start;
+      let selectedEnd = selectedTimes.value[index].end;
+      let selectedSession = selectedTimes.value[index].session;
+      let selectedStartNum = selectedStart
+        ? parseInt(selectedStart.split(":")[0], 10)
+        : NaN;
+
+      while (
+        !isNaN(selectedStartNum) &&
+        selectedStartNum > parseInt(s.end, 10)
+      ) {
+        index++;
+        if (!shift.value[index]) return;
+
+        selectedTimes.value[index] = {
+          start: selectedStart,
+          end: selectedEnd,
+          session: selectedSession,
+        };
+
+        s = shift.value[index];
       }
-    };
 
+      if (!isNaN(selectedStartNum)) {
+        s.start_time = selectedStart || s.start_time;
+        s.end_time = selectedEnd || s.end_time;
+        s.work_session_id = selectedSession || s.work_session_id;
+
+        // Collect all shifts with the same work_session_id
+        let matchingShortShifts = Object.values(formValue.user_shifts)
+          .filter(
+            (shortShift) => shortShift.work_session_id === selectedSession,
+          )
+          .map((shortShift) => shortShift.day_of_week); // Extract day_of_week values
+
+        console.log("Matching shifts:", matchingShortShifts);
+
+        if (matchingShortShifts.length > 0) {
+          s.session.forEach((session) => {
+            const day = session.value;
+            console.log("Checking day:", day);
+
+            // Check if the day exists in any of the matching shifts
+            const isChecked = matchingShortShifts.includes(day);
+            session.checked = isChecked;
+
+            // ✅ Call handleCheckedValue to update `listCheckedShifts`
+            handleCheckedValue(day, isChecked, s.id);
+          });
+        }
+      }
+    }
+  });
+  await listSession();
+};
 //_____________________________________________________________________________________
 
-//submit_______________________________________________________________________________
+//Load/Submit__________________________________________________________________________
+const loadData = async () => {
+  if (!formValue.user_id || formValue.user_id === "") return;
+
+  const { data: resList } = await restAPI.cms.listCalendars({});
+  const filteredData = resList.value?.data?.filter(
+    (calendar) => calendar.user_id === formValue.user_id,
+  );
+
+  const Calid = filteredData.length > 0 ? filteredData[0].id : null;
+  if (Calid) is_update.value = true;
+
+  const { data: resData } = await restAPI.cms.getCalendarDetails({ id: Calid });
+
+  if (resData.value?.status) {
+    const data = resData.value.data;
+    console.log("data: ", data);
+    formValue.id = data.id || null;
+    formValue.is_online = Boolean(data.is_online);
+    formValue.is_offline = Boolean(data.is_offline);
+    formValue.notes = data.notes || null;
+    startDate.value = data.start_date;
+    endDate.value = data.end_date;
+    formValue.subject_id = data.subject_id || null;
+    formValue.time_slots = data.time_slots || null;
+    formValue.user_shifts = data.user_shifts || null;
+  }
+
+  console.log("form: ", formValue);
+  console.log(typeof formValue.user_shifts);
+  loadShift();
+};
+
 const scheduleSubmit = async () => {
   await listSession();
   if (!session.value.length) {
     await createShifts();
   }
-  return new Promise((resolve, reject) => {
-    formRef.value?.validate((errors) => {
-      if (!errors) {
-        const body = {
-          user_id: formValue.user_id,
-          is_online: formValue.is_online,
-          is_offline: formValue.is_offline,
-          notes: formValue.notes,
-          start_date: formatDate(startDate.value),
-          end_date: formatDate(endDate.value),
-          time_slots: formattedTimeSlots.value,
-          user_shifts: convertToUserShifts(listCheckedShifts.value),
-        };
-
-        console.log(body);
-        resolve(true);
+  const body = {
+    user_id: formValue.user_id,
+    is_online: formValue.is_online,
+    is_offline: formValue.is_offline,
+    subject_id: formValue.subject_id,
+    notes: formValue.notes,
+    start_date: formatDate(startDate.value),
+    end_date: formatDate(endDate.value),
+    time_slots: formattedTimeSlots.value,
+    user_shifts: convertToUserShifts(listCheckedShifts.value),
+  };
+  console.log(JSON.stringify(body, null, 2));
+  try {
+    if (formValue.id) {
+      const { data: resUpdate } = await restAPI.cms.updateCalendar({
+        id: formValue.id,
+        body,
+      });
+      if (resUpdate?.value?.status) {
+        message.success("Cập nhật lịch dạy thành công!");
       } else {
-        // Validation failed, reject the promise
-        reject(false);
-      }
-    });
-  });
-};
-defineExpose({
-  scheduleSubmit,
-});
-//_____________________________________________________________________________________
+        const errorCode = resUpdate.value.data.error || "UNKNOWN_ERROR";
+        const errorMessage =
+          ERROR_CODES[errorCode] ||
+          resUpdate?.value?.message ||
+          "Đã xảy ra lỗi, vui lòng thử lại!";
 
-onMounted(async () => {
+        message.warning(errorMessage);
+      }
+    } else {
+      const { data: resCreate } = await restAPI.cms.createCalendar({
+        body,
+      });
+      if (resCreate?.value?.status) {
+        message.success("Tạo lịch dạy thành công!");
+      } else {
+        const errorCode = resCreate.value.data.error || "UNKNOWN_ERROR";
+        const errorMessage =
+          ERROR_CODES[errorCode] ||
+          resCreate?.value?.message ||
+          "Đã xảy ra lỗi, vui lòng thử lại!";
+        message.warning(errorMessage);
+      }
+    }
+  } catch (err) {
+    message.error("Vui lòng kiểm tra lại thông tin!");
+    console.error("API error:", err);
+  } finally {
+    loadData();
+  }
+};
+
+defineExpose({ scheduleSubmit });
+
+onMounted(() => {
   fetchSubjects();
+  loadData();
   selectedTimes.value = [{ start: null, end: null, session: "NO_SESSION" }];
 });
 </script>
-
 <template>
-  <n-form ref="formRef" :model="formValue" :rules="rules">
-    <n-grid :cols="11" :y-gap="16">
-      <n-gi span="11">
-        <n-grid cols="2" :x-gap="20" responsive="screen">
-          <n-gi span="2">
-            <h1 class="text-2xl font-bold text-[#133D85]">Đăng ký lịch dạy</h1>
-          </n-gi>
-          <n-gi class="mt-7">
-            <n-form-item
-              label="Hình thức dạy học"
-              label-placement="left"
-              :show-feedback="false"
-            >
-              <n-space item-style="display: flex;">
-                <n-checkbox
-                  label="Học online"
-                  v-model:checked="formValue.is_online"
-                />
-                <n-checkbox
-                  label="Học offline"
-                  v-model:checked="formValue.is_offline"
-                />
-              </n-space>
-            </n-form-item>
-          </n-gi>
-          <n-gi span="1 ">
-            <n-form-item label="Môn học" :show-feedback="false">
-              <n-select
-                placeholder="Chọn môn học"
-                multiple
-                v-model:value="formValue.subject_ids"
-                :options="Subjectarray"
-                label-field="name"
-                value-field="id"
-                clearable
+  <!-- <n-form ref="formRef" :model="formValue" :rules="rules"> -->
+  <n-grid :cols="11" :y-gap="16">
+    <n-gi span="11">
+      <n-grid cols="2" :x-gap="20" responsive="screen">
+        <n-gi span="2">
+          <h1 class="text-2xl font-bold text-[#133D85]">Đăng ký lịch dạy</h1>
+        </n-gi>
+        <n-gi class="mt-7">
+          <n-form-item
+            label="Hình thức dạy học"
+            label-placement="left"
+            :show-feedback="false"
+          >
+            <n-space item-style="display: flex;">
+              <n-checkbox
+                label="Học online"
+                v-model:checked="formValue.is_online"
               />
-            </n-form-item>
-          </n-gi>
-        </n-grid>
-      </n-gi>
-      <n-gi :span="11">
-        <n-form-item
-          label="Ngày áp dụng:"
-          label-placement="left"
-          class="flex items-center space-x-2"
-          :label-style="{ display: 'flex', alignItems: 'center' }"
-        >
-          <n-form-item path="startDate" :show-label="false">
-            <n-date-picker
-              type="date"
-              :is-date-disabled="disablePastDates"
-              placeholder="Chọn ngày"
-              v-model:value="startDate"
-              format="dd-MM-yyyy"
-              value-format="yyyy-MM-dd"
+              <n-checkbox
+                label="Học offline"
+                v-model:checked="formValue.is_offline"
+              />
+            </n-space>
+          </n-form-item>
+        </n-gi>
+        <n-gi span="1 ">
+          <n-form-item label="Môn học" :show-feedback="false">
+            <n-select
+              placeholder="Chọn môn học"
+              v-model:value="formValue.subject_id"
+              :options="Subjectarray"
+              label-field="name"
+              value-field="id"
+              clearable
             />
           </n-form-item>
-          <i class="fa-solid fa-arrow-right mb-6 px-1 text-[#133D85]"></i>
-          <n-form-item path="endDate" :show-label="false">
-            <n-date-picker
-              type="date"
-              :is-date-disabled="disableBeforeStartDate"
-              placeholder="Chọn ngày"
-              v-model:value="endDate"
-              format="dd-MM-yyyy"
-              value-format="yyyy-MM-dd"
-            />
-          </n-form-item>
+        </n-gi>
+      </n-grid>
+    </n-gi>
+    <n-gi :span="11">
+      <n-form-item
+        label="Ngày áp dụng:"
+        label-placement="left"
+        class="flex items-center space-x-2"
+        :label-style="{ display: 'flex', alignItems: 'center' }"
+      >
+        <n-form-item path="startDate" :show-label="false">
+          <n-date-picker
+            type="date"
+            :is-date-disabled="disablePastDates"
+            placeholder="Chọn ngày"
+            v-model:value="startDate"
+            format="dd-MM-yyyy"
+            value-format="yyyy-MM-dd"
+          />
         </n-form-item>
-      </n-gi>
+        <i class="fa-solid fa-arrow-right mb-6 px-1 text-[#133D85]"></i>
+        <n-form-item path="endDate" :show-label="false">
+          <n-date-picker
+            type="date"
+            :is-date-disabled="disableBeforeStartDate"
+            placeholder="Chọn ngày"
+            v-model:value="endDate"
+            format="dd-MM-yyyy"
+            value-format="yyyy-MM-dd"
+          />
+        </n-form-item>
+      </n-form-item>
+    </n-gi>
 
-      <n-gi :span="4" class="font-500 text-[#133D85]">Lịch trống:</n-gi>
-      <n-gi v-for="day in daysOfWeek" :key="day.value">
+    <n-gi :span="4" class="font-500 text-[#133D85]">Lịch trống:</n-gi>
+    <n-gi v-for="day in daysOfWeek" :key="day.value">
+      <n-checkbox
+        :label="day.label"
+        class="whitespace-nowrap"
+        v-model:checked="listChecked[day.value]"
+        @update:checked="(checked) => handleCheckedDay(day.value, checked)"
+      />
+    </n-gi>
+    <template v-for="s in shift" :key="s">
+      <n-gi span="4">
+        <n-flex align="center" :wrap="false" justify="space-between">
+          <n-ellipsis
+            :tooltip="{
+              contentClass: 'text-[#133D85]  bg-white p-2 rd-2',
+              raw: true,
+              arrowClass: '!bg-white',
+            }"
+            :line-clamp="2"
+            >{{ s.name + ":" }}
+          </n-ellipsis>
+          <n-input-group
+            class="rounded-15px -ml-5 mr-3 w-fit shrink-0 bg-white"
+          >
+            <n-time-picker
+              v-model:value="shiftTimes[s.id].start"
+              format="HH:mm"
+              :hours="getStartHours[s.id] || []"
+              :is-minute-disabled="
+                (minute, hour) =>
+                  getDisabledMinutes(hour, s.id, false).includes(minute)
+              "
+              @update:value="(val) => updateSelectedTime(s.id, 'start', val)"
+              :disabled="!isAnyChecked(s.id)"
+            />
+            <n-time-picker
+              v-model:value="shiftTimes[s.id].end"
+              format="HH:mm"
+              :hours="getEndHours[s.id] || []"
+              :is-minute-disabled="
+                (minute, hour) =>
+                  getDisabledMinutes(hour, s.id, true).includes(minute)
+              "
+              @update:value="(val) => updateSelectedTime(s.id, 'end', val)"
+              :disabled="!isAnyChecked(s.id)"
+            />
+          </n-input-group>
+        </n-flex>
+      </n-gi>
+      <n-gi v-for="day in s.session" :key="day.value" class="flex items-center">
         <n-checkbox
-          :label="day.label"
-          class="whitespace-nowrap"
-          v-model:checked="listChecked[day.value]"
-          @update:checked="(checked) => handleCheckedDay(day.value, checked)"
+          v-model:checked="day.checked"
+          class="custom-checkbox-no-disabled"
+          @update:checked="
+            (checked) => handleCheckedValue(day.value, checked, s.id)
+          "
         />
       </n-gi>
-      <template v-for="s in shift" :key="s">
-        <n-gi span="4">
-          <n-flex align="center" :wrap="false" justify="space-between">
-            <n-ellipsis
-              :tooltip="{
-                contentClass: 'text-[#133D85]  bg-white p-2 rd-2',
-                raw: true,
-                arrowClass: '!bg-white',
-              }"
-              :line-clamp="2"
-              >{{ s.name + ":" }}
-            </n-ellipsis>
-            <n-input-group
-              class="rounded-15px -ml-5 mr-3 w-fit shrink-0 bg-white"
-            >
-              <n-time-picker
-                v-model:value="shiftTimes[s.id].start"
-                format="HH:mm"
-                :hours="getStartHours[s.id] || []"
-                :is-minute-disabled="
-                  (minute, hour) =>
-                    getDisabledMinutes(hour, s.id, false).includes(minute)
-                "
-                @update:value="(val) => updateSelectedTime(s.id, 'start', val)"
-                :disabled="!isAnyChecked(s.id)"
-              />
-              <n-time-picker
-                v-model:value="shiftTimes[s.id].end"
-                format="HH:mm"
-                :hours="getEndHours[s.id] || []"
-                :is-minute-disabled="
-                  (minute, hour) =>
-                    getDisabledMinutes(hour, s.id, true).includes(minute)
-                "
-                @update:value="(val) => updateSelectedTime(s.id, 'end', val)"
-                :disabled="!isAnyChecked(s.id)"
-              />
-            </n-input-group>
-          </n-flex>
-        </n-gi>
-        <n-gi
-          v-for="day in s.session"
-          :key="day.value"
-          class="flex items-center"
-        >
-          <n-checkbox
-            v-model:checked="day.checked"
-            class="custom-checkbox-no-disabled"
-            @update:checked="
-              (checked) => handleCheckedValue(day.value, checked, s.id)
-            "
-          />
-        </n-gi>
-      </template>
-      <n-gi span="11">
-        <n-form-item label="Ghi chú">
-          <n-input
-            type="textarea"
-            v-model:value="formValue.notes"
-            class="w-full"
-            placeholder="Note"
-          />
-        </n-form-item>
-      </n-gi>
-    </n-grid>
-  </n-form>
+    </template>
+    <n-gi span="11">
+      <n-form-item label="Ghi chú">
+        <n-input
+          type="textarea"
+          v-model:value="formValue.notes"
+          class="w-full"
+          placeholder="Note"
+        />
+      </n-form-item>
+    </n-gi>
+  </n-grid>
+  <!-- </n-form> -->
 </template>

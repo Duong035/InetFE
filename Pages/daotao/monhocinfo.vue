@@ -298,7 +298,6 @@ onMounted(async () => {
               'relative flex cursor-pointer items-center py-3 pl-3 pr-10',
               activeDropdown === 'coban'
                 ? '-mr-12 bg-gray-50 pr-0 text-[#133D85]'
-                ? '-mr-12 bg-gray-50 pr-0 text-[#133D85]'
                 : 'text-[#4D6FA8]',
             ]"
           >
@@ -306,8 +305,6 @@ onMounted(async () => {
               :class="[
                 'pr-3 text-[8px] text-[#133D85]',
                 activeDropdown === 'coban'
-                  ? 'fa-solid fa-circle text-[#133D85]'
-                  : 'fa-solid fa-circle-dot text-[#4D6FA8]',
                   ? 'fa-solid fa-circle text-[#133D85]'
                   : 'fa-solid fa-circle-dot text-[#4D6FA8]',
               ]"
@@ -339,7 +336,6 @@ onMounted(async () => {
               'relative flex cursor-pointer items-center py-3 pl-3 pr-10',
               activeDropdown === 'chungchi'
                 ? '-mr-12 bg-gray-50 pr-0 text-[#133D85]'
-                ? '-mr-12 bg-gray-50 pr-0 text-[#133D85]'
                 : 'text-[#4D6FA8]',
             ]"
           >
@@ -347,8 +343,6 @@ onMounted(async () => {
               :class="[
                 'pr-3 text-[8px] text-[#133D85]',
                 activeDropdown === 'chungchi'
-                  ? 'fa-solid fa-circle text-[#133D85]'
-                  : 'fa-solid fa-circle-dot text-[#4D6FA8]',
                   ? 'fa-solid fa-circle text-[#133D85]'
                   : 'fa-solid fa-circle-dot text-[#4D6FA8]',
               ]"
@@ -361,7 +355,6 @@ onMounted(async () => {
               'relative flex cursor-pointer items-center py-3 pl-3 pr-10',
               activeDropdown === 'caidat'
                 ? '-mr-12 bg-gray-50 pr-0 text-[#133D85]'
-                ? '-mr-12 bg-gray-50 pr-0 text-[#133D85]'
                 : 'text-[#4D6FA8]',
             ]"
           >
@@ -369,8 +362,6 @@ onMounted(async () => {
               :class="[
                 'pr-3 text-[8px] text-[#133D85]',
                 activeDropdown === 'caidat'
-                  ? 'fa-solid fa-circle text-[#133D85]'
-                  : 'fa-solid fa-circle-dot text-[#4D6FA8]',
                   ? 'fa-solid fa-circle text-[#133D85]'
                   : 'fa-solid fa-circle-dot text-[#4D6FA8]',
               ]"

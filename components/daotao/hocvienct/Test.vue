@@ -1,14 +1,31 @@
 <script setup>
 import { ref, computed, watch, onMounted, watchEffect } from "vue";
+import { useRoute } from "vue-router";
 import dayjs from "dayjs";
 
+const props = defineProps({
+  branch_id: String,
+});
+
+const Subjectarray = ref([]);
+const formRef = ref(null);
+const route = useRoute();
+const { restAPI } = useApi();
+const listChecked = ref([]);
+const listCheckedShifts = ref([]);
+const selectedTimes = ref({});
+const daysOfWeek = ref(createDaysOfWeek());
+const is_update = ref(false);
+const showSpin = ref(false);
 const formValue = reactive({
+  id: null,
   user_id: computed(() => route.query.id || null),
   is_online: false,
   is_offline: false,
   notes: null,
   start_date: null,
   end_date: null,
+  subject_id: null,
   time_slots: [
     {
       work_session_id: null,
@@ -19,17 +36,11 @@ const formValue = reactive({
   user_shifts: [
     {
       work_session_id: null,
-      day_of_week: 2,
+      day_of_week: [],
     },
   ],
 });
-const { restAPI } = useApi();
-const listChecked = ref([]);
-const listCheckedShifts = ref([]);
-const selectedTimes = ref({});
-const daysOfWeek = ref(createDaysOfWeek());
-
-const shifts = ref([]);
+const session = ref([]);
 const shift = ref([
   {
     id: 0,
@@ -86,6 +97,30 @@ const shift = ref([
     ],
   },
 ]);
+
+//Subject_______________________________________________________________________________
+const fetchSubjects = async () => {
+  try {
+    const { data: resData, error } = await restAPI.cms.getAllSubject({});
+    const rawData = toRaw(resData.value.data);
+    if (resData.value.status) {
+      Subjectarray.value = rawData
+        .map(({ id, name }) => ({
+          id,
+          name,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      message.error("Failed to load subjects!");
+      Subjectarray.value = [];
+    }
+  } catch (err) {
+    message.error("Error fetching subjects!");
+    console.error(err);
+    Subjectarray.value = [];
+  }
+};
+//_____________________________________________________________________________________
 
 //Timepicker_format____________________________________________________________________
 const getStartHours = computed(() => {
@@ -222,16 +257,6 @@ watch(
         if (!start && !end) {
           updatedTimes[s.id] = { start: null, end: null };
         }
-
-        if (!isValidTime) {
-          dayElement.checked = false;
-
-          Object.keys(listCheckedShifts.value).forEach((day) => {
-            listCheckedShifts.value[day] = listCheckedShifts.value[day].filter(
-              (id) => id !== s.id,
-            );
-          });
-        }
       });
     });
 
@@ -261,6 +286,41 @@ const shiftTimes = ref(
     ]),
   ),
 );
+
+function formatHM(dateTimeString) {
+  const date = new Date(dateTimeString);
+  return new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(date);
+}
+
+watchEffect(() => {
+  shiftTimes.value = Object.fromEntries(
+    shift.value.map((s) => {
+      const startTime = parseTime(s.start_time);
+      const endTime = parseTime(s.end_time);
+
+      // Manually update selectedTimes when shiftTimes updates
+      updateSelectedTime(s.id, "start", startTime);
+      updateSelectedTime(s.id, "end", endTime);
+
+      return [
+        s.id,
+        {
+          start: startTime,
+          end: endTime,
+        },
+      ];
+    }),
+  );
+});
+
+const isAnyChecked = (shiftId) => {
+  const shiftData = shift.value.find((s) => s.id === shiftId);
+  return shiftData?.session.some((day) => day.checked);
+};
 //_____________________________________________________________________________________
 
 //Checkbox_____________________________________________________________________________
@@ -270,25 +330,53 @@ const handleCheckedDay = (day, checked) => {
     if (dayElement) {
       dayElement.checked = checked;
     }
+
+    if (checked) {
+      if (!listCheckedShifts.value[day]) {
+        listCheckedShifts.value[day] = [];
+      }
+      if (!listCheckedShifts.value[day].includes(s.id)) {
+        listCheckedShifts.value[day].push(s.id);
+      }
+    } else {
+      delete listCheckedShifts.value[day];
+    }
   });
 
-  if (!checked) {
-    listChecked.value[day] = false;
-  }
+  listChecked.value[day] = checked;
 };
 
-const handleCheckedValue = (day) => {
-  const allShifts = shift.value
-    .map((s) => s.session.find((el) => el.value === day))
-    .filter(Boolean);
-  const allChecked = allShifts.every((el) => el.checked);
+const handleCheckedValue = (day, checked, id) => {
+  if (!Array.isArray(listCheckedShifts.value[day])) {
+    listCheckedShifts.value[day] = [];
+  }
 
-  listChecked.value[day] = allChecked;
+  if (checked) {
+    if (!listCheckedShifts.value[day].includes(id)) {
+      listCheckedShifts.value[day].push(id);
+    }
+  } else {
+    listCheckedShifts.value[day] = listCheckedShifts.value[day].filter(
+      (e) => e !== id,
+    );
+
+    if (listCheckedShifts.value[day].length === 0) {
+      delete listCheckedShifts.value[day];
+    }
+  }
+
+  if (daysOfWeek.value) {
+    const found = daysOfWeek.value.find((e) => e.value === day);
+    if (found) {
+      found.checked =
+        listCheckedShifts.value[day]?.length === shift.value.length;
+    }
+  }
 };
 //_____________________________________________________________________________________
 
 // Date picker_________________________________________________________________________
-const startDate = ref();
+const startDate = ref(null);
 const endDate = ref(null);
 
 const disablePastDates = (date) => {
@@ -302,47 +390,320 @@ const disableBeforeStartDate = (date) => {
   return date < new Date(startDate.value);
 };
 
-function formatHM(dateTimeString) {
-  const date = new Date(dateTimeString);
-  return new Intl.DateTimeFormat("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).format(date);
-}
+watch(startDate, (newStart) => {
+  if (newStart && endDate.value) {
+    const end = new Date(endDate.value);
+    if (end < new Date(newStart)) {
+      endDate.value = startDate.value;
+    }
+  }
+});
 //_____________________________________________________________________________________
 
-onMounted(async () => {
+//Shifts_______________________________________________________________________________
+const listSession = async () => {
+  const { data } = await restAPI.cms.getShift({});
+  session.value = data.value.data.data.filter((session) =>
+    session.title.includes(formValue.user_id),
+  );
+};
+const createShifts = async () => {
+  if (!formValue.user_id) return;
+
+  for (const s of shift.value) {
+    let body = {
+      title: `${formValue.user_id}_${s.id}`,
+      branch_id: props.branch_id,
+      start_time: startDate.value
+        ? new Date(startDate.value).toISOString()
+        : null,
+      end_time: endDate.value ? new Date(endDate.value).toISOString() : null,
+      is_active: true,
+    };
+    try {
+      await restAPI.cms.createShift({ body });
+    } catch (error) {
+      if (error.response?.data?.message?.includes("already exists")) {
+        return;
+      } else {
+        console.error(`Error creating shift ${s.id}:`, error);
+      }
+    }
+  }
+  listSession();
+};
+//_____________________________________________________________________________________
+
+//formatdata___________________________________________________________________________
+const formatDate = (timestamp) => {
+  return timestamp ? dayjs(timestamp).format("YYYY-MM-DD") : null;
+};
+const workSessionMap = computed(() => {
+  return session.value.reduce((acc, s) => {
+    const shiftType = s.title.split("_").pop();
+    acc[shiftType] = s.id;
+    return acc;
+  }, {});
+});
+
+const validTimeSlots = computed(() => {
+  return Object.entries(selectedTimes.value).reduce((acc, [shiftId, t]) => {
+    if (!isAnyChecked(Number(shiftId))) return acc; // Use your isAnyChecked function
+
+    if (
+      t.start !== null &&
+      t.end !== null &&
+      t.start !== "Invalid Date" &&
+      t.end !== "Invalid Date"
+    ) {
+      const workSessionId = workSessionMap.value[shiftId] || null;
+
+      acc[shiftId] = {
+        start: t.start,
+        end: t.end,
+        work_session_id: workSessionId,
+      };
+    }
+    return acc;
+  }, {});
+});
+
+const formattedTimeSlots = computed(() => {
+  return Object.values(validTimeSlots.value).map(
+    ({ start, end, work_session_id }) => ({
+      start_time: dayjs(start).utc().format("YYYY-MM-DDTHH:mm:ss.SSS[Z]"),
+      end_time: dayjs(end).utc().format("YYYY-MM-DDTHH:mm:ss.SSS[Z]"),
+      work_session_id,
+    }),
+  );
+});
+
+const convertToUserShifts = (listCheckedShifts) => {
+  const shiftMapping = {};
+
+  Object.entries(listCheckedShifts).forEach(([day, shiftTypes]) => {
+    const dayNumber = Number(day);
+    if (!Array.isArray(shiftTypes)) return;
+
+    shiftTypes.forEach((shiftType) => {
+      if (!validTimeSlots.value[shiftType]) {
+        return;
+      }
+
+      if (!shiftMapping[shiftType]) {
+        shiftMapping[shiftType] = {
+          work_session_id: workSessionMap.value[shiftType] || null,
+          day_of_week: [],
+        };
+      }
+      shiftMapping[shiftType].day_of_week.push(dayNumber);
+    });
+  });
+
+  return Object.values(shiftMapping);
+};
+//_____________________________________________________________________________________
+
+//Shift/Slot___________________________________________________________________________
+const loadShift = async () => {
+  if (!formValue.time_slots || formValue.time_slots.length === 0) {
+    selectedTimes.value = [{ start: null, end: null, session: "NO_SESSION" }];
+    return;
+  }
+
+  selectedTimes.value = formValue.time_slots
+    .map((time_slots) => ({
+      start: time_slots.start_time ? formatHM(time_slots.start_time) : null,
+      end: time_slots.end_time ? formatHM(time_slots.end_time) : null,
+      session: time_slots.work_session_id || "NO_SESSION",
+    }))
+    .filter((slot) => slot.start !== null)
+    .sort((a, b) => (a.start > b.start ? 1 : -1));
+
+  shift.value.forEach((s, index) => {
+    if (selectedTimes.value[index]) {
+      let selectedStart = selectedTimes.value[index].start;
+      let selectedEnd = selectedTimes.value[index].end;
+      let selectedSession = selectedTimes.value[index].session;
+      let selectedStartNum = selectedStart
+        ? parseInt(selectedStart.split(":")[0], 10)
+        : NaN;
+
+      while (
+        !isNaN(selectedStartNum) &&
+        selectedStartNum > parseInt(s.end, 10)
+      ) {
+        index++;
+        if (!shift.value[index]) return;
+
+        selectedTimes.value[index] = {
+          start: selectedStart,
+          end: selectedEnd,
+          session: selectedSession,
+        };
+
+        s = shift.value[index];
+      }
+
+      if (!isNaN(selectedStartNum)) {
+        s.start_time = selectedStart || s.start_time;
+        s.end_time = selectedEnd || s.end_time;
+        s.work_session_id = selectedSession || s.work_session_id;
+
+        let matchingShortShift = formValue.user_shifts.find(
+          (shortShift) => shortShift.work_session_id === selectedSession,
+        );
+
+        if (matchingShortShift) {
+          s.session.forEach((session) => {
+            const day = session.value; // Get the day of the week
+            const isChecked = matchingShortShift.day_of_week.includes(day);
+
+            session.checked = isChecked;
+
+            // ✅ Call handleCheckedValue to update `listCheckedShifts`
+            handleCheckedValue(day, isChecked, s.id);
+          });
+        }
+      }
+    }
+  });
+  await listSession();
+};
+//_____________________________________________________________________________________
+
+//Load/Submit__________________________________________________________________________
+if (formValue.user_id && formValue.user_id !== "") {
+  const { data: resList } = await restAPI.cms.listCalendars({});
+  const filteredData = resList.value.data.filter(
+    (calendar) => calendar.user_id === formValue.user_id,
+  );
+  const Calid = filteredData.length > 0 ? filteredData[0].id : null;
+  if (Calid) is_update.value = true;
+  const { data: resData } = await restAPI.cms.getCalendarDetails({
+    id: Calid,
+  });
+  if (resData.value?.status) {
+    const data = resData.value.data;
+    formValue.id = data.id || null;
+    formValue.is_online = Boolean(data.is_online);
+    formValue.is_offline = Boolean(data.is_offline);
+    formValue.notes = data.notes || null;
+    startDate.value = data.start_date;
+    endDate.value = data.end_date;
+    formValue.subject_id = data.subject_id || null;
+    formValue.time_slots = data.time_slots || null;
+    formValue.short_shifts = data.short_shifts || null;
+  } else {
+    const errorCode = error.value.data.error;
+    const errorMessage =
+      ERROR_CODES[errorCode] ||
+      resData.value?.message ||
+      "Đã xảy ra lỗi, vui lòng thử lại!";
+
+    message.warning(errorMessage);
+  }
+  console.log(formValue);
+  loadShift();
+} else {
+}
+
+const scheduleSubmit = async () => {
+  await listSession();
+  if (!session.value.length) {
+    await createShifts();
+  }
+  const body = {
+    user_id: formValue.user_id,
+    is_online: formValue.is_online,
+    is_offline: formValue.is_offline,
+    subject_id: formValue.subject_id,
+    notes: formValue.notes,
+    start_date: formatDate(startDate.value),
+    end_date: formatDate(endDate.value),
+    time_slots: formattedTimeSlots.value,
+    user_shifts: convertToUserShifts(listCheckedShifts.value),
+  };
+  console.log(body);
+  return true;
+};
+
+defineExpose({ scheduleSubmit });
+
+onMounted(() => {
+  fetchSubjects();
   selectedTimes.value = [{ start: null, end: null, session: "NO_SESSION" }];
 });
 </script>
-
 <template>
+  <!-- <n-form ref="formRef" :model="formValue" :rules="rules"> -->
   <n-grid :cols="11" :y-gap="16">
+    <n-gi span="11">
+      <n-grid cols="2" :x-gap="20" responsive="screen">
+        <n-gi span="2">
+          <h1 class="text-2xl font-bold text-[#133D85]">Đăng ký lịch dạy</h1>
+        </n-gi>
+        <n-gi class="mt-7">
+          <n-form-item
+            label="Hình thức dạy học"
+            label-placement="left"
+            :show-feedback="false"
+          >
+            <n-space item-style="display: flex;">
+              <n-checkbox
+                label="Học online"
+                v-model:checked="formValue.is_online"
+              />
+              <n-checkbox
+                label="Học offline"
+                v-model:checked="formValue.is_offline"
+              />
+            </n-space>
+          </n-form-item>
+        </n-gi>
+        <n-gi span="1 ">
+          <n-form-item label="Môn học" :show-feedback="false">
+            <n-select
+              placeholder="Chọn môn học"
+              multiple
+              v-model:value="formValue.subject_id"
+              :options="Subjectarray"
+              label-field="name"
+              value-field="id"
+              clearable
+            />
+          </n-form-item>
+        </n-gi>
+      </n-grid>
+    </n-gi>
     <n-gi :span="11">
       <n-form-item
-        label="Ngày mong muốn bắt đầu học:"
+        label="Ngày áp dụng:"
         label-placement="left"
         class="flex items-center space-x-2"
         :label-style="{ display: 'flex', alignItems: 'center' }"
       >
-        <n-date-picker
-          type="date"
-          :is-date-disabled="disablePastDates"
-          placeholder="Chọn ngày"
-          v-model:value="startDate"
-          format="dd-MM-yyyy"
-          value-format="yyyy-MM-dd"
-        />
-        <i class="fa-solid fa-arrow-right px-1 text-[#133D85]"></i>
-        <n-date-picker
-          type="date"
-          :is-date-disabled="disableBeforeStartDate"
-          placeholder="Chọn ngày"
-          v-model:value="endDate"
-          format="dd-MM-yyyy"
-          value-format="yyyy-MM-dd"
-        />
+        <n-form-item path="startDate" :show-label="false">
+          <n-date-picker
+            type="date"
+            :is-date-disabled="disablePastDates"
+            placeholder="Chọn ngày"
+            v-model:value="startDate"
+            format="dd-MM-yyyy"
+            value-format="yyyy-MM-dd"
+          />
+        </n-form-item>
+        <i class="fa-solid fa-arrow-right mb-6 px-1 text-[#133D85]"></i>
+        <n-form-item path="endDate" :show-label="false">
+          <n-date-picker
+            type="date"
+            :is-date-disabled="disableBeforeStartDate"
+            placeholder="Chọn ngày"
+            v-model:value="endDate"
+            format="dd-MM-yyyy"
+            value-format="yyyy-MM-dd"
+          />
+        </n-form-item>
       </n-form-item>
     </n-gi>
 
@@ -379,6 +740,7 @@ onMounted(async () => {
                   getDisabledMinutes(hour, s.id, false).includes(minute)
               "
               @update:value="(val) => updateSelectedTime(s.id, 'start', val)"
+              :disabled="!isAnyChecked(s.id)"
             />
             <n-time-picker
               v-model:value="shiftTimes[s.id].end"
@@ -389,6 +751,7 @@ onMounted(async () => {
                   getDisabledMinutes(hour, s.id, true).includes(minute)
               "
               @update:value="(val) => updateSelectedTime(s.id, 'end', val)"
+              :disabled="!isAnyChecked(s.id)"
             />
           </n-input-group>
         </n-flex>
@@ -403,5 +766,16 @@ onMounted(async () => {
         />
       </n-gi>
     </template>
+    <n-gi span="11">
+      <n-form-item label="Ghi chú">
+        <n-input
+          type="textarea"
+          v-model:value="formValue.notes"
+          class="w-full"
+          placeholder="Note"
+        />
+      </n-form-item>
+    </n-gi>
   </n-grid>
+  <!-- </n-form> -->
 </template>

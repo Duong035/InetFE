@@ -41,6 +41,8 @@ const API_ENDPOINTS = {
     classrooms: "/api/admin/classrooms",
     classroom: "/api/admin/classroom",
     center: "/api/admin/center",
+    calendar: "/api/admin/teach-schedule",
+
   },
 };
 
@@ -370,13 +372,6 @@ class CMSManager {
   }
   //__________________________________________________________________________________________
 
-  async getCenter(data) {
-    return this.request.get(API_ENDPOINTS.cms.center, data);
-  }
-  async updateCenter(data) {
-    return this.request.put(API_ENDPOINTS.cms.center, data);
-  }
-
   // Permissions groups_______________________________________________________________________
   async getPermissionGroups(data) {
     return this.request.get(API_ENDPOINTS.cms.permissionGroup, data);
@@ -424,32 +419,34 @@ class CMSManager {
     return this.request.get(API_ENDPOINTS.cms.districts, data);
   }
   //__________________________________________________________________________________________
-  //__CLassroom________________________________________________________________________________________
-  async getClassrooms(data) {
-    return this.request.get(API_ENDPOINTS.cms.classrooms, data);
+
+  //Teach_schedule____________________________________________________________________________
+  async getCalendarDetails(data) {
+    return this.request.get(`${API_ENDPOINTS.cms.calendar}/${data.id}`, data)
   }
-  async createClassroom(data) {
-    return this.request.post(API_ENDPOINTS.cms.classrooms, data);
+  async listCalendars(data) {
+    return this.request.get(API_ENDPOINTS.cms.calendar, data)
   }
-  async getDetailClassroom(data) {
-    return this.request.get(`${API_ENDPOINTS.cms.classroom}/${data.id}`, data);
+  async createCalendar(data) {
+    return this.request.post(API_ENDPOINTS.cms.calendar, data)
   }
-  async updateClassroom(data) {
-    return this.request.put(`${API_ENDPOINTS.cms.classrooms}/${data.id}`, data);
+  async updateCalendar(data) {
+    return this.request.put(`${API_ENDPOINTS.cms.calendar}/${data.id}`, data)
   }
-  async deleteClassroom(data) {
-    return this.request.delete(
-      `${API_ENDPOINTS.cms.classrooms}/${data.id}`,
-      data,
-    );
+  async deleteCalendar(data) {
+    return this.request.delete(`${API_ENDPOINTS.cms.calendar}`, data)
   }
-  //center ______________________________________________________________________________________
+  //__________________________________________________________________________________________
+
+  //center____________________________________________________________________________________
   async getCenter(data) {
     return this.request.get(API_ENDPOINTS.cms.center, data);
   }
   async updateCenter(data) {
     return this.request.put(API_ENDPOINTS.cms.center, data);
   }
+  //__________________________________________________________________________________________
+
 }
 
 class RestAPI {

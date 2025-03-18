@@ -451,6 +451,7 @@ onMounted(async () => {
         );
 
         if (matchingShortShift) {
+          console.log(typeof matchingShortShift);
           s.session.forEach((session) => {
             const day = session.value; // Get the day of the week
             const isChecked = matchingShortShift.day_of_week.includes(day);

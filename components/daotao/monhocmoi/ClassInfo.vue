@@ -1,7 +1,6 @@
 <script setup>
 import { ref, reactive, onMounted, nextTick, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import { useRouter, useRoute } from "vue-router";
 import axios from "axios";
 
 const railStyle = ({ focused, checked }) => {
@@ -17,18 +16,12 @@ const railStyle = ({ focused, checked }) => {
 
 const route = useRoute();
 const router = useRouter();
-
-const message = useMessage();
-const route = useRoute();
-const router = useRouter();
-
 const message = useMessage();
 const { restAPI } = useApi();
 const isLoading = ref(false);
 const showSpin = ref(false);
 const Staffarray = ref([]);
 const Categoryarray = ref([]);
-const token = ref("");
 const token = ref("");
 
 const formValue = reactive({
@@ -64,27 +57,16 @@ const formValue = reactive({
 
 const displayPrice = computed({
   get: () => (formValue.fee_type === "1" ? "0" : formValue.origin_fee),
-  get: () => (formValue.fee_type === "1" ? "0" : formValue.origin_fee),
   set: (value) => {
     if (formValue.fee_type !== "1") {
       formValue.origin_fee = value;
-    if (formValue.fee_type !== "1") {
-      formValue.origin_fee = value;
+      if (formValue.fee_type !== "1") {
+        formValue.origin_fee = value;
+      }
     }
   },
 });
 
-const displayDiscount = computed({
-  get: () => (formValue.fee_type === "1" ? "0" : formValue.discount_fee),
-  get: () => (formValue.fee_type === "1" ? "0" : formValue.discount_fee),
-  set: (value) => {
-    if (formValue.fee_type !== "1") {
-      formValue.discount_fee = value;
-    if (formValue.fee_type !== "1") {
-      formValue.discount_fee = value;
-    }
-  },
-});
 const options = [
   { label: "Sáng", value: "Sáng" },
   { label: "Tối", value: "Tối" },
@@ -298,7 +280,6 @@ onMounted(async () => {
           <n-gi>
             <n-form-item label="Mã môn học" path="code" class="w-32">
               <n-input v-model:value="formValue.code" placeholder="0465214" />
-              <n-input v-model:value="formValue.code" placeholder="0465214" />
             </n-form-item>
           </n-gi>
           <n-gi span="1 m:3" class="-ml-36">
@@ -313,7 +294,6 @@ onMounted(async () => {
             <n-form-item label="Danh mục" path="cata">
               <n-select
                 v-model:value="formValue.category_id"
-                v-model:value="formValue.category_id"
                 :options="Categoryarray"
                 label-field="name"
                 value-field="id"
@@ -324,7 +304,6 @@ onMounted(async () => {
           <n-gi span="1 m:4">
             <n-form-item label="Giảng viên phụ trách" path="teacher">
               <n-select
-                v-model:value="formValue.teacher_ids"
                 v-model:value="formValue.teacher_ids"
                 :options="Staffarray"
                 label-field="full_name"
@@ -337,14 +316,12 @@ onMounted(async () => {
             <n-form-item label="Số buổi học" path="session">
               <n-input
                 v-model:value="formValue.total_lessons"
-                v-model:value="formValue.total_lessons"
                 placeholder="Nhập số buổi"
               />
             </n-form-item>
           </n-gi>
           <n-gi>
             <n-form-item label="Học phí" path="session">
-              <n-radio-group v-model:value="formValue.fee_type">
               <n-radio-group v-model:value="formValue.fee_type">
                 <n-space>
                   <n-radio value="1"> Miễn phí </n-radio>
@@ -360,7 +337,6 @@ onMounted(async () => {
                 v-model:value="displayPrice"
                 placeholder="0"
                 :disabled="formValue.fee_type === '1'"
-                :disabled="formValue.fee_type === '1'"
               />
             </n-form-item>
           </n-gi>
@@ -369,7 +345,6 @@ onMounted(async () => {
               <n-input
                 v-model:value="displayDiscount"
                 placeholder="Nhập giá"
-                :disabled="formValue.fee_type === '1'"
                 :disabled="formValue.fee_type === '1'"
               />
             </n-form-item>
@@ -386,7 +361,6 @@ onMounted(async () => {
             <n-form-item label="Yêu cầu đầu vào" path="in">
               <n-input
                 v-model:value="formValue.input_require"
-                v-model:value="formValue.input_require"
                 placeholder="Nhập mô tả"
               />
             </n-form-item>
@@ -394,7 +368,6 @@ onMounted(async () => {
           <n-gi span="1 m:4">
             <n-form-item label="Tiêu chuẩn đầu ra" path="out">
               <n-input
-                v-model:value="formValue.output_require"
                 v-model:value="formValue.output_require"
                 placeholder="Nhập mô tả"
               />
@@ -411,7 +384,6 @@ onMounted(async () => {
                 :unchecked-value="false"
                 :checked-value="true"
                 :rail-style="railStyle"
-                v-model:value="formValue.is_active"
                 v-model:value="formValue.is_active"
               />
             </n-form-item>

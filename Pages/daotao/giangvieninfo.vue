@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive } from "vue";
+import { ref, reactive, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
 
 const railStyle = ({ focused, checked }) => {
@@ -12,10 +12,9 @@ const railStyle = ({ focused, checked }) => {
   }
   return style;
 };
-const scheduleRef = ref(null);
 const message = useMessage();
 const route = useRoute();
-
+const scheduleRef = ref(null);
 const { restAPI } = useApi();
 const isLoading = ref(false);
 const formRef = ref(null);
@@ -198,95 +197,94 @@ const handleImageUpload = () => {
   // S3 upload
   // formValue.avartar = url
 };
-
+const submitSchedule = async () => {
+  await nextTick();
+  // console.log(scheduleRef.value.scheduleSubmit);
+  if (scheduleRef.value && scheduleRef.value.scheduleSubmit) {
+    await scheduleRef.value.scheduleSubmit();
+  }
+};
 const handleSubmit = async (e) => {
   if (isLoading.value) return;
-  if (scheduleRef.value) {
-    try {
-      await scheduleRef.value.scheduleSubmit();
-      console.log("Form validation passed");
-      // isLoading.value = true;
-      // e.preventDefault();
-      // const {
-      //   id,
-      //   full_name,
-      //   email,
-      //   type,
-      //   branch_id,
-      //   phone,
-      //   organ_struct_id,
-      //   position,
-      //   username,
-      //   password,
-      //   introduction,
-      //   permission_grp_id,
-      //   is_active,
-      //   avatar,
-      //   salary_type,
-      //   salary,
-      //   role_id,
-      // } = formValue;
-      // let body = {
-      //   id,
-      //   full_name,
-      //   email,
-      //   type,
-      //   branch_id,
-      //   phone,
-      //   organ_struct_id,
-      //   position,
-      //   username,
-      //   password,
-      //   introduction,
-      //   permission_grp_id,
-      //   is_active,
-      //   avatar,
-      //   salary_type,
-      //   salary: Number(salary) || 0,
-      //   role_id,
-      // };
-      // try {
-      //   await formRef.value?.validate();
-      //   if (id) {
-      //     const { data: resUpdate, error } = await restAPI.cms.updateStaff({
-      //       id,
-      //       body,
-      //     });
-      //     if (resUpdate?.value?.status) {
-      //       message.success("Cập nhật nhân viên thành công!");
-      //     } else {
-      //       const errorCode = error.value?.data?.error;
-      //       const errorMessage =
-      //         ERROR_CODES[errorCode] ||
-      //         resUpdate?.value?.message ||
-      //         "Đã xảy ra lỗi, vui lòng thử lại!";
+  await submitSchedule();
+  isLoading.value = true;
+  e.preventDefault();
+  const {
+    id,
+    full_name,
+    email,
+    type,
+    branch_id,
+    phone,
+    organ_struct_id,
+    position,
+    username,
+    password,
+    introduction,
+    permission_grp_id,
+    is_active,
+    avatar,
+    salary_type,
+    salary,
+    role_id,
+  } = formValue;
+  let body = {
+    id,
+    full_name,
+    email,
+    type,
+    branch_id,
+    phone,
+    organ_struct_id,
+    position,
+    username,
+    password,
+    introduction,
+    permission_grp_id,
+    is_active,
+    avatar,
+    salary_type,
+    salary: Number(salary) || 0,
+    role_id,
+  };
+  try {
+    await formRef.value?.validate();
+    if (id) {
+      const { data: resUpdate, error } = await restAPI.cms.updateStaff({
+        id,
+        body,
+      });
+      if (resUpdate?.value?.status) {
+        message.success("Cập nhật nhân viên thành công!");
+      } else {
+        const errorCode = error.value?.data?.error;
+        const errorMessage =
+          ERROR_CODES[errorCode] ||
+          resUpdate?.value?.message ||
+          "Đã xảy ra lỗi, vui lòng thử lại!";
 
-      //       message.warning(errorMessage);
-      //     }
-      //   } else {
-      //     const { data: resCreate, error } = await restAPI.cms.createStaff({
-      //       body,
-      //     });
-      //     if (resCreate?.value?.status) {
-      //       message.success("Tạo nhân viên thành công!");
-      //     } else {
-      //       const errorCode = error.value?.data?.error;
-      //       const errorMessage =
-      //         ERROR_CODES[errorCode] ||
-      //         resCreate?.value?.message ||
-      //         "Đã xảy ra lỗi, vui lòng thử lại!";
-      //       message.warning(errorMessage);
-      //     }
-      //   }
-      // } catch (err) {
-      //   message.error("Vui lòng kiểm tra lại thông tin!");
-      //   console.error("API error:", err);
-      // } finally {
-      //   isLoading.value = false;
-      // }
-    } catch (error) {
-      console.log("Form validation failed");
+        message.warning(errorMessage);
+      }
+    } else {
+      const { data: resCreate, error } = await restAPI.cms.createStaff({
+        body,
+      });
+      if (resCreate?.value?.status) {
+        message.success("Tạo nhân viên thành công!");
+      } else {
+        const errorCode = error.value?.data?.error;
+        const errorMessage =
+          ERROR_CODES[errorCode] ||
+          resCreate?.value?.message ||
+          "Đã xảy ra lỗi, vui lòng thử lại!";
+        message.warning(errorMessage);
+      }
     }
+  } catch (err) {
+    message.error("Vui lòng kiểm tra lại thông tin!");
+    console.error("API error:", err);
+  } finally {
+    isLoading.value = false;
   }
 };
 onMounted(() => {

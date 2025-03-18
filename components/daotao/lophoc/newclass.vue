@@ -122,7 +122,10 @@ const handleSubmit = async () => {
   isSubmitting.value = true;
 
   try {
-    console.log("Giá trị form trước khi gửi:", formValue.value);
+    console.log(
+      "Giá trị form trước khi gửi:",
+      JSON.stringify(formValue.value, null, 2),
+    );
 
     const isUpdating = !!formValue.value.id; // Nếu có ID thì là cập nhật
     const payload = {
@@ -143,8 +146,8 @@ const handleSubmit = async () => {
     };
 
     console.log(
-      ` ${isUpdating ? "Cập nhật" : "Tạo mới"} lớp học với payload:`,
-      payload,
+      `${isUpdating ? "Cập nhật" : "Tạo mới"} lớp học với payload:`,
+      JSON.stringify(payload, null, 2),
     );
 
     let resData, error;
@@ -252,14 +255,6 @@ onMounted(() => {
         </n-form-item>
 
         <!-- Tên lớp học -->
-        <n-form-item label="Tên lớp học *">
-          <n-input
-            v-model:value="formValue.className"
-            placeholder="Nhập tên lớp học"
-          />
-        </n-form-item>
-
-        <!-- giảng viên -->
         <n-form-item label="Tên lớp học *">
           <n-input
             v-model:value="formValue.className"
