@@ -47,6 +47,9 @@ export default defineComponent({
     const selectedStatus = ref<string | null>("All");
     const selectedRoomType = ref<string | null>("All");
 
+    const isEditing = ref(false);
+    const editingClassroomId = ref<string | null>(null);
+
     const loadClassrooms = async () => {
       try {
         isLoading.value = true;
@@ -158,7 +161,7 @@ export default defineComponent({
       });
     });
 
-    const newClassroom = reactive({
+    const newClassroom = ref({
       branch_id: "",
       name: "",
       is_online: false,
@@ -169,56 +172,93 @@ export default defineComponent({
       slots: 50,
       is_active: true,
     });
+    const resetForm = () => {
+      newClassroom.value = {
+        branch_id: "",
+        name: "",
+        is_online: false,
+        room_type: "",
+        metadata: { notes: "" },
+        slots: 50,
+        is_active: true,
+      };
+    };
 
     const addClassroom = async () => {
       try {
-        const { data: resCreate, error } = await restAPI.cms.createClassroom({
-          body: newClassroom,
-        });
-        if (resCreate?.value?.status) {
-          message.success("Tạo nhu cầu học tập thành công!");
+        let response;
+
+        if (isEditing.value && editingClassroomId.value) {
+          // Nếu đang sửa, gọi API cập nhật
+          response = await restAPI.cms.updateClassroom({
+            id: editingClassroomId.value,
+            body: newClassroom.value,
+          });
         } else {
-          const errorMessage =
-            ERROR_CODES[error.value.data.error as keyof typeof ERROR_CODES] ||
-            resCreate.value?.message ||
-            "Đã xảy ra lỗi, vui lòng thử lại!";
-          message.warning(errorMessage);
+          // Nếu đang thêm mới, gọi API tạo lớp học
+          response = await restAPI.cms.createClassroom({
+            body: newClassroom.value,
+          });
         }
-        loadClassrooms();
-        showAddClassroomModal.value = false;
-      } catch (err) {
-        // message.error((error as any).message || "Lỗi khi thêm lớp học");
-        // console.error(error);
-      }
-    };
 
-    const editClassroom = async (updatedClassroom: any) => {
-      try {
-        const { error } = await restAPI.cms.updateClassroom(updatedClassroom);
-        if (error?.value)
-          throw new Error(
-            error.value.data?.message || "Lỗi khi cập nhật phòng học",
+        if (response.data?.value?.status) {
+          message.success(
+            isEditing.value ? "Cập nhật thành công!" : "Thêm mới thành công!",
           );
+        } else {
+          message.warning("Có lỗi xảy ra, vui lòng thử lại!");
+        }
 
-        message.success("Cập nhật phòng học thành công");
-        loadClassrooms();
+        loadClassrooms(); // Cập nhật lại danh sách
+        showAddClassroomModal.value = false; // Đóng modal
+        resetForm(); // Reset form sau khi lưu
+        isEditing.value = false; // Quay lại chế độ thêm mới
+        editingClassroomId.value = null; // Xóa ID của lớp học đang sửa
       } catch (error) {
-        message.error((error as any).message || "Lỗi khi cập nhật phòng học");
-        console.error(error);
+        console.error("Lỗi khi lưu lớp học:", error);
+        message.error("Lỗi khi lưu lớp học!");
       }
     };
 
-    const deleteClassroom = async (id: any) => {
+    const editClassroom = (classroom: Classrooms) => {
+      isEditing.value = true;
+      editingClassroomId.value = classroom.id;
+
+      newClassroom.value = {
+        branch_id: classroom.branch_id,
+        name: classroom.name,
+        is_online: false,
+        room_type: classroom.room_type,
+        metadata: {
+          notes: "",
+        },
+        slots: classroom.slots,
+        is_active: classroom.is_active,
+      };
+
+      showAddClassroomModal.value = true;
+    };
+
+    const deleteClassroom = async (id: string) => {
+      if (!id) {
+        message.error("Lỗi: Không tìm thấy ID phòng học.");
+        return;
+      }
+
+      console.log("Đang xóa phòng học với ID:", id); // Debug ID trước khi gọi API
+
       try {
-        const { error } = await restAPI.cms.deleteClassroom(id);
-        if (error?.value)
+        const { error } = await restAPI.cms.deleteClassroom({ id });
+
+        if (error?.value) {
           throw new Error(error.value.data?.message || "Lỗi khi xóa phòng học");
+        }
 
         message.success("Xóa phòng học thành công");
-        loadClassrooms();
+        await loadClassrooms(); // Cập nhật danh sách
       } catch (error) {
+        console.error("Lỗi khi xóa phòng học:", error);
         message.error((error as any).message || "Lỗi khi xóa phòng học");
-        console.error(error);
       }
     };
 
@@ -350,6 +390,8 @@ export default defineComponent({
       newClassroom,
       addClassroom,
       branches,
+      resetForm,
+      isEditing,
     };
   },
 });
@@ -426,14 +468,26 @@ export default defineComponent({
         </n-form-item>
 
         <n-form-item label="Trạng thái">
-          <n-switch v-model:value="newClassroom.is_active" />
+          <n-space Align="center">
+            <span>Đã có lớp học</span>
+            <n-switch v-model:value="newClassroom.is_active" />
+            <span>Còn trống</span>
+          </n-space>
         </n-form-item>
       </n-form>
 
       <template #footer>
         <n-space>
-          <n-button @click="showAddClassroomModal = false">Hủy</n-button>
-          <n-button type="primary" @click="addClassroom">Lưu</n-button>
+          <n-button
+            @click="
+              showAddClassroomModal = false;
+              resetForm();
+            "
+            >Hủy</n-button
+          >
+          <n-button type="primary" @click="addClassroom">
+            {{ isEditing ? "Cập nhật" : "Lưu" }}
+          </n-button>
         </n-space>
       </template>
     </n-card>

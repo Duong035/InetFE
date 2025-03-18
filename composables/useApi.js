@@ -20,6 +20,7 @@ const API_ENDPOINTS = {
     staff: "/api/admin/users",
     category: "/api/admin/category",
     categories: "/api/admin/categories",
+    subject: "/api/admin/subject",
     subjects: "/api/admin/subjects",
     subject: "/api/admin/subject",
     all_subject: "/api/admin/subject/all",
@@ -35,15 +36,20 @@ const API_ENDPOINTS = {
     classroom: "/api/admin/classroom",
     shift: "/api/admin/work-session",
     shifts: "/api/admin/work-sessions",
+    lessons: "/api/admin/lessons",
+    lesson_data: "/api/admin/lesson-data",
+    classrooms: "/api/admin/classrooms",
+    classroom: "/api/admin/classroom",
+    center: "/api/admin/center",
   },
 };
 
 class Request {
   constructor() {
-    const route = useRoute()
-    this.baseURL = "http://localhost:3000"
-    this.accessToken = `Bearer ${useUserStore()?.userInfo?.token}`
-    this.headers = {}
+    const route = useRoute();
+    this.baseURL = "http://localhost:3000";
+    this.accessToken = `Bearer ${useUserStore()?.userInfo?.token}`;
+    this.headers = {};
     this.handleFetch = {
       onRequest() {},
       onRequestError({ _, __, error }) {
@@ -308,13 +314,13 @@ class CMSManager {
     return this.request.get(API_ENDPOINTS.cms.shifts, data)
   }
   async getShiftDetail(data) {
-    return this.request.get(API_ENDPOINTS.cms.shift, data)
+    return this.request.get(API_ENDPOINTS.cms.shift, data);
   }
   async createShift(data) {
-    return this.request.post(API_ENDPOINTS.cms.shift, data)
+    return this.request.post(API_ENDPOINTS.cms.shift, data);
   }
   async updateShift(data) {
-    return this.request.patch(API_ENDPOINTS.cms.shift, data)
+    return this.request.patch(API_ENDPOINTS.cms.shift, data);
   }
   async deleteShift(data) {
     return this.request.delete(`${API_ENDPOINTS.cms.shift}/${data.id}`, data)
@@ -373,7 +379,7 @@ class CMSManager {
 
   // Permissions groups_______________________________________________________________________
   async getPermissionGroups(data) {
-    return this.request.get(API_ENDPOINTS.cms.permissionGroup, data)
+    return this.request.get(API_ENDPOINTS.cms.permissionGroup, data);
   }
   async getPermissionGroupsDetails(data) {
     return this.request.get(`${API_ENDPOINTS.cms.permissionGroup}/${data.id}`, data)
@@ -388,13 +394,13 @@ class CMSManager {
     return this.request.put(`${API_ENDPOINTS.cms.permissionGroup}/${data.id}`, data)
   }
   async deletePermissionGroups(data) {
-    return this.request.delete(`${API_ENDPOINTS.cms.permissionGroup}`, data)
+    return this.request.delete(`${API_ENDPOINTS.cms.permissionGroup}`, data);
   }
   //__________________________________________________________________________________________
 
   // Permissions tags_________________________________________________________________________
   async getPermissionTags(data) {
-    return this.request.get(API_ENDPOINTS.cms.permissionTag, data)
+    return this.request.get(API_ENDPOINTS.cms.permissionTag, data);
   }
   async getPermissionTagDetails(data) {
     return this.request.get(`${API_ENDPOINTS.cms.permissionTag}/${data.id}`, data)
@@ -418,6 +424,32 @@ class CMSManager {
     return this.request.get(API_ENDPOINTS.cms.districts, data);
   }
   //__________________________________________________________________________________________
+  //__CLassroom________________________________________________________________________________________
+  async getClassrooms(data) {
+    return this.request.get(API_ENDPOINTS.cms.classrooms, data);
+  }
+  async createClassroom(data) {
+    return this.request.post(API_ENDPOINTS.cms.classrooms, data);
+  }
+  async getDetailClassroom(data) {
+    return this.request.get(`${API_ENDPOINTS.cms.classroom}/${data.id}`, data);
+  }
+  async updateClassroom(data) {
+    return this.request.put(`${API_ENDPOINTS.cms.classrooms}/${data.id}`, data);
+  }
+  async deleteClassroom(data) {
+    return this.request.delete(
+      `${API_ENDPOINTS.cms.classrooms}/${data.id}`,
+      data,
+    );
+  }
+  //center ______________________________________________________________________________________
+  async getCenter(data) {
+    return this.request.get(API_ENDPOINTS.cms.center, data);
+  }
+  async updateCenter(data) {
+    return this.request.put(API_ENDPOINTS.cms.center, data);
+  }
 }
 
 class RestAPI {

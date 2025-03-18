@@ -298,6 +298,7 @@ onMounted(async () => {
               'relative flex cursor-pointer items-center py-3 pl-3 pr-10',
               activeDropdown === 'coban'
                 ? '-mr-12 bg-gray-50 pr-0 text-[#133D85]'
+                ? '-mr-12 bg-gray-50 pr-0 text-[#133D85]'
                 : 'text-[#4D6FA8]',
             ]"
           >
@@ -305,6 +306,8 @@ onMounted(async () => {
               :class="[
                 'pr-3 text-[8px] text-[#133D85]',
                 activeDropdown === 'coban'
+                  ? 'fa-solid fa-circle text-[#133D85]'
+                  : 'fa-solid fa-circle-dot text-[#4D6FA8]',
                   ? 'fa-solid fa-circle text-[#133D85]'
                   : 'fa-solid fa-circle-dot text-[#4D6FA8]',
               ]"
@@ -336,6 +339,7 @@ onMounted(async () => {
               'relative flex cursor-pointer items-center py-3 pl-3 pr-10',
               activeDropdown === 'chungchi'
                 ? '-mr-12 bg-gray-50 pr-0 text-[#133D85]'
+                ? '-mr-12 bg-gray-50 pr-0 text-[#133D85]'
                 : 'text-[#4D6FA8]',
             ]"
           >
@@ -343,6 +347,8 @@ onMounted(async () => {
               :class="[
                 'pr-3 text-[8px] text-[#133D85]',
                 activeDropdown === 'chungchi'
+                  ? 'fa-solid fa-circle text-[#133D85]'
+                  : 'fa-solid fa-circle-dot text-[#4D6FA8]',
                   ? 'fa-solid fa-circle text-[#133D85]'
                   : 'fa-solid fa-circle-dot text-[#4D6FA8]',
               ]"
@@ -355,6 +361,7 @@ onMounted(async () => {
               'relative flex cursor-pointer items-center py-3 pl-3 pr-10',
               activeDropdown === 'caidat'
                 ? '-mr-12 bg-gray-50 pr-0 text-[#133D85]'
+                ? '-mr-12 bg-gray-50 pr-0 text-[#133D85]'
                 : 'text-[#4D6FA8]',
             ]"
           >
@@ -362,6 +369,8 @@ onMounted(async () => {
               :class="[
                 'pr-3 text-[8px] text-[#133D85]',
                 activeDropdown === 'caidat'
+                  ? 'fa-solid fa-circle text-[#133D85]'
+                  : 'fa-solid fa-circle-dot text-[#4D6FA8]',
                   ? 'fa-solid fa-circle text-[#133D85]'
                   : 'fa-solid fa-circle-dot text-[#4D6FA8]',
               ]"
@@ -437,11 +446,11 @@ onMounted(async () => {
                           <li
                             :class="[
                               'cursor-pointer py-2',
-                              activeDropdown === `noidung-${item.id}`
+                              activeDropdown === `noidung-${item.stt}`
                                 ? 'text-[#133D85]'
                                 : 'text-gray-600',
                             ]"
-                            @click="toggleDropdown(`noidung-${item.id}`)"
+                            @click="toggleDropdown(`noidung-${item.stt}`)"
                           >
                             <div
                               :class="[
@@ -457,7 +466,7 @@ onMounted(async () => {
                                 <p>{{ item.name }}</p>
                                 <div>
                                   <button
-                                    @click="editSubject(item.id)"
+                                    @click="editSubject(item.stt)"
                                     class="pr-5 text-green-500 hover:text-green-700"
                                   >
                                     <i
@@ -482,7 +491,7 @@ onMounted(async () => {
                           </li>
                           <div
                             class="-mt-2"
-                            v-if="activeDropdown === `noidung-${item.id}`"
+                            v-if="activeDropdown === `noidung-${item.stt}`"
                           >
                             <!-- Content to be shown when active -->
                             <div class="mt-2 border-b-2"></div>

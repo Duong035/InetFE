@@ -16,7 +16,7 @@ interface RowData {
   hocphi: number;
   sobuoi: number;
   solop: number;
-  chuaxep: number;
+  hocvien: number;
   date: string;
   status: string;
   input_require: string;
@@ -27,6 +27,8 @@ interface RowData {
   origin_fee: number;
   discount_fee: number;
   color: string;
+  teacher: string;
+  code: string;
 }
 
 export default defineComponent({
@@ -55,6 +57,7 @@ export default defineComponent({
     const Danhmuclist = ref("");
     const Status = ref("");
     const token = ref("");
+    const { restAPI } = useApi();
     const loading = ref(false);
     const danhmucoptions = ref([{ label: "Tất cả danh mục", value: "All" }]);
     const danhmucstate = ref<"info" | "list">("list");
@@ -72,35 +75,35 @@ export default defineComponent({
       origin_fee: 0,
       discount_fee: 0,
       color: "",
+      teacher: "",
     });
     const isLoading = ref<boolean>(false);
     const railStyle = { backgroundColor: "#ccc" };
 
-    if (typeof window !== "undefined" && window.sessionStorage) {
-      token.value = `Bearer ${useUserStore()?.userInfo?.token}`;
-    }
-
     async function fetchData() {
       loading.value = true;
       try {
-        const response = await axios.get(
-          "http://localhost:3000/api/admin/subjects",
-          {
-            headers: {
-              Authorization: token.value,
-            },
-          },
-        );
-        const subjects = response.data.data.subjects;
+        const { data: resData, error } = await restAPI.cms.getSubjects({});
+
+        if (error?.value) {
+          console.error(
+            "Error fetching data:",
+            error?.value?.data?.message || "Lỗi tải dữ liệu",
+          );
+          return;
+        }
+
+        const subjects = resData.value.data.subjects;
         data.value = subjects.map((subject: any, index: number) => ({
           id: subject.id,
+          code: subject.code,
           stt: index + 1,
           monhoc: subject.name,
           danhmuc: subject.category ? subject.category.name : "",
           hocphi: subject.origin_fee,
           sobuoi: subject.total_lessons,
           solop: subject.class_total,
-          chuaxep: subject.student_pendings,
+          hocvien: subject.student_pendings,
           date: subject.created_at,
           input_require: subject.input_require,
           output_require: subject.output_require,
@@ -274,28 +277,18 @@ export default defineComponent({
     }
 
     // lấy thông tin subject theo id
-    const fetchSubjectById = async (id: string) => {
-      try {
-        const response = await axios.get(
-          `http://localhost:3000/api/admin/subject/?id=${id}`,
-          {
-            headers: {
-              Authorization: token.value,
-            },
-          },
-        );
-        const subjectInfo = response.data.data;
-        console.log("Thông tin subject:", subjectInfo);
-        return subjectInfo;
-      } catch (error: any) {
-        console.error(
-          "Lỗi lấy thông tin subject theo id:",
-          error.response?.data || error.message,
-        );
+    async function fetchSubjectById(id: string) {
+      const { data: resData, error } = await restAPI.cms.getSubjectDetail({
+        id,
+      });
+      if (error) {
+        console.error("Lỗi lấy thông tin subject theo id:", error);
         return null;
+      } else {
+        console.log("Thông tin subject:", resData);
+        return resData;
       }
-    };
-
+    }
     // API lấy thông tin subject theo id
     const editRow = async (row: RowData) => {
       danhmucstate.value = "info";
@@ -446,12 +439,129 @@ export default defineComponent({
       danhmucId,
       formValue,
       isLoading,
+      cancelEdit,
       railStyle,
       handleSubmit,
-      cancelEdit,
     };
   },
 });
+
+function createColumns(
+  editRow: (row: RowData) => void,
+  deleteSub: (row: RowData) => void,
+): DataTableColumns<RowData> {
+  return [
+    {
+      title: "STT",
+      key: "stt",
+      titleAlign: "center",
+    },
+    { title: "Mã môn học", key: "code" },
+    {
+      title: "Tên Môn học",
+      key: "monhoc",
+    },
+
+    {
+      title: "Danh mục",
+      key: "danhmuc",
+      filter(value, row) {
+        return row.danhmuc.includes(value as string);
+      },
+    },
+    {
+      title: "Học phí(VNĐ)",
+      key: "hocphi",
+      sorter: "default",
+      render(row) {
+        return row.fee_type == 1
+          ? "miễn phí"
+          : Number(row.hocphi).toLocaleString("en-US");
+      },
+    },
+
+    {
+      title: "Số buổi",
+      key: "sobuoi",
+      sorter: "default",
+    },
+    {
+      title: "Số lớp",
+      key: "solop",
+      sorter: "default",
+    },
+    {
+      title: "Trạng thái",
+      key: "status",
+      render(row) {
+        let color = "";
+        let background = "";
+        switch (row.status) {
+          case "Hoạt động":
+            color = "#00974F";
+            background = "#F0FFF8";
+            break;
+          case "Không hoạt động":
+            color = "#4D6FA8";
+            background = "#ECF1F9";
+            break;
+          default:
+            color = "gray";
+        }
+        return h(
+          "span",
+          {
+            style: {
+              padding: "5px 10px",
+              borderRadius: "10px",
+              color,
+              background,
+            },
+          },
+          row.status,
+        );
+      },
+      defaultFilterOptionValues: ["Hoạt động", "Không hoạt động"],
+      filter(value, row) {
+        return row.status.includes(value as string);
+      },
+    },
+    {
+      title: "Action",
+      key: "actions",
+      titleAlign: "center",
+      render(row) {
+        return h("div", [
+          h(
+            NButton,
+            {
+              size: "small",
+              quaternary: true,
+              style: { backgroundColor: "transparent", color: "green" },
+              onclick: () => editRow(row),
+            },
+            {
+              default: () =>
+                h("i", {
+                  class: "fa-regular fa-pen-to-square",
+                }),
+            },
+          ),
+          h(
+            NButton,
+            {
+              size: "small",
+              quaternary: true,
+              style: { backgroundColor: "transparent", color: "red" },
+              onclick: () => deleteSub(row),
+            },
+            { default: () => h("i", { class: "fa-solid fa-trash" }) },
+          ),
+        ]);
+      },
+    },
+  ];
+}
 </script>
 
 <template>
@@ -616,6 +726,14 @@ export default defineComponent({
               <n-form-item label="Output Require" path="output_require">
                 <n-input
                   v-model:value="formValue.output_require"
+                  placeholder="Nhập output require"
+                />
+              </n-form-item>
+            </n-gi>
+            <n-gi>
+              <n-form-item label="teacher" path="teacher">
+                <n-select
+                  v-model:value="formValue.teacher"
                   placeholder="Nhập output require"
                 />
               </n-form-item>

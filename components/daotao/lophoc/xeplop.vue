@@ -307,6 +307,8 @@ export default defineComponent({
           :min-date="currentClass?.startAt"
           :max-date="currentClass?.endAt"
           multi-dates
+          inline
+          auto-apply
         />
 
         <!-- Thông tin số buổi -->

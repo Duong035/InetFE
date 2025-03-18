@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 
-const activeTab = ref("danhmuc");
+const activeTab = ref("monhoc");
 </script>
 <template>
   <div class="h-min-fit flex w-full overflow-auto rounded-2xl bg-white">
@@ -24,17 +24,6 @@ const activeTab = ref("danhmuc");
           <!-- Tabs -->
           <div class="mb-6 flex border-b">
             <button
-              @click="activeTab = 'danhmuc'"
-              :class="[
-                'px-6 py-2 font-medium',
-                activeTab === 'danhmuc'
-                  ? 'border-b-2 border-blue-500 text-blue-500'
-                  : 'text-gray-600',
-              ]"
-            >
-              Danh mục
-            </button>
-            <button
               @click="activeTab = 'monhoc'"
               :class="[
                 'px-6 py-2 font-medium',
@@ -46,15 +35,15 @@ const activeTab = ref("danhmuc");
               Môn học
             </button>
             <button
-              @click="activeTab = 'chuongtrinh'"
+              @click="activeTab = 'danhmuc'"
               :class="[
                 'px-6 py-2 font-medium',
-                activeTab === 'chuongtrinh'
+                activeTab === 'danhmuc'
                   ? 'border-b-2 border-blue-500 text-blue-500'
                   : 'text-gray-600',
               ]"
             >
-              Chương trình
+              Danh mục
             </button>
             <button
               @click="activeTab = 'phonghoc'"
@@ -68,8 +57,8 @@ const activeTab = ref("danhmuc");
               Phòng học
             </button>
           </div>
-          <div v-if="activeTab === 'danhmuc'"><DaotaoSubjectDanhmuc /></div>
           <div v-if="activeTab === 'monhoc'"><DaotaoSubjectSub /></div>
+          <div v-if="activeTab === 'danhmuc'"><DaotaoSubjectDanhmuc /></div>
           <div v-if="activeTab === 'chuongtrinh'">
             <DaotaoSubjectChuongtrinh />
           </div>

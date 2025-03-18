@@ -143,14 +143,13 @@ const handleSubmit = async () => {
     };
 
     console.log(
-      `🔄 ${isUpdating ? "Cập nhật" : "Tạo mới"} lớp học với payload:`,
+      ` ${isUpdating ? "Cập nhật" : "Tạo mới"} lớp học với payload:`,
       payload,
     );
 
     let resData, error;
     if (isUpdating) {
       // Cập nhật lớp học (PATCH)
-
       ({ data: resData, error } = await restAPI.cms.updateClass({
         body: JSON.stringify(payload),
       }));
@@ -253,6 +252,14 @@ onMounted(() => {
         </n-form-item>
 
         <!-- Tên lớp học -->
+        <n-form-item label="Tên lớp học *">
+          <n-input
+            v-model:value="formValue.className"
+            placeholder="Nhập tên lớp học"
+          />
+        </n-form-item>
+
+        <!-- giảng viên -->
         <n-form-item label="Tên lớp học *">
           <n-input
             v-model:value="formValue.className"
