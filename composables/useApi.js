@@ -26,6 +26,7 @@ const API_ENDPOINTS = {
     subjects: "/api/admin/subjects",
     all_subject: "/api/admin/subject/all",
     classes: "/api/admin/classes",
+    cancel_class: "api/admin/class/cancel",
     User: "/api/admin/users",
     class: "/api/admin/class",
     permissionGroup: "/api/admin/permission-grp",
@@ -35,6 +36,7 @@ const API_ENDPOINTS = {
     classrooms: "/api/admin/classrooms",
     classroom: "/api/admin/classroom",
     center: "/api/admin/center",
+    schedule_class_student: "/api/admin/schedule-class/student",
   },
 };
 
@@ -259,7 +261,7 @@ class CMSManager {
     return this.request.patch(API_ENDPOINTS.cms.subject, data);
   }
   async deleteSubject(data) {
-    return this.request.delete(`${API_ENDPOINTS.cms.subject}/${data.id}`, data);
+    return this.request.delete(API_ENDPOINTS.cms.subject, data);
   }
   // lesson_________________________________________________________________________________________-
   async getListLesson(data) {
@@ -309,7 +311,13 @@ class CMSManager {
   }
 
   async deleteClass(data) {
-    return this.request.delete(`${API_ENDPOINTS.cms.class}/${id}`, data);
+    return this.request.delete(`${API_ENDPOINTS.cms.class}/${data.id}`, data);
+  }
+  async cancelClass(data) {
+    return this.request.patch(
+      `${API_ENDPOINTS.cms.cancel_class}/${data.id}`,
+      data,
+    );
   }
   //__________________________________________________________________________________________
 
@@ -366,6 +374,10 @@ class CMSManager {
   }
   async updateCenter(data) {
     return this.request.put(API_ENDPOINTS.cms.center, data);
+  }
+  //schedule____________________________________________________________________________________
+  async getScheduleClassStudent(data) {
+    return this.request.get(API_ENDPOINTS.cms.schedule_class_student, data);
   }
 }
 

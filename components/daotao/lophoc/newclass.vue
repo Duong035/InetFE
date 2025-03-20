@@ -258,14 +258,6 @@ onMounted(() => {
             placeholder="Nhập tên lớp học"
           />
         </n-form-item>
-
-        <!-- giảng viên -->
-        <n-form-item label="Tên lớp học *">
-          <n-input
-            v-model:value="formValue.className"
-            placeholder="Nhập tên lớp học"
-          />
-        </n-form-item>
       </div>
 
       <div class="mt-4 grid grid-cols-2 gap-4">

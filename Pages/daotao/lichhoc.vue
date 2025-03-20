@@ -33,7 +33,8 @@ export default defineComponent({
       page: 1,
       pageSize: 7,
       showSizePicker: true,
-      pageSizes: [3, 5, 7],
+
+      pageSizes: [5, 10, 15],
       itemCount: computed(() => filteredData.value.length),
       onUpdatePage: (page: number) => {
         paginationReactive.page = page;
@@ -100,7 +101,7 @@ export default defineComponent({
             status: item.status,
             name: item.name,
             subjectName: item.subject?.name || "N/A",
-            totalLessons: item.subject?.total_lessons,
+            totalLessons: item.total_lessons,
           }));
 
           // Lấy danh sách môn học từ dữ liệu
@@ -143,14 +144,13 @@ export default defineComponent({
 
       return statusMap[status] || "Không xác định";
     }
-    function handleSave() {
-      // Xử lý logic lưu lịch học ở đây
+    const handleSave = () => {
       console.log("Lưu lịch học", {
         mode: scheduleMode.value,
-        selectedValue: selectedValue.value,
+        dates: dates.value,
       });
-      // Ví dụ: gọi API, hoặc emit event
-    }
+      showSchedule.value = false;
+    };
 
     const handleClose = () => {
       showSchedule.value = false;
@@ -193,6 +193,11 @@ export default defineComponent({
               dayjs(row.endAt).format("DD/MM/YYYY")
             );
           },
+        },
+        {
+          title: "Số buổi học",
+          key: "totalLessons",
+          align: "center",
         },
         {
           title: "Trạng thái",
@@ -318,6 +323,12 @@ export default defineComponent({
       </div>
       <main
         class="mb-10 mr-5 mt-10 box-border flex"
+        v-if="activeTab === 'lichhoc'"
+      >
+        <DaotaoLophocLich />
+      </main>
+      <main
+        class="mb-10 mr-5 mt-10 box-border flex"
         v-if="activeTab === 'xeplop'"
       >
         <div class="h-full w-full overflow-auto rounded-2xl bg-white">
@@ -361,13 +372,14 @@ export default defineComponent({
                 multi-dates
                 inline
                 auto-apply
+                time-picker-inline
               />
 
               <!-- Thông tin số buổi -->
-              <div class="mt-4 flex items-center justify-between">
+              <div class="jusstìy-between mt-4 flex items-center">
                 <span>Số buổi cuối tháng: 0 buổi</span>
-                <span>Số buổi của lớp: {{ currentClass?.totalLessons }}</span>
               </div>
+              <span>Số buổi của lớp: {{ currentClass?.totalLessons }}</span>
             </div>
 
             <div class="mt-4">

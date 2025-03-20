@@ -2,8 +2,8 @@
 import type { DataTableColumns, DataTableRowKey } from "naive-ui";
 import { defineComponent, ref, h, reactive, computed, onMounted } from "vue";
 import { NButton, NDataTable, NDropdown, NInputNumber } from "naive-ui";
-import axios from "axios";
-import dayjs from "dayjs";
+
+import { message } from "ant-design-vue";
 
 // Định nghĩa interface cho dữ liệu bảng
 interface RowData {
@@ -35,9 +35,11 @@ export default defineComponent({
   setup() {
     const paginationReactive = reactive({
       page: 1,
-      pageSize: 5,
+
+      pageSize: 10,
       showSizePicker: true,
-      pageSizes: [3, 5, 7],
+
+      pageSizes: [5, 10, 15],
       itemCount: computed(() => data.value.length),
       onUpdatePage: (page: number) => {
         paginationReactive.page = page;
@@ -54,7 +56,7 @@ export default defineComponent({
     const dataTableInstRef = ref<InstanceType<typeof NDataTable> | null>(null);
     const Danhmuclist = ref("");
     const Status = ref("");
-    const token = ref("");
+    const router = useRouter();
     const { restAPI } = useApi();
     const loading = ref(false);
     const danhmucoptions = ref([{ label: "Tất cả danh mục", value: "All" }]);
@@ -140,7 +142,7 @@ export default defineComponent({
     });
 
     // lấy thông tin subject theo id
-    async function fetchSubjectById(id: string) {
+    async function getSubjectDetail(id: string) {
       const { data: resData, error } = await restAPI.cms.getSubjectDetail({
         id,
       });
@@ -154,23 +156,17 @@ export default defineComponent({
     }
     // API lấy thông tin subject theo id
     const editRow = async (row: RowData) => {
-      danhmucstate.value = "info";
-      danhmucId.value = row.id;
-      const subjectInfo = await fetchSubjectById(row.id);
-      if (subjectInfo) {
-        formValue.name = subjectInfo.name;
-        formValue.description = subjectInfo.description;
-        formValue.is_active = subjectInfo.is_active;
-        formValue.input_require = subjectInfo.input_require;
-        formValue.output_require = subjectInfo.output_require;
-        formValue.fee_type = subjectInfo.fee_type.toString();
-        formValue.total_lessons = subjectInfo.total_lessons;
-        formValue.thumbnail = subjectInfo.thumbnail;
-        formValue.code = subjectInfo.code;
-        formValue.origin_fee = subjectInfo.origin_fee;
-        formValue.discount_fee = subjectInfo.discount_fee;
-        formValue.color = subjectInfo.metadata?.color || "";
+      if (!row.id) {
+        console.error("Không tìm thấy id môn học", row);
+        return;
       }
+
+      console.log("Edit row:", row);
+      router.push({
+        path: "monhocinfo",
+        query: { id: row.id.toString() },
+      });
+      message.success(`Chỉnh sửa lớp học : ${row.monhoc}`);
     };
 
     const handleSubmit = async () => {
@@ -196,16 +192,18 @@ export default defineComponent({
 
         console.log("Payload gửi đi:", payload);
 
-        const response = await axios.patch(
-          `http://localhost:3000/api/admin/subject`,
-          payload,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token.value}`,
-            },
-          },
-        );
+        const { data: response, error } =
+          await restAPI.cms.updateSubject(payload);
+
+        if (error?.value) {
+          console.error("Lỗi cập nhật môn học:", error.value);
+          message.error(
+            error.value?.data?.message || "Cập nhật môn học thất bại",
+          );
+          return;
+        }
+
+        message.success("Cập nhật môn học thành công");
 
         const index = data.value.findIndex(
           (subject) => subject.id === danhmucId.value,
@@ -237,19 +235,21 @@ export default defineComponent({
     const deleteSub = async (row: RowData) => {
       if (confirm("Bạn có chắc chắn muốn xóa môn học này không?")) {
         try {
-          const response = await axios.delete(
-            `http://localhost:3000/api/admin/subject`,
-            {
-              headers: {
-                Authorization: `Bearer ${token.value}`,
-              },
-              data: { id: row.id },
-            },
-          );
+          const { error } = await restAPI.cms.deleteSubject({
+            body: { id: row.id },
+          });
+
+          if (error?.value) {
+            message.error(error.value.data?.message || "Lỗi khi xóa môn học.");
+            console.log("body", { id: row.id });
+            return;
+          }
+
           data.value = data.value.filter((subject) => subject.id !== row.id);
-          console.log("Môn học đã được xóa:", response.data);
-        } catch (error) {
-          console.error("Lỗi xóa môn học:", error);
+          message.success("Môn học đã được xóa thành công.");
+        } catch (err) {
+          console.error("Lỗi xóa môn học:", err);
+          message.error("Lỗi xóa môn học.");
         }
       }
     };
@@ -504,155 +504,6 @@ function createColumns(
           </n-gi>
         </n-grid>
       </div>
-    </div>
-    <div v-show="danhmucstate === 'info'" class="w-full p-4">
-      <n-grid cols="1" class="w-full">
-        <n-gi>
-          <n-grid cols="2" :x-gap="40">
-            <n-gi>
-              <n-gi>
-                <n-form-item label="Tên danh mục" path="name">
-                  <n-input
-                    v-model:value="formValue.name"
-                    placeholder="Nhập tên danh mục"
-                  />
-                </n-form-item>
-              </n-gi>
-              <n-gi>
-                <n-form-item label="Mô tả" path="description">
-                  <n-input
-                    v-model:value="formValue.description"
-                    placeholder="Nhập mô tả"
-                  />
-                </n-form-item>
-              </n-gi>
-              <n-gi>
-                <n-form-item
-                  class="flex text-4xl"
-                  label="Trạng thái hoạt động"
-                  label-placement="left"
-                  path="switchValue"
-                >
-                  <n-switch
-                    v-model:value="formValue.is_active"
-                    :unchecked-value="false"
-                    :checked-value="true"
-                  />
-                </n-form-item>
-              </n-gi>
-            </n-gi>
-            <n-gi>
-              <n-gi>
-                <n-form-item label="Ảnh đại diện khóa học" path="cover">
-                  <div>
-                    <img
-                      src="../../../public/images/subject.png"
-                      :square="false"
-                      :width="250"
-                      :height="150"
-                      class="rounded-xl"
-                    />
-                    <div class="mt-2">
-                      <label
-                        for="cover-upload"
-                        class="cursor-pointer text-sm text-blue-500 hover:underline"
-                      >
-                        Chỉnh sửa ảnh
-                      </label>
-                      <input
-                        type="file"
-                        id="cover-upload"
-                        class="hidden"
-                        accept="image/*"
-                      />
-                    </div>
-                    <p class="text-xs text-gray-500">
-                      Cho phép ảnh jpeg, jpg, png. Size ảnh tối đa 3.1 MB
-                    </p>
-                  </div>
-                </n-form-item>
-              </n-gi>
-            </n-gi>
-          </n-grid>
-        </n-gi>
-
-        <n-gi>
-          <n-grid cols="1" class="mt-4" :x-gap="20">
-            <n-gi>
-              <n-form-item label="Input Require" path="input_require">
-                <n-input
-                  v-model:value="formValue.input_require"
-                  placeholder="Nhập input require"
-                />
-              </n-form-item>
-            </n-gi>
-            <n-gi>
-              <n-form-item label="Output Require" path="output_require">
-                <n-input
-                  v-model:value="formValue.output_require"
-                  placeholder="Nhập output require"
-                />
-              </n-form-item>
-            </n-gi>
-            <n-gi>
-              <n-form-item label="teacher" path="teacher">
-                <n-select
-                  v-model:value="formValue.teacher"
-                  placeholder="Nhập output require"
-                />
-              </n-form-item>
-            </n-gi>
-            <n-gi>
-              <n-form-item label="Fee Type" path="fee_type">
-                <n-input
-                  v-model:value="formValue.fee_type"
-                  placeholder="Nhập fee type"
-                />
-              </n-form-item>
-            </n-gi>
-            <n-gi>
-              <n-form-item label="Total Lessons" path="total_lessons">
-                <n-input-number
-                  v-model:value="formValue.total_lessons"
-                  placeholder="Nhập tổng số buổi học"
-                />
-              </n-form-item>
-            </n-gi>
-            <n-gi>
-              <n-form-item label="Thumbnail" path="thumbnail">
-                <n-input
-                  v-model:value="formValue.thumbnail"
-                  placeholder="Nhập URL thumbnail hoặc chọn file"
-                />
-              </n-form-item>
-            </n-gi>
-          </n-grid>
-        </n-gi>
-        <n-gi style="display: flex; justify-content: center">
-          <n-grid cols="2" :x-gap="40">
-            <n-gi style="display: flex; justify-content: flex-end">
-              <n-button
-                round
-                class="h-12 w-52 rounded-2xl text-lg text-blue-400"
-                @click="cancelEdit"
-              >
-                Hủy
-              </n-button>
-            </n-gi>
-            <n-gi>
-              <n-button
-                round
-                type="info"
-                :loading="isLoading"
-                class="h-12 w-52 rounded-2xl text-lg"
-                @click.prevent="handleSubmit"
-              >
-                Lưu
-              </n-button>
-            </n-gi>
-          </n-grid>
-        </n-gi>
-      </n-grid>
     </div>
   </div>
 </template>

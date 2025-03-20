@@ -14,6 +14,7 @@ export default defineComponent({
         return dataTableInstRef.value.filter(null);
       }
     }
+
     onMounted(() => {
       filterStatus();
     });
@@ -21,12 +22,13 @@ export default defineComponent({
     return {
       hocvienStatus,
       accountStatus,
+      editRow,
       data,
       columns: createColumns(),
       dataTableInst: dataTableInstRef,
       checkedRowKeys: checkedRowKeysRef,
       pagination: {
-        pageSize: 5,
+        pageSize: 10,
       },
       filterStatus() {
         if (dataTableInstRef.value) {
@@ -103,6 +105,12 @@ interface RowData {
   hocvienstatus: string;
   status: string;
 }
+const editRow = (row: RowData) => {
+  console.log("edit", row);
+};
+const deleteRow = (row: RowData) => {
+  console.log("delete", row);
+};
 const actionMenu = [
   {
     title: "Xếp lớp",

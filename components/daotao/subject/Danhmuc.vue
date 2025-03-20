@@ -15,9 +15,11 @@ export default defineComponent({
     }
     const paginationReactive = reactive({
       page: 1,
-      pageSize: 5,
+
+      pageSize: 10,
       showSizePicker: true,
-      pageSizes: [3, 5, 7],
+
+      pageSizes: [5, 10, 15],
       itemCount: computed(() => data.value.length),
       onUpdatePage: (page: number) => {
         paginationReactive.page = page;

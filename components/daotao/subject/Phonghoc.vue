@@ -15,6 +15,7 @@ export default defineComponent({
       center_id: string;
       branches: string;
       center: string;
+      address: string;
     }
 
     const { restAPI } = useApi();
@@ -24,7 +25,8 @@ export default defineComponent({
 
     const paginationReactive = reactive({
       page: 1,
-      pageSize: 5,
+
+      pageSize: 10,
       showSizePicker: true,
       pageSizes: [5, 10, 15],
       itemCount: computed(() => classrooms.value.length),
@@ -73,6 +75,7 @@ export default defineComponent({
             center_id: classroom.center_id,
             branches: classroom.branches,
             center: classroom.center,
+            address: classroom.address,
           };
         });
       } catch (err) {
@@ -411,7 +414,7 @@ export default defineComponent({
         placeholder="Lọc theo loại phòng"
       />
       <n-button type="info" @click="showAddClassroomModal = true">
-        Thêm lớp học <i class="fa-solid fa-plus ml-1 px-2"></i>
+        Thêm phòng học <i class="fa-solid fa-plus ml-1 px-2"></i>
       </n-button>
     </div>
 

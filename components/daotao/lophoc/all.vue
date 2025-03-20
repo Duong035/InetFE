@@ -19,7 +19,7 @@ export default defineComponent({
       subjectName: string;
       classType: string;
       startAt: string;
-      status: string;
+      status: number;
       endAt: string;
       name: string;
       code: string;
@@ -28,9 +28,11 @@ export default defineComponent({
 
     const paginationReactive = reactive({
       page: 1,
-      pageSize: 5,
+
+      pageSize: 10,
       showSizePicker: true,
-      pageSizes: [3, 5, 7],
+
+      pageSizes: [5, 10, 15],
       itemCount: computed(() => filteredData.value.length),
       onUpdatePage: (page: number) => {
         paginationReactive.page = page;
@@ -89,7 +91,7 @@ export default defineComponent({
           endAt: item.end_at ? item.end_at.split("T")[0] : "N/A",
           status: item.status,
           name: item.name,
-          totalLessons: item.subject?.total_lessons,
+          totalLessons: item.total_lessons,
         }));
 
         // Lấy danh sách môn học từ dữ liệu
@@ -153,15 +155,72 @@ export default defineComponent({
       });
       message.success(`Chỉnh sửa lớp học: ${row.name}`);
     };
+    // HÀM HỦY LỚP
+    const cancelRow = async (id: string) => {
+      if (!id) {
+        console.error("ID lớp học không hợp lệ:");
+        return;
+      }
+      console.log("Đang xóa lớp học với ID:", id);
 
-    const deleteRow = (row: RowData) => {
-      console.log("Delete:", row);
-      message.warning(`Dừng hoạt động lớp: ${row.name}`);
+      try {
+        const { error } = await restAPI.cms.cancelClass({
+          id,
+        });
+
+        if (error?.value) {
+          throw new Error(
+            error.value.data?.message || "Lỗi khi cập nhật trạng thái lớp học",
+          );
+        }
+
+        message.success(`Lớp học đã được hủy.`);
+        await loadData();
+      } catch (err) {
+        console.error("Lỗi khi cập nhật trạng thái lớp học:", err);
+        message.error("Không thể cập nhật trạng thái lớp học.");
+      }
+    };
+    // HÀM XÓA LỚP
+    const deleteRow = async (row: RowData) => {
+      if (confirm("Bạn có chắc chắn muốn xóa lớp học này không?")) {
+        try {
+          const { error } = await restAPI.cms.deleteClass({
+            body: { id: row.id },
+          });
+          if (error?.value) {
+            message.error(error.value.date?.message || "Lỗi khi xóa lớp học");
+            console.log("body", { id: row.id });
+            return;
+          }
+          data.value = data.value.filter((item) => item.id !== row.id);
+          message.success("Xóa lớp học thành công");
+        } catch (err) {
+          console.error("lối khi xóa lớp học:", err);
+          message.error("lỗi khi xóa lớp học");
+        }
+      }
     };
 
-    const addRow = (row: RowData) => {
-      console.log("Add:", row);
-      message.info(`Thêm lớp học liên quan đến: ${row.name}`);
+    // HÀM NHÂN BẢN LỚP
+    const duplicateRow = (row: RowData) => {
+      if (!row.id) {
+        console.error("ID lớp học không hợp lệ:", row);
+        return;
+      }
+
+      console.log("Duplicate:", row);
+
+      router.push({
+        path: "lophocinfo",
+        query: {
+          subject: row.subjectName,
+          branch_id: row.id, // Điều chỉnh nếu branch_id có dữ liệu riêng
+          description: row.name, // Điều chỉnh nếu description có dữ liệu riêng
+        },
+      });
+
+      message.success(`Nhân bản lớp học: ${row.name}`);
     };
 
     function createColumns(): DataTableColumns<RowData> {
@@ -232,6 +291,9 @@ export default defineComponent({
           key: "actions",
           align: "center",
           render(row) {
+            const isCancelled = row.status === 4;
+            const isFinished = row.status === 3;
+
             return h("div", { class: "flex gap-2 justify-center" }, [
               h(
                 NButton,
@@ -240,6 +302,8 @@ export default defineComponent({
                   type: "primary",
                   quaternary: true,
                   onClick: () => editRow(row),
+
+                  disabled: isCancelled,
                 },
                 {
                   default: () =>
@@ -255,7 +319,8 @@ export default defineComponent({
                   size: "small",
                   type: "error",
                   quaternary: true,
-                  onClick: () => deleteRow(row),
+                  onClick: () => cancelRow(row.id),
+                  disabled: isCancelled || isFinished,
                 },
                 {
                   default: () =>
@@ -268,14 +333,29 @@ export default defineComponent({
                   size: "small",
                   type: "warning",
                   quaternary: true,
-
-                  onClick: () => addRow(row),
+                  onClick: () => duplicateRow(row),
                 },
                 {
                   default: () =>
                     h("i", {
                       class: "fa-solid fa-square-plus",
                       style: "color: orange;",
+                    }),
+                },
+              ),
+              h(
+                NButton,
+                {
+                  size: "small",
+                  type: "error",
+                  quaternary: true,
+                  onClick: () => deleteRow(row),
+                },
+                {
+                  default: () =>
+                    h("i", {
+                      class: "fa-solid fa-trash",
+                      style: "color: red;",
                     }),
                 },
               ),
