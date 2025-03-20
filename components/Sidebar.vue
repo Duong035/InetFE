@@ -239,7 +239,7 @@ onUnmounted(() => {
             </li>
             <li>
               <NuxtLink
-                to="#"
+                to="../daotao/giangvien"
                 class="block px-2 py-1 hover:text-blue-500"
                 :class="[
                   'block px-2 py-1 hover:text-blue-500',
@@ -263,7 +263,7 @@ onUnmounted(() => {
             </li>
             <li>
               <NuxtLink
-                to="#"
+                to="../daotao/lichhoc"
                 class="block px-2 py-1 hover:text-blue-500"
                 :class="[
                   'block px-2 py-1 hover:text-blue-500',

@@ -71,7 +71,9 @@ export default defineComponent({
         const response = await axios.get(
           `http://localhost:3000/api/admin/users/${row.id}`,
           {
-            headers: { Authorization: `Bearer ${token.value}` },
+            headers: {
+              Authorization: token.value,
+            },
           },
         );
         editUserData.value = response.data.data;
@@ -90,7 +92,11 @@ export default defineComponent({
         await axios.put(
           `http://localhost:3000/api/admin/users/${editUserData.value.id}`,
           editUserData.value,
-          { headers: { Authorization: `Bearer ${token.value}` } },
+          {
+            headers: {
+              Authorization: token.value,
+            },
+          },
         );
         alert("User updated successfully");
         showModal_2.value = false;
@@ -109,7 +115,9 @@ export default defineComponent({
         const response = await axios.delete(
           `http://localhost:3000/api/admin/users`,
           {
-            headers: { Authorization: `Bearer ${token.value}` },
+            headers: {
+              Authorization: token.value,
+            },
             data: { ids: [row.id] },
           },
         );

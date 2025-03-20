@@ -1,5 +1,5 @@
 <script lang="ts">
-import type { DataTableColumns } from "naive-ui";
+import { NButton, type DataTableColumns } from "naive-ui";
 import dayjs from "dayjs";
 import {
   defineComponent,
@@ -19,16 +19,20 @@ export default defineComponent({
       subjectName: string;
       classType: string;
       startAt: string;
-      status: string;
+      status: number;
       endAt: string;
       name: string;
+      code: string;
+      totalLessons: number;
     }
 
     const paginationReactive = reactive({
       page: 1,
-      pageSize: 5,
+
+      pageSize: 10,
       showSizePicker: true,
-      pageSizes: [3, 5, 7],
+
+      pageSizes: [5, 10, 15],
       itemCount: computed(() => filteredData.value.length),
       onUpdatePage: (page: number) => {
         paginationReactive.page = page;
@@ -42,6 +46,7 @@ export default defineComponent({
     const { restAPI } = useApi();
     const data = ref<RowData[]>([]);
     const isLoading = ref(false);
+    const router = useRouter();
     //lọc theo loại lớp học
     const classTypeOptions = [
       { label: "Tất cả loại lớp học", value: "" },
@@ -66,39 +71,50 @@ export default defineComponent({
     );
 
     const loadData = async () => {
+      isLoading.value = true;
       try {
         const { data: resData, error } = await restAPI.cms.getClasses({});
 
         if (error?.value) {
-          message.error(error?.value?.data?.message || "Lỗi tải dữ liệu");
-          return;
+          throw new Error(error.value.data?.message || "Lỗi tải dữ liệu");
         }
 
         const rawData = toRaw(resData.value)?.data?.classes;
-        if (Array.isArray(rawData)) {
-          data.value = rawData.map((item: any, index: number) => ({
-            stt: index + 1,
-            id: item.id || "N/A",
-            subjectName: item.subject?.name || "N/A",
-            classType: item.type ? `${item.type}` : "N/A",
-            startAt: item.start_at ? item.start_at.split("T")[0] : "N/A",
-            endAt: item.end_at ? item.end_at.split("T")[0] : "N/A",
-            status: item.status,
-            name: item.name,
-          }));
 
-          // Lấy danh sách môn học từ dữ liệu
-          const subjects = [
-            ...new Set(rawData.map((item: any) => item.subject?.name || "N/A")),
-          ];
-          subjectOptions.value = [
-            { label: "Tất cả môn học", value: "" },
-            ...subjects.map((subject) => ({ label: subject, value: subject })),
-          ];
-        } else {
-          console.error("Unexpected API response:", rawData);
-          message.error("Dữ liệu không hợp lệ từ API.");
-        }
+        data.value = rawData.map((item: any, index: number) => ({
+          stt: index + 1,
+          code: item.code || "N/A",
+          id: item.id || "N/A",
+          subjectName: item.subject?.name || "N/A",
+          classType: item.type ? `${item.type}` : "N/A",
+          startAt: item.start_at ? item.start_at.split("T")[0] : "N/A",
+          endAt: item.end_at ? item.end_at.split("T")[0] : "N/A",
+          status: item.status,
+          name: item.name,
+          totalLessons: item.total_lessons,
+        }));
+
+        // Lấy danh sách môn học từ dữ liệu
+        const subjects = [
+          ...new Set(
+            rawData
+              .map((item: any) => item.subject?.name)
+              .filter((s: any) => typeof s === "string"),
+          ),
+          ...new Set(
+            rawData
+              .map((item: any) => item.subject?.total_lessons)
+              .filter((s: any) => typeof s === "string"),
+          ),
+        ];
+
+        subjectOptions.value = [
+          { label: "Tất cả môn học", value: "" },
+          ...subjects.map((subject) => ({
+            label: String(subject), // Ép kiểu về string
+            value: String(subject),
+          })),
+        ];
       } catch (err) {
         console.error("Error loading data:", err);
         message.error("Lỗi tải dữ liệu.");
@@ -125,20 +141,91 @@ export default defineComponent({
       return statusMap[status] || "Không xác định";
     }
 
+    // HÀM CHỈNH SỬA LỚP HỌC
+    const editRow = (row: any) => {
+      if (!row.id) {
+        console.error("ID lớp học không hợp lệ:", row);
+        return;
+      }
+
+      console.log("Edit:", row);
+      router.push({
+        path: "lophocinfo",
+        query: { id: row.id.toString() },
+      });
+      message.success(`Chỉnh sửa lớp học: ${row.name}`);
+    };
+
+    const cancelRow = async (row: any) => {
+      if (!row.id) {
+        console.error("ID lớp học không hợp lệ:", row);
+        return;
+      }
+
+      try {
+        const { data: resData, error } = await restAPI.cms.cancelClass({
+          id: row.id,
+        });
+
+        if (error?.value) {
+          throw new Error(
+            error.value.data?.message || "Lỗi khi cập nhật trạng thái lớp học",
+          );
+        }
+
+        // Cập nhật dữ liệu trong danh sách
+        const targetRow = data.value.find((item) => item.id === row.id);
+        if (targetRow) targetRow.status = 4;
+
+        message.success(`Lớp học "${row.name}" đã được hủy.`);
+      } catch (err) {
+        console.error("Lỗi khi cập nhật trạng thái lớp học:", err);
+        message.error("Không thể cập nhật trạng thái lớp học.");
+      }
+    };
+
+    const deleteRow = async (row: RowData) => {
+      if (confirm("Bạn có chắc chắn muốn xóa lớp học này không?")) {
+        try {
+          const { error } = await restAPI.cms.deleteClass({
+            body: { id: row.id },
+          });
+          if (error?.value) {
+            message.error(error.value.date?.message || "Lỗi khi xóa lớp học");
+            console.log("body", { id: row.id });
+            return;
+          }
+          data.value = data.value.filter((item) => item.id !== row.id);
+          message.success("Xóa lớp học thành công");
+        } catch (err) {
+          console.error("lối khi xóa lớp học:", err);
+          message.error("lỗi khi xóa lớp học");
+        }
+      }
+    };
+
     function createColumns(): DataTableColumns<RowData> {
       return [
         { title: "STT", key: "stt", titleAlign: "center" },
-        { title: "tên Lớp học", key: "name" },
-        { title: "Tên môn học", key: "subjectName" },
+        { title: "Mã lớp học", key: "code", titleAlign: "center" },
+        { title: "Tên Lớp học", key: "name", titleAlign: "center" },
+        { title: "Tên môn học", key: "subjectName", titleAlign: "center" },
         {
           title: "Loại lớp học",
           key: "classType",
+          titleAlign: "center",
           render(row) {
             return convertClassType(Number(row.classType));
           },
         },
         {
+          title: "Số buổi học",
+          key: "totalLessons",
+          titleAlign: "center",
+        },
+        {
           title: "Thời gian học",
+          align: "center",
           key: "timeRange",
           render(row) {
             return (
@@ -150,6 +237,7 @@ export default defineComponent({
         },
         {
           title: "Trạng thái",
+          align: "center",
           key: "status",
           render(row) {
             const status = getClassStatus(Number(row.status));
@@ -177,6 +265,67 @@ export default defineComponent({
               },
               status,
             );
+          },
+        },
+        {
+          title: "Hành động",
+          key: "actions",
+          align: "center",
+          render(row) {
+            const isCancelled = row.status === 4;
+            const isFinished = row.status === 3;
+
+            return h("div", { class: "flex gap-2 justify-center" }, [
+              h(
+                NButton,
+                {
+                  size: "small",
+                  type: "primary",
+                  quaternary: true,
+                  onClick: () => editRow(row),
+
+                  disabled: isCancelled,
+                },
+                {
+                  default: () =>
+                    h("i", {
+                      class: "fa-regular fa-pen-to-square",
+                      style: "color: green;",
+                    }),
+                },
+              ),
+              h(
+                NButton,
+                {
+                  size: "small",
+                  type: "error",
+                  quaternary: true,
+                  onClick: () => cancelRow(row),
+                  disabled: isCancelled || isFinished,
+                },
+                {
+                  default: () =>
+                    h("i", { class: "fas fa-ban", style: "color: red;" }),
+                },
+              ),
+              h(
+                NButton,
+                {
+                  size: "small",
+                  type: "warning",
+                  quaternary: true,
+
+                  onClick: () => deleteRow(row),
+                },
+                {
+                  default: () =>
+                    h("i", {
+                      class: "fa-solid fa-square-plus",
+                      style: "color: orange;",
+                    }),
+                },
+              ),
+            ]);
           },
         },
       ];

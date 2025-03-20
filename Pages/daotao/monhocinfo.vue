@@ -1,65 +1,36 @@
-<script setup lang="ts">
+<script setup>
+import { DaotaoMonhocmoiLesson } from "#components";
 import { reactive, ref } from "vue";
 
-const dropdowns = reactive<{ [key: string]: boolean }>({
+const isCollapsed = ref(false);
+const dropdowns = reactive({
   coban: true,
   noidung: false,
   chungchi: false,
   caidat: false,
   chamsoc: false,
 });
-const isCollapsed = ref(false);
 const activeDropdown = ref("coban");
 
-const noidungarrey = ref([
-  {
-    id: 1,
-  },
-]);
-function addSubject() {
-  noidungarrey.value.push({
-    id: noidungarrey.value.length + 1,
-  });
-}
-function deleteSubject(value: number) {
-  noidungarrey.value = noidungarrey.value.filter((i) => i.id !== value);
-}
-function editSubject(value: number) {
-  noidungarrey.value = noidungarrey.value.map((i) => {
-    if (i.id === value) {
-      return {
-        ...i,
-        id: value,
-      };
-    }
-    return i;
-  });
-}
-
-const toggleDropdown = (menu: string) => {
+const toggleDropdown = (menu) => {
   if (menu.startsWith("noidung-")) {
-    if (activeDropdown.value === menu) {
-      activeDropdown.value = "";
-    } else {
-      activeDropdown.value = menu;
-    }
+    activeDropdown.value = activeDropdown.value === menu ? "" : menu;
     return;
   }
+
   if (dropdowns[menu]) {
-    // Close the dropdown if already open
     dropdowns[menu] = false;
     activeDropdown.value = "";
   } else {
-    // Close all dropdowns
     Object.keys(dropdowns).forEach((key) => {
       dropdowns[key] = false;
     });
-    // Open the clicked dropdown
     dropdowns[menu] = true;
     activeDropdown.value = menu;
   }
 };
 </script>
+
 <template>
   <div class="flex h-full w-full">
     <div class="flex h-full w-1/6">
@@ -70,7 +41,7 @@ const toggleDropdown = (menu: string) => {
             :class="[
               'relative flex cursor-pointer items-center py-3 pl-3 pr-10',
               activeDropdown === 'coban'
-                ? '-mr-4 bg-gray-50 pr-0 text-[#133D85]'
+                ? '-mr-12 bg-gray-50 pr-0 text-[#133D85]'
                 : 'text-[#4D6FA8]',
             ]"
           >
@@ -78,8 +49,8 @@ const toggleDropdown = (menu: string) => {
               :class="[
                 'pr-3 text-[8px] text-[#133D85]',
                 activeDropdown === 'coban'
-                  ? 'fa-solchapterfa-circle text-[#133D85]'
-                  : 'fa-solchapterfa-circle-dot text-[#4D6FA8]',
+                  ? 'fa-solid fa-circle text-[#133D85]'
+                  : 'fa-solid fa-circle-dot text-[#4D6FA8]',
               ]"
             ></i>
             Thông tin cơ bản
@@ -89,16 +60,16 @@ const toggleDropdown = (menu: string) => {
             :class="[
               'relative flex cursor-pointer items-center py-3 pl-3 pr-10',
               activeDropdown.startsWith('noidung')
-                ? '-mr-4 bg-gray-50 pr-0 text-[#133D85]'
+                ? '-mr-14 bg-gray-50 pr-0 text-[#133D85]'
                 : 'text-[#4D6FA8]',
             ]"
           >
             <i
               :class="[
-                'pr-3 text-[8px]',
-                activeDropdown.startsWith('noidung')
-                  ? 'fa-solchapterfa-circle text-[#133D85]'
-                  : 'fa-solchapterfa-circle-dot text-[#4D6FA8]',
+                'pr-3 text-[8px] text-[#133D85]',
+                activeDropdown === 'noidung'
+                  ? 'fa-solid fa-circle text-[#133D85]'
+                  : 'fa-solid fa-circle-dot text-[#4D6FA8]',
               ]"
             ></i>
             Nội dung bài giảng
@@ -108,16 +79,16 @@ const toggleDropdown = (menu: string) => {
             :class="[
               'relative flex cursor-pointer items-center py-3 pl-3 pr-10',
               activeDropdown === 'chungchi'
-                ? '-mr-4 bg-gray-50 pr-0 text-[#133D85]'
+                ? '-mr-12 bg-gray-50 pr-0 text-[#133D85]'
                 : 'text-[#4D6FA8]',
             ]"
           >
             <i
               :class="[
-                'pr-3 text-[8px]',
+                'pr-3 text-[8px] text-[#133D85]',
                 activeDropdown === 'chungchi'
-                  ? 'fa-solchapterfa-circle text-[#133D85]'
-                  : 'fa-solchapterfa-circle-dot text-[#4D6FA8]',
+                  ? 'fa-solid fa-circle text-[#133D85]'
+                  : 'fa-solid fa-circle-dot text-[#4D6FA8]',
               ]"
             ></i>
             Chứng chỉ
@@ -127,19 +98,19 @@ const toggleDropdown = (menu: string) => {
             :class="[
               'relative flex cursor-pointer items-center py-3 pl-3 pr-10',
               activeDropdown === 'caidat'
-                ? '-mr-4 bg-gray-50 pr-0 text-[#133D85]'
+                ? '-mr-12 bg-gray-50 pr-0 text-[#133D85]'
                 : 'text-[#4D6FA8]',
             ]"
           >
             <i
               :class="[
-                'pr-3 text-[8px]',
+                'pr-3 text-[8px] text-[#133D85]',
                 activeDropdown === 'caidat'
-                  ? 'fa-solchapterfa-circle text-[#133D85]'
-                  : 'fa-solchapterfa-circle-dot text-[#4D6FA8]',
+                  ? 'fa-solid fa-circle text-[#133D85]'
+                  : 'fa-solid fa-circle-dot text-[#4D6FA8]',
               ]"
-            ></i
-            >Cài đặt
+            ></i>
+            Cài đặt
           </li>
         </ul>
       </nav>
@@ -171,9 +142,9 @@ const toggleDropdown = (menu: string) => {
                   "
                 ></i>
               </div>
-              <ul v-if="dropdowns.coban" class="w-ful h-full">
+              <ul v-if="dropdowns.coban" class="h-full w-full">
                 <li>
-                  <div class="w-ful h-full" v-if="!isCollapsed">
+                  <div class="h-full w-full" v-if="!isCollapsed">
                     <DaotaoMonhocmoiClassInfo />
                   </div>
                 </li>
@@ -203,72 +174,7 @@ const toggleDropdown = (menu: string) => {
               </div>
               <ul v-if="dropdowns.noidung" class="w-ful h-full">
                 <li>
-                  <div class="w-ful h-full" v-if="!isCollapsed">
-                    <div class="px-5">
-                      <div v-for="item in noidungarrey" :key="item.id">
-                        <div>
-                          <li
-                            :class="[
-                              'cursor-pointer py-2',
-                              activeDropdown === `noidung-${item.id}`
-                                ? 'text-[#133D85]'
-                                : 'text-gray-600',
-                            ]"
-                            @click="toggleDropdown(`noidung-${item.id}`)"
-                          >
-                            <div
-                              :class="[
-                                'flex h-full w-full items-center justify-between rounded-2xl bg-gray-200 px-1',
-                                activeDropdown === `noidung-${item.id}`
-                                  ? 'text-[#133D85]'
-                                  : 'text-gray-600',
-                              ]"
-                            >
-                              <div
-                                class="my-2 flex h-full w-full items-center justify-between px-5"
-                              >
-                                <p>Chương {{ item.id }}</p>
-                                <div>
-                                  <button
-                                    @click="editSubject(item.id)"
-                                    class="pr-5 text-green-500 hover:text-green-700"
-                                  >
-                                    <i
-                                      class="fas fa-regular fa-pen-to-square"
-                                    ></i>
-                                  </button>
-                                  <button
-                                    @click="deleteSubject(item.id)"
-                                    class="text-red-500 hover:text-red-700"
-                                  >
-                                    <i class="fas fa-trash-alt"></i>
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </li>
-                          <div
-                            class="-mt-2"
-                            v-if="activeDropdown === `noidung-${item.id}`"
-                          >
-                            <!-- Content to be shown when active -->
-                            <div class="mt-2 border-b-2"></div>
-                            <DaotaoMonhocmoiNewsub />
-                            <div class="border-b-2"></div>
-                          </div>
-                        </div>
-                      </div>
-                      <n-button
-                        round
-                        type="info"
-                        class="mt-2 h-12 w-48 rounded-2xl text-xl"
-                        @click="addSubject"
-                      >
-                        Thêm mới
-                        <i class="fa-solid fa-plus ml-3"></i>
-                      </n-button>
-                    </div>
-                  </div>
+                  <DaotaoMonhocmoiLesson />
                 </li>
               </ul>
             </li>
@@ -294,9 +200,9 @@ const toggleDropdown = (menu: string) => {
                   "
                 ></i>
               </div>
-              <ul v-if="dropdowns.chungchi" class="w-ful h-full">
+              <ul v-if="dropdowns.chungchi" class="h-full w-full">
                 <li>
-                  <div class="w-ful h-full" v-if="!isCollapsed">
+                  <div class="h-full w-full" v-if="!isCollapsed">
                     <DaotaoHocvienctClass />
                   </div>
                 </li>
@@ -329,5 +235,6 @@ const toggleDropdown = (menu: string) => {
         </nav>
       </div>
     </div>
+    <DelModal @confirm-delete="handleConfirmDelete" ref="delref" />
   </div>
 </template>

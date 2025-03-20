@@ -7,6 +7,7 @@ const props = defineProps({
   branch_id: String,
 });
 
+const message = useMessage();
 const Subjectarray = ref([]);
 const formRef = ref(null);
 const route = useRoute();
@@ -16,7 +17,6 @@ const listCheckedShifts = ref([]);
 const selectedTimes = ref({});
 const daysOfWeek = ref(createDaysOfWeek());
 const is_update = ref(false);
-const showSpin = ref(false);
 const formValue = reactive({
   id: null,
   user_id: computed(() => route.query.id || null),
@@ -82,7 +82,7 @@ const shift = ref([
     id: 2,
     name: "Tối",
     start: "18",
-    end: "23",
+    end: "22",
     start_time: "",
     end_time: "",
     work_session_id: "",
@@ -407,7 +407,8 @@ const listSession = async () => {
     session.title.includes(formValue.user_id),
   );
 };
-const createShifts = async () => {
+
+const createSession = async () => {
   if (!formValue.user_id) return;
 
   for (const s of shift.value) {
@@ -550,15 +551,22 @@ const loadShift = async () => {
         s.end_time = selectedEnd || s.end_time;
         s.work_session_id = selectedSession || s.work_session_id;
 
-        let matchingShortShift = formValue.user_shifts.find(
-          (shortShift) => shortShift.work_session_id === selectedSession,
-        );
+        // Collect all shifts with the same work_session_id
+        let matchingShortShifts = Object.values(formValue.user_shifts)
+          .filter(
+            (shortShift) => shortShift.work_session_id === selectedSession,
+          )
+          .map((shortShift) => shortShift.day_of_week); // Extract day_of_week values
 
-        if (matchingShortShift) {
+        console.log("Matching shifts:", matchingShortShifts);
+
+        if (matchingShortShifts.length > 0) {
           s.session.forEach((session) => {
-            const day = session.value; // Get the day of the week
-            const isChecked = matchingShortShift.day_of_week.includes(day);
+            const day = session.value;
+            console.log("Checking day:", day);
 
+            // Check if the day exists in any of the matching shifts
+            const isChecked = matchingShortShifts.includes(day);
             session.checked = isChecked;
 
             // ✅ Call handleCheckedValue to update `listCheckedShifts`
@@ -568,23 +576,26 @@ const loadShift = async () => {
       }
     }
   });
-  await listSession();
 };
 //_____________________________________________________________________________________
 
 //Load/Submit__________________________________________________________________________
-if (formValue.user_id && formValue.user_id !== "") {
+const loadData = async () => {
+  if (!formValue.user_id || formValue.user_id === "") return;
+
   const { data: resList } = await restAPI.cms.listCalendars({});
-  const filteredData = resList.value.data.filter(
+  const filteredData = resList.value?.data?.filter(
     (calendar) => calendar.user_id === formValue.user_id,
   );
+
   const Calid = filteredData.length > 0 ? filteredData[0].id : null;
   if (Calid) is_update.value = true;
-  const { data: resData } = await restAPI.cms.getCalendarDetails({
-    id: Calid,
-  });
+
+  const { data: resData } = await restAPI.cms.getCalendarDetails({ id: Calid });
+
   if (resData.value?.status) {
     const data = resData.value.data;
+    console.log("data: ", data);
     formValue.id = data.id || null;
     formValue.is_online = Boolean(data.is_online);
     formValue.is_offline = Boolean(data.is_offline);
@@ -593,24 +604,19 @@ if (formValue.user_id && formValue.user_id !== "") {
     endDate.value = data.end_date;
     formValue.subject_id = data.subject_id || null;
     formValue.time_slots = data.time_slots || null;
-    formValue.short_shifts = data.short_shifts || null;
-  } else {
-    const errorCode = error.value.data.error;
-    const errorMessage =
-      ERROR_CODES[errorCode] ||
-      resData.value?.message ||
-      "Đã xảy ra lỗi, vui lòng thử lại!";
-
-    message.warning(errorMessage);
+    formValue.user_shifts = data.user_shifts || null;
   }
-  console.log(formValue);
-  loadShift();
-}
 
+  console.log("form: ", formValue);
+  console.log(typeof formValue.user_shifts);
+  loadShift();
+};
+// 10.50.20.169:4000
 const scheduleSubmit = async () => {
   await listSession();
   if (!session.value.length) {
-    await createShifts();
+    await createSession();
+    await listSession();
   }
   const body = {
     user_id: formValue.user_id,
@@ -623,14 +629,52 @@ const scheduleSubmit = async () => {
     time_slots: formattedTimeSlots.value,
     user_shifts: convertToUserShifts(listCheckedShifts.value),
   };
-  console.log(body);
-  return true;
+  console.log(JSON.stringify(body, null, 2));
+  try {
+    if (formValue.id) {
+      const { data: resUpdate } = await restAPI.cms.updateCalendar({
+        id: formValue.id,
+        body,
+      });
+      if (resUpdate?.value?.status) {
+        message.success("Cập nhật lịch dạy thành công!");
+      } else {
+        const errorCode = resUpdate.value.data.error || "UNKNOWN_ERROR";
+        const errorMessage =
+          ERROR_CODES[errorCode] ||
+          resUpdate?.value?.message ||
+          "Đã xảy ra lỗi, vui lòng thử lại!";
+
+        message.warning(errorMessage);
+      }
+    } else {
+      const { data: resCreate } = await restAPI.cms.createCalendar({
+        body,
+      });
+      if (resCreate?.value?.status) {
+        message.success("Tạo lịch dạy thành công!");
+      } else {
+        const errorCode = resCreate.value.data.error || "UNKNOWN_ERROR";
+        const errorMessage =
+          ERROR_CODES[errorCode] ||
+          resCreate?.value?.message ||
+          "Đã xảy ra lỗi, vui lòng thử lại!";
+        message.warning(errorMessage);
+      }
+    }
+  } catch (err) {
+    message.error("Vui lòng kiểm tra lại thông tin!");
+    console.error("API error:", err);
+  } finally {
+    loadData();
+  }
 };
 
 defineExpose({ scheduleSubmit });
 
 onMounted(() => {
   fetchSubjects();
+  loadData();
   selectedTimes.value = [{ start: null, end: null, session: "NO_SESSION" }];
 });
 </script>
@@ -664,7 +708,6 @@ onMounted(() => {
           <n-form-item label="Môn học" :show-feedback="false">
             <n-select
               placeholder="Chọn môn học"
-              multiple
               v-model:value="formValue.subject_id"
               :options="Subjectarray"
               label-field="name"

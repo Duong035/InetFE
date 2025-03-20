@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { DaotaoLophocDanhsach } from "#components";
 import { reactive, ref } from "vue";
 
 const dropdowns = reactive<{ [key: string]: boolean }>({
@@ -296,7 +297,7 @@ const toggleDropdown = (menu: string) => {
               <ul v-if="dropdowns.xeplich" class="w-ful h-full">
                 <li>
                   <div class="w-ful h-full" v-if="!isCollapsed">
-                    <DaotaoHocvienctClass />
+                    <DaotaoLophocXeplop />
                   </div>
                 </li>
               </ul>
@@ -323,6 +324,13 @@ const toggleDropdown = (menu: string) => {
                   "
                 ></i>
               </div>
+              <ul v-if="dropdowns.danhsach" class="w-ful h-full">
+                <li>
+                  <div class="w-ful h-full" v-if="!isCollapsed">
+                    <DaotaoLophocDanhsach />
+                  </div>
+                </li>
+              </ul>
             </li>
           </ul>
         </nav>

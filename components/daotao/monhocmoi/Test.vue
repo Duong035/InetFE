@@ -1,7 +1,6 @@
 <script setup>
 import { NModal } from "naive-ui";
-import { ref, onMounted, computed } from "vue";
-import { useRoute } from "vue-router";
+import { ref, onMounted } from "vue";
 
 const props = defineProps({
   lessonId: String,
@@ -9,52 +8,33 @@ const props = defineProps({
 
 //1: youtube video, 2: s3 video, 3: text, 4: test, 5: document
 
-const route = useRoute();
+const formValue = reactive({
+  id: null,
+  name: null,
+  position: null,
+  free_trial: false,
+  is_live: false,
+});
+
 const message = useMessage();
 const { restAPI } = useApi();
 const isModalVisible = ref(false);
-
 const ytref = ref(null);
 const vidref = ref(null);
 const textref = ref(null);
 const docref = ref(null);
 const isLoading = ref(false);
 const is_addnew = ref(false);
-const isModal = ref(null);
-
 const lessonData = ref([]);
 const childLesson = ref([]);
 let lessonDataID = null;
 
-const formValue = reactive({
-  id: null,
-  name: null,
-  subject_id: null,
-  position: null,
-  free_trial: false,
-  is_live: false,
-});
-
-//Dropdown___________________________________________________________________________
-const activeDropdown = ref(null);
-const dropdowns = ref({});
-function toggleDropdown(id) {
-  if (dropdowns.value[id]) {
-    dropdowns.value[id] = false;
-  } else {
-    for (const key in dropdowns.value) {
-      dropdowns.value[key] = false;
-    }
-    dropdowns.value[id] = true;
-  }
-}
-
-//___________________________________________________________________________________
-
-//DeleteFunc_________________________________________________________________________
 const delref = ref(null);
 const deleteAction = ref(null);
 const itemId = ref(null);
+
+const activeDropdown = ref(null);
+const dropdowns = ref({});
 
 const showDeleteModal = (action, title, id) => {
   deleteAction.value = action;
@@ -91,31 +71,18 @@ async function deleteCLesson(value) {
   getLesson();
 }
 
-async function deleteContent(value) {
-  const body = { id: value };
-  const { data: delData, error } = await restAPI.cms.deleteLessonData({
-    body,
-  });
-  if (delData?.value?.status) {
-    message.success("Xóa nội dung thành công!");
-  } else {
-    const errorCode = error.value?.data?.error;
-    const errorMessage =
-      ERROR_CODES[errorCode] ||
-      delData?.value?.message ||
-      "Đã xảy ra lỗi, vui lòng thử lại!";
-
-    message.warning(errorMessage);
+function toggleDropdown(id) {
+  for (const key in dropdowns.value) {
+    dropdowns.value[key] = false;
   }
-  getLessonData();
+  dropdowns.value[id] = !dropdowns.value[id];
 }
-//___________________________________________________________________________________
 
-//DataFunc___________________________________________________________________________
 function addContentToLesson(lessonId, content) {
   lessonDataID = lessonId;
   switch (content) {
     case 1:
+      console.log(ytref.value);
       if (ytref.value) {
         ytref.value.setAddNew(true, "");
       }
@@ -139,6 +106,7 @@ function addContentToLesson(lessonId, content) {
 }
 
 function editContent(contentId, content) {
+  console.log(contentId);
   switch (content) {
     case 1:
       if (ytref.value) {
@@ -163,7 +131,6 @@ function editContent(contentId, content) {
       break;
   }
 }
-
 async function getLesson() {
   const lesson_id = props.lessonId;
   if (!lesson_id) return;
@@ -175,7 +142,6 @@ async function getLesson() {
     childLesson.value = resData.value.data.childrens.map((lesson, index) => ({
       id: lesson.id,
       name: lesson.name,
-      is_live: lesson.is_live,
     }));
   } else {
     childLesson.value = [];
@@ -210,68 +176,41 @@ const getContentTypeText = (type) => {
       return "Unknown";
   }
 };
-async function editCLesson(id, is_live, value) {
-  const state = is_live ? "buoihoc" : "baihoc";
-  showModal(state, value);
+function addChildLesson() {
+  is_addnew.value = true;
+  isModalVisible.value = true;
+}
+function CancelModal() {
+  isModalVisible.value = false;
+}
+
+watch(isModalVisible, (newValue, oldValue) => {
+  if (!newValue) {
+    Object.assign(formValue, {
+      id: null,
+      name: null,
+      position: null,
+      free_trial: false,
+      is_live: false,
+    });
+  }
+});
+
+async function editCLesson(value) {
+  is_addnew.value = false;
   const { data: resData } = await restAPI.cms.getLessonDetail({
-    id: id,
+    id: value,
   });
   if (resData.value?.status) {
     const data = resData.value?.data;
     formValue.id = data.id;
     formValue.name = data.name;
     formValue.position = data.position;
-    formValue.subject_id = data.SubjectId;
     formValue.free_trial = data.free_trial || false;
     formValue.is_live = data.is_live || false;
   }
-}
-//___________________________________________________________________________________
-
-//Modal______________________________________________________________________________
-const child_lessons = ref([]);
-const lessondate = reactive({
-  name: null,
-  free_trial: false,
-});
-
-const addchildLesson = (customLesson = {}) => {
-  child_lessons.value.push({
-    name: customLesson.name ?? null,
-    position: childLesson.value.length + 1,
-    parent_id: props.lessonId,
-    subject_id: route.query.id || null,
-    free_trial: customLesson.free_trial ?? false,
-    is_live: customLesson.is_live ?? false,
-  });
-};
-const removeLesson = (value) => {
-  if (child_lessons.value.length > 0) {
-    child_lessons.value.splice(value, 1);
-  }
-};
-
-function showModal(source, isnew) {
-  isModal.value = source;
-  if (isModal.value == "baihoc") addchildLesson();
-  is_addnew.value = isnew;
   isModalVisible.value = true;
 }
-function CancelModal() {
-  isModalVisible.value = false;
-}
-watch(isModalVisible, (newValue, oldValue) => {
-  if (!newValue) {
-    child_lessons.value = [];
-    Object.assign(lessondate, {
-      name: null,
-      free_trial: false,
-    });
-  }
-});
-//___________________________________________________________________________________
-
-//Submit_____________________________________________________________________________
 const handleFormSubmit = async (body) => {
   body.lesson_id = lessonDataID;
   if (body.id) {
@@ -317,77 +256,72 @@ const updateLesson = async (body) => {
   }
 };
 
+async function deleteContent(value) {
+  const body = { id: value };
+  const { data: delData, error } = await restAPI.cms.deleteLessonData({
+    body,
+  });
+  if (delData?.value?.status) {
+    message.success("Xóa nội dung thành công!");
+  } else {
+    const errorCode = error.value?.data?.error;
+    const errorMessage =
+      ERROR_CODES[errorCode] ||
+      delData?.value?.message ||
+      "Đã xảy ra lỗi, vui lòng thử lại!";
+
+    message.warning(errorMessage);
+  }
+  getLessonData();
+}
+
 const handleSubmit = async () => {
   if (isLoading.value) return;
-  if (isModal.value == "buoihoc") {
-    addchildLesson({
-      name: lessondate.name,
-      free_trial: lessondate.free_trial,
-      is_live: true,
+  const { id, position, name, free_trial, is_live } = formValue;
+  let body = {
+    name,
+    position: Number(position),
+    free_trial,
+    is_live,
+  };
+  if (id === undefined || id === null || id === "") {
+    body.parent_id = props.lessonId;
+    const { data: resCreate, error } = await restAPI.cms.createLesson({
+      body,
     });
-  }
-  if (is_addnew.value) {
-    for (const lesson of child_lessons.value) {
-      try {
-        const { data: resCreate } = await restAPI.cms.createLesson({
-          body: lesson,
-        });
-      } catch (err) {
-        console.error(`Error creating lesson ${lesson.name}:`, err);
-      }
+    if (resCreate?.value?.status) {
       message.success("Tạo bài học thành công!");
+    } else {
+      const errorCode = error.value?.data?.error;
+      const errorMessage =
+        ERROR_CODES[errorCode] ||
+        resCreate?.value?.message ||
+        "Đã xảy ra lỗi, vui lòng thử lại!";
+
+      message.warning(errorMessage);
     }
   } else {
-    const body = [{ ...formValue }];
-    const { data: resUpdate, error } = await restAPI.cms.updateLesson({ body });
-    console.log("status", resUpdate);
+    body.id = id;
+    let finalBody = [body];
+
+    const { data: resUpdate, error } = await restAPI.cms.updateLesson({
+      body: finalBody,
+    });
     if (resUpdate?.value?.status) {
       message.success("Cập nhật bài học thành công!");
     } else {
       const errorCode = error.value?.data?.error;
-      console.log("error", errorCode);
       const errorMessage =
         ERROR_CODES[errorCode] ||
         resUpdate?.value?.message ||
         "Đã xảy ra lỗi, vui lòng thử lại!";
+
       message.warning(errorMessage);
     }
   }
   isModalVisible.value = false;
   getLesson();
 };
-//___________________________________________________________________________________
-
-//Computed___________________________________________________________________________
-const sortedChildLesson = computed(() => {
-  if (!childLesson.value || childLesson.value.length === 0) return [];
-
-  return childLesson.value
-    .slice()
-    .sort((a, b) => (b.is_live ? 1 : -1) - (a.is_live ? 1 : -1));
-});
-
-const caseDisplay = computed(() => {
-  if (!isModal.value) return "Không có dữ liệu";
-
-  const type = isModal.value === "baihoc" ? "bài học" : "buổi học";
-  const status = is_addnew.value ? "Thêm" : "Chỉnh sửa";
-
-  return `${status} ${type}`;
-});
-
-const currentLesson = computed({
-  get: () => (is_addnew.value ? lessondate : formValue),
-  set: (newValue) => {
-    if (is_addnew.value) {
-      Object.assign(lessondate, newValue);
-    } else {
-      Object.assign(formValue, newValue);
-    }
-  },
-});
-//___________________________________________________________________________________
-
 onMounted(() => {
   getLesson();
   getLessonData();
@@ -397,16 +331,15 @@ onMounted(() => {
 <template>
   <div class="w-full rounded-b-2xl px-5">
     <nav>
-      <div v-for="item in sortedChildLesson" :key="item.id">
+      <div v-for="item in childLesson" :key="item.id">
         <li
           :class="[
-            'py-2',
+            'cursor-pointer py-2',
             activeDropdown === `${item.id}`
               ? 'text-[#133D85]'
               : 'text-gray-600',
-            !item.is_live ? 'cursor-pointer' : '',
           ]"
-          @click="!item.is_live && toggleDropdown(item.id)"
+          @click="toggleDropdown(item.id)"
         >
           <div
             :class="[
@@ -419,28 +352,17 @@ onMounted(() => {
             <div
               class="my-2 flex h-full w-full items-center justify-between px-5"
             >
-              <div class="flex items-center gap-2">
-                <i
-                  v-if="item.is_live"
-                  class="fa-solid fa-person-chalkboard text-sm"
-                ></i>
-                <i v-else class="fa-solid fa-book-open text-sm"></i>
-                <p>{{ item.name }}</p>
-              </div>
+              <p>{{ item.name }}</p>
               <div>
                 <button
-                  @click.stop="editCLesson(item.id, item.is_live, false)"
+                  @click="editCLesson(item.id)"
                   class="pr-5 text-green-500 hover:text-green-700"
                 >
                   <i class="fas fa-pen-to-square text-sm"></i>
                 </button>
                 <button
-                  @click.stop="
-                    showDeleteModal(
-                      deleteCLesson,
-                      item.is_live ? 'Xóa buổi học' : 'Xóa bài học ',
-                      item.id,
-                    )
+                  @click="
+                    showDeleteModal(deleteCLesson, 'Xóa bài học', item.id)
                   "
                   class="text-red-500 hover:text-red-700"
                 >
@@ -450,9 +372,9 @@ onMounted(() => {
             </div>
           </div>
           <ul v-if="dropdowns[item.id]" class="h-full w-full">
-            <li @click.stop="toggleDropdown(item.id)" class="cursor-default">
+            <li @click.stop="toggleDropdown(item.id)">
               <div class="h-full w-full">
-                <n-card class="mt-1 bg-gray-50 text-[#133D85]" @click.stop>
+                <n-card class="mt-1 bg-gray-50 text-[#133D85]">
                   <div
                     v-for="(content, index) in getLessonContent(item.id)"
                     :key="index"
@@ -563,130 +485,68 @@ onMounted(() => {
         </li>
       </div>
     </nav>
-    <span
-      class="cursor-pointer text-sm text-[#00A2EB]"
-      @click="showModal('baihoc', true)"
-    >
+    <span class="cursor-pointer text-sm text-[#00A2EB]" @click="addChildLesson">
       + Thêm bài học mới </span
     ><br />
-    <span
-      class="cursor-pointer text-sm text-[#00A2EB]"
-      @click="showModal('buoihoc', true)"
-    >
+    <span class="cursor-pointer text-sm text-[#00A2EB]" @click="addChildLesson">
       + Thêm buổi học mới
     </span>
     <n-modal-provider>
       <n-modal
         v-model:show="isModalVisible"
         preset="card"
-        style="max-width: 600px"
+        style="
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 90%;
+          max-width: 600px;
+        "
         :header-style="{ padding: '10px' }"
         :closable="false"
       >
         <n-form>
           <n-grid cols="2" :x-gap="20">
             <n-gi span="2">
-              <n-form-item :show-feedback="false" :show-label="false">
-                <h1 class="text-2xl font-bold text-[#133D85]">
-                  {{ caseDisplay }}
-                </h1>
-              </n-form-item>
-              <!-- baihocmodal -->
-              <n-grid cols="2" :x-gap="20" v-if="isModal == 'baihoc'">
-                <n-gi span="2" v-if="is_addnew">
-                  <n-gi span="2">
-                    <n-form-item
-                      label="Thêm các bài học nằm trong chương này"
-                      :label-style="{ fontSize: '20px' }"
-                    >
-                      <p class="-mt-6 text-[#4D6FA8]">
-                        Nhập tên bài học trước và thêm nội dung chi tiết từng
-                        bài học ở bước sau
-                      </p>
-                    </n-form-item>
-                  </n-gi>
-                  <n-gi span="2" class="-mt-8 mb-5">
-                    <n-grid
-                      cols="15"
-                      :x-gap="20"
-                      v-for="(item, index) in child_lessons"
-                      :key="index"
-                    >
-                      <n-gi span="14" class="mb-2">
-                        <n-input
-                          v-model:value="item.name"
-                          placeholder="Nhập"
-                        ></n-input>
-                      </n-gi>
-                      <n-gi>
-                        <button
-                          class="pt-3 text-red-500 hover:text-red-700"
-                          @click="removeLesson(index)"
-                        >
-                          <i class="fas fa-trash-alt"></i>
-                        </button>
-                      </n-gi>
-                    </n-grid>
-                  </n-gi>
-                  <n-gi span="2" class="mb-1">
-                    <span
-                      class="cursor-pointer text-sm text-[#00A2EB]"
-                      @click="addchildLesson"
-                    >
-                      + Thêm bài học mới
-                    </span>
-                  </n-gi>
-                </n-gi>
-                <n-gi span="2" v-else>
-                  <n-gi span="2" class="mb-2">
-                    <n-form-item label="Tên bài học">
-                      <n-input
-                        v-model:value="formValue.name"
-                        placeholder="Nhập tên bài học"
-                      ></n-input>
-                    </n-form-item>
-                  </n-gi>
-                  <n-gi span="2">
-                    <n-form-item
-                      label="Cho phép học thử"
-                      label-placement="left"
-                      :show-feedback="false"
-                    >
-                      <n-checkbox
-                        v-model:checked="formValue.free_trial"
-                      ></n-checkbox>
-                    </n-form-item>
-                  </n-gi>
-                </n-gi>
-              </n-grid>
-              <!-- buoihocmodal -->
-              <n-grid cols="2" :x-gap="20" v-else>
-                <n-gi span="2">
-                  <n-form-item label="Tiêu đề buổi học:">
-                    <n-input
-                      v-model:value="currentLesson.name"
-                      placeholder="Nhập tiêu đề buổi học"
-                    ></n-input>
-                  </n-form-item>
-                </n-gi>
-                <n-gi span="2">
-                  <n-form-item
-                    label="Cho phép học thử"
-                    label-placement="left"
-                    :show-feedback="false"
-                  >
-                    <n-checkbox
-                      v-model:checked="currentLesson.free_trial"
-                    ></n-checkbox>
-                  </n-form-item>
-                </n-gi>
-              </n-grid>
+              <h1 v-if="is_addnew" class="text-2xl font-bold text-[#133D85]">
+                Thêm bài học mới
+              </h1>
+              <h1 v-else class="text-2xl font-bold text-[#133D85]">
+                Chỉnh sửa bài học
+              </h1>
+              <div class="mt-5"></div>
             </n-gi>
-
+            <n-gi span="1">
+              <n-form-item label="Bài thứ:" label-placement="left">
+                <n-input
+                  placeholder="Nhập số thứ tự của bài"
+                  v-model:value="formValue.position"
+                ></n-input>
+              </n-form-item>
+            </n-gi>
+            <n-gi span="2">
+              <n-form-item label="Tên bài mới:">
+                <n-input
+                  placeholder="Nhập tên bài"
+                  v-model:value="formValue.name"
+                ></n-input>
+              </n-form-item>
+            </n-gi>
+            <n-gi>
+              <n-form-item label="Học thử miễn phí" label-placement="left">
+                <n-checkbox v-model:checked="formValue.free_trial"></n-checkbox>
+              </n-form-item>
+            </n-gi>
+            <n-gi>
+              <n-form-item label="Trạng thái hoạt động" label-placement="left">
+                <n-checkbox v-model:checked="formValue.is_live"></n-checkbox>
+              </n-form-item>
+            </n-gi>
             <n-gi>
               <n-button
                 ghost
-                class="h-12 w-full rounded-2xl text-lg text-blue-400"
+                class="h-12 w-full rounded-2xl text-lg"
                 @click="CancelModal"
               >
                 Hủy

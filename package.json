@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "nuxt build",
-    "dev": "nuxt dev",
+    "dev": "nuxt dev --host",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare"
@@ -20,6 +20,7 @@
     "@nuxtjs/tailwindcss": "^6.13.1",
     "@pinia/nuxt": "^0.10.1",
     "@tinymce/tinymce-vue": "^6.1.0",
+    "@vuepic/vue-datepicker": "^11.0.1",
     "ant-design-vue": "^4.2.6",
     "axios": "^1.7.9",
     "chart.js": "^4.4.7",

@@ -1,17 +1,20 @@
 <script setup>
-import { onMounted, ref, reactive } from "vue";
+import { onMounted, ref, reactive, watch } from "vue";
 import { NPopover } from "naive-ui";
-import { useRoute } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 
 const { restAPI } = useApi();
-const switchValue = ref(2);
+const isLoading = ref(false);
 const PermsList = ref([]);
 const selectedData = defineModel();
 const keyLevel1 = ref();
 const keyLevel2 = ref();
 const route = useRoute();
+const router = useRouter();
 const isAll = ref(false);
 const formRef = ref(null);
+const message = useMessage();
+
 const formValue = reactive({
   name: null,
   is_active: true,
@@ -43,6 +46,14 @@ const rules = {
     },
   },
 };
+watch(
+  () => formValue.name,
+  async (newValue) => {
+    if (newValue) {
+      formRef.value?.validate(["name"]).catch(() => {});
+    }
+  },
+);
 
 const { data: resData, error } = await restAPI.cms.getPermissionTags({});
 const listPer = resData.value?.data?.data || [];
@@ -53,23 +64,23 @@ listPer.forEach((level1) => {
     name: level1.name,
     key: level1?.key || null,
     checked: isAll.value,
-    countSelected: 0, // Start at 0
-    total: 0, // Will be calculated below
+    countSelected: 0,
+    total: 0,
     listLevel1: level1.sub_tags?.map((level2) => {
       const lv2 = {
         id: level2.id,
         name: level2.name,
         key: level2?.key || null,
         checked: isAll.value,
-        countSelected: 0, // Start at 0
-        total: level2.permissions?.length || 0, // Total permissions at Level 2
+        countSelected: 0,
+        total: level2.permissions?.length || 0,
         listLevel2: level2.permissions?.map((level3) => {
           return {
             id: level3.id,
             name: level3.name,
             disabled: false,
             action: level3.action,
-            checked: false, // Ensure unchecked by default
+            checked: false,
           };
         }),
       };
@@ -78,7 +89,6 @@ listPer.forEach((level1) => {
     }),
   };
 
-  // Calculate total for Level 1 based on Level 2 totals
   lv1.total = lv1.listLevel1.reduce((acc, curr) => acc + curr.total, 0);
 
   PermsList.value.push(lv1);
@@ -115,26 +125,35 @@ const load = () => {
   selectedData.value = PermsList.value;
 };
 
-function updateCheckedStatus(oldArray, newArray) {
-  function updateLevel(oldList, newList) {
-    for (let oldItem of oldList) {
-      const newItem = newList.find((item) => item.id === oldItem.id);
-      if (newItem) {
-        newItem.checked = oldItem.checked;
+const updateCheckedStatus = (fetchedPermissions, permsList) => {
+  permsList.forEach((level1) => {
+    const matchedLevel1 = fetchedPermissions.find((p) => p.id === level1.id);
+    if (matchedLevel1) {
+      level1.checked = matchedLevel1.checked;
+      level1.countSelected = matchedLevel1.countSelected || 0;
 
-        if (oldItem.listLevel1 && newItem.listLevel1) {
-          updateLevel(oldItem.listLevel1, newItem.listLevel1);
+      level1.listLevel1.forEach((level2) => {
+        const matchedLevel2 = matchedLevel1.listLevel1.find(
+          (p) => p.id === level2.id,
+        );
+        if (matchedLevel2) {
+          level2.checked = matchedLevel2.checked;
+          level2.total = matchedLevel2.total;
+
+          level2.listLevel2.forEach((level3) => {
+            const matchedLevel3 = matchedLevel2.selectedActions.find(
+              (p) => p.id === level3.id,
+            );
+            if (matchedLevel3) {
+              level3.checked = matchedLevel3.checked;
+            }
+          });
         }
-        if (oldItem.listLevel2 && newItem.listLevel2) {
-          updateLevel(oldItem.listLevel2, newItem.listLevel2);
-        }
-      }
+      });
     }
-  }
+  });
+};
 
-  updateLevel(oldArray, newArray);
-}
-// Hook
 watch(
   () => selectedData.value,
   () => {
@@ -253,7 +272,7 @@ function updatePermissions(data, permissionWith) {
         }
       });
     });
-    // Count
+
     const countSelected = level0.listLevel1.reduce((acc, curr) => {
       const childCount = curr.listLevel2.reduce(
         (childAcc, childCurr) => (childAcc += childCurr.checked ? 1 : 0),
@@ -264,6 +283,83 @@ function updatePermissions(data, permissionWith) {
     level0.countSelected = countSelected;
   });
 }
+
+const handleSubmit = async (e) => {
+  if (isLoading.value) return;
+
+  const valid = await formRef.value.validate();
+  if (!valid) return;
+
+  const { name, is_active } = formValue;
+
+  let permission_ids = [];
+
+  const tags = selectedData.value.map((level1) => ({
+    id: level1.id,
+    name: level1.name,
+    checked: level1.checked,
+    countSelected: level1.listLevel1.reduce(
+      (count, level2) =>
+        count + level2.listLevel2.filter((level3) => level3.checked).length,
+      0,
+    ),
+    listLevel1: level1.listLevel1.map((level2) => ({
+      id: level2.id,
+      name: level2.name,
+      checked: level2.checked,
+      total: level2.listLevel2.length,
+      selectedActions: level2.listLevel2
+        .filter((level3) => {
+          if (level3.checked) permission_ids.push(level3.id);
+          return level3.checked;
+        })
+        .map((level3) => ({
+          id: level3.id,
+          name: level3.name,
+          action: level3.action,
+          checked: level3.checked,
+        })),
+    })),
+  }));
+
+  const payload = {
+    name,
+    is_active,
+    is_selected_all: isAll.value,
+    tags,
+    permission_ids,
+  };
+
+  if (route.query.id) {
+    const { data: resUpdate, error } = await restAPI.cms.updatePermissionGroups(
+      {
+        id: route.query.id,
+        body: JSON.stringify(payload),
+      },
+    );
+
+    if (resUpdate?.value?.status) {
+      message.success("Cập nhật nhóm phân quyền thành công!");
+      router.push("phanquyen");
+    } else {
+      message.error(resUpdate?.value?.message || "Cập nhật thất bại!");
+    }
+  } else {
+    const { data: resCreate, error } = await restAPI.cms.createPermissionGroups(
+      {
+        body: JSON.stringify(payload),
+      },
+    );
+
+    if (resCreate?.value?.status) {
+      message.success("Tạo nhóm phân quyền thành công!");
+      router.push("phanquyen");
+    } else {
+      message.error(error?.value?.data?.message || "Tạo mới thất bại!");
+    }
+  }
+  isLoading.value = false;
+};
 </script>
 <template>
   <div class="flex h-full w-full overflow-auto rounded-2xl bg-gray-50">
@@ -398,7 +494,7 @@ function updatePermissions(data, permissionWith) {
                             />
                             <n-popover
                               :show="keyLevel2 == item.id"
-                              placement="bottom-end"
+                              placement="right-start"
                               trigger="click"
                               class="per-popover"
                             >
@@ -485,7 +581,14 @@ function updatePermissions(data, permissionWith) {
                 @click="$router.push('phanquyen')"
                 >Hủy</n-button
               >
-              <n-button type="info" class="h-11 w-24 text-lg"> Lưu </n-button>
+              <n-button
+                type="info"
+                class="h-11 w-24 text-lg"
+                @click.prevent="handleSubmit"
+                :loading="isLoading"
+              >
+                Lưu
+              </n-button>
             </n-space>
           </div>
         </n-gi>
@@ -516,23 +619,6 @@ function updatePermissions(data, permissionWith) {
   @apply !rounded-none !border-none !bg-transparent !px-0 !py-1 !shadow-none;
 }
 
-/* Hide the arrow of Naive UI popover */
-.per-popover.n-popover .n-popover-arrow-wrapper,
-.per-popover.n-popover .n-popover-arrow {
-  display: none !important;
-}
-
-:deep(.per-popover.n-popover) {
-  background: transparent !important;
-  box-shadow: none !important;
-}
-
-:deep(.per-popover.n-popover .n-popover__content) {
-  background-color: transparent !important;
-  box-shadow: none !important;
-  border: none !important;
-  padding: 4px 0 !important; /* Adjust height */
-}
 /* n-popover n-popover-shared n-popover-shared--show-arrow */
 .per-shadow {
   box-shadow: 0px 4px 10px 0px rgba(0, 0, 0, 0.25);

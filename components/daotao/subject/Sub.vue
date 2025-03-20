@@ -1,7 +1,8 @@
 <script lang="ts">
 import type { DataTableColumns, DataTableRowKey } from "naive-ui";
 import { defineComponent, ref, h, reactive, computed, onMounted } from "vue";
-import { NButton, NDataTable, NDropdown, NInputNumber } from "naive-ui";
+import { NButton, NDataTable } from "naive-ui";
+import { useRouter } from "vue-router";
 import axios from "axios";
 import dayjs from "dayjs";
 
@@ -15,7 +16,7 @@ interface RowData {
   hocphi: number;
   sobuoi: number;
   solop: number;
-  chuaxep: number;
+  hocvien: number;
   date: string;
   status: string;
   input_require: string;
@@ -26,6 +27,8 @@ interface RowData {
   origin_fee: number;
   discount_fee: number;
   color: string;
+  teacher: string;
+  code: string;
 }
 
 export default defineComponent({
@@ -46,6 +49,7 @@ export default defineComponent({
       },
     });
 
+    const router = useRouter();
     const delModal = ref(false);
     const data = ref<RowData[]>([]);
     const checkedRowKeysRef = ref<DataTableRowKey[]>([]);
@@ -53,6 +57,7 @@ export default defineComponent({
     const Danhmuclist = ref("");
     const Status = ref("");
     const token = ref("");
+    const { restAPI } = useApi();
     const loading = ref(false);
     const danhmucoptions = ref([{ label: "Tất cả danh mục", value: "All" }]);
     const danhmucstate = ref<"info" | "list">("list");
@@ -70,35 +75,35 @@ export default defineComponent({
       origin_fee: 0,
       discount_fee: 0,
       color: "",
+      teacher: "",
     });
     const isLoading = ref<boolean>(false);
     const railStyle = { backgroundColor: "#ccc" };
 
-    if (typeof window !== "undefined" && window.sessionStorage) {
-      token.value = localStorage.getItem("auth_token") || "";
-    }
-
     async function fetchData() {
       loading.value = true;
       try {
-        const response = await axios.get(
-          "http://localhost:3000/api/admin/subjects",
-          {
-            headers: {
-              Authorization: `Bearer ${token.value}`,
-            },
-          },
-        );
-        const subjects = response.data.data.subjects;
+        const { data: resData, error } = await restAPI.cms.getSubjects({});
+
+        if (error?.value) {
+          console.error(
+            "Error fetching data:",
+            error?.value?.data?.message || "Lỗi tải dữ liệu",
+          );
+          return;
+        }
+
+        const subjects = resData.value.data.subjects;
         data.value = subjects.map((subject: any, index: number) => ({
           id: subject.id,
+          code: subject.code,
           stt: index + 1,
           monhoc: subject.name,
           danhmuc: subject.category ? subject.category.name : "",
           hocphi: subject.origin_fee,
           sobuoi: subject.total_lessons,
           solop: subject.class_total,
-          chuaxep: subject.student_pendings,
+          hocvien: subject.student_pendings,
           date: subject.created_at,
           input_require: subject.input_require,
           output_require: subject.output_require,
@@ -110,6 +115,7 @@ export default defineComponent({
           status: subject.is_active ? "Hoạt động" : "Không hoạt động",
           color: subject.metadata?.color || "",
         }));
+        console.log(data.value);
 
         // Lấy danh mục từ subjects
         const categorySet = new Set<string>();
@@ -136,29 +142,153 @@ export default defineComponent({
       fetchData();
     });
 
-    // lấy thông tin subject theo id
-    const fetchSubjectById = async (id: string) => {
-      try {
-        const response = await axios.get(
-          `http://localhost:3000/api/admin/subject/?id=${id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token.value}`,
-            },
-          },
-        );
-        const subjectInfo = response.data.data;
-        console.log("Thông tin subject:", subjectInfo);
-        return subjectInfo;
-      } catch (error: any) {
-        console.error(
-          "Lỗi lấy thông tin subject theo id:",
-          error.response?.data || error.message,
-        );
-        return null;
-      }
-    };
+    function edit(value: RowData) {
+      router.push({
+        path: "monhocinfo",
+        query: { id: value.id },
+      });
+    }
 
+    function createColumns(): DataTableColumns<RowData> {
+      return [
+        {
+          title: "STT",
+          key: "stt",
+          titleAlign: "center",
+        },
+        {
+          title: "Môn học",
+          key: "monhoc",
+        },
+        {
+          title: "Danh mục",
+          key: "danhmuc",
+          filter(value, row) {
+            return row.danhmuc.includes(value as string);
+          },
+        },
+        {
+          title: "Học phí(VNĐ)",
+          key: "hocphi",
+          defaultSortOrder: "ascend",
+          sorter: "default",
+          render(row) {
+            return row.fee_type == 1 ? "miễn phí" : row.hocphi;
+          },
+        },
+        {
+          title: "Số buổi",
+          key: "sobuoi",
+          defaultSortOrder: "ascend",
+          sorter: "default",
+        },
+        {
+          title: "Số lớp",
+          key: "solop",
+          defaultSortOrder: "ascend",
+          sorter: "default",
+        },
+        {
+          title: "Số học viên chưa xếp lớp",
+          key: "chuaxep",
+          defaultSortOrder: "ascend",
+          sorter: "default",
+        },
+        {
+          title: "Ngày tạo",
+          key: "created_at",
+          defaultSortOrder: "ascend",
+          sorter: "default",
+          render(row) {
+            return dayjs(row.created_at).format("DD-MM-YYYY");
+          },
+        },
+        {
+          title: "Trạng thái",
+          key: "status",
+          render(row) {
+            let color = "";
+            let background = "";
+            switch (row.status) {
+              case "Hoạt động":
+                color = "#00974F";
+                background = "#F0FFF8";
+                break;
+              case "Không hoạt động":
+                color = "#4D6FA8";
+                background = "#ECF1F9";
+                break;
+              default:
+                color = "gray";
+            }
+            return h(
+              "span",
+              {
+                style: {
+                  padding: "5px 10px",
+                  borderRadius: "10px",
+                  color,
+                  background,
+                },
+              },
+              row.status,
+            );
+          },
+          defaultFilterOptionValues: ["Hoạt động", "Không hoạt động"],
+          filter(value, row) {
+            return row.status.includes(value as string);
+          },
+        },
+        {
+          title: "Action",
+          key: "actions",
+          titleAlign: "center",
+          render(row) {
+            return h("div", [
+              h(
+                NButton,
+                {
+                  size: "small",
+                  quaternary: true,
+                  style: { backgroundColor: "transparent", color: "green" },
+                  onclick: () => edit(row),
+                },
+                {
+                  default: () =>
+                    h("i", {
+                      class: "fa-regular fa-pen-to-square",
+                    }),
+                },
+              ),
+              h(
+                NButton,
+                {
+                  size: "small",
+                  quaternary: true,
+                  style: { backgroundColor: "transparent", color: "red" },
+                  onclick: () => deleteSub(row),
+                },
+                { default: () => h("i", { class: "fa-solid fa-trash" }) },
+              ),
+            ]);
+          },
+        },
+      ];
+    }
+
+    // lấy thông tin subject theo id
+    async function fetchSubjectById(id: string) {
+      const { data: resData, error } = await restAPI.cms.getSubjectDetail({
+        id,
+      });
+      if (error) {
+        console.error("Lỗi lấy thông tin subject theo id:", error);
+        return null;
+      } else {
+        console.log("Thông tin subject:", resData);
+        return resData;
+      }
+    }
     // API lấy thông tin subject theo id
     const editRow = async (row: RowData) => {
       danhmucstate.value = "info";
@@ -209,7 +339,7 @@ export default defineComponent({
           {
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${token.value}`,
+              Authorization: token.value,
             },
           },
         );
@@ -248,7 +378,7 @@ export default defineComponent({
             `http://localhost:3000/api/admin/subject`,
             {
               headers: {
-                Authorization: `Bearer ${token.value}`,
+                Authorization: token.value,
               },
               data: { id: row.id },
             },
@@ -261,14 +391,13 @@ export default defineComponent({
       }
     };
 
-    const columns = createColumns(editRow, deleteSub);
-
     return {
       delModal,
+      edit,
       Status,
       Danhmuclist,
       data,
-      columns,
+      columns: createColumns(),
       dataTableInst: dataTableInstRef,
       checkedRowKeys: checkedRowKeysRef,
       pagination: paginationReactive,
@@ -310,9 +439,9 @@ export default defineComponent({
       danhmucId,
       formValue,
       isLoading,
+      cancelEdit,
       railStyle,
       handleSubmit,
-      cancelEdit,
     };
   },
 });
@@ -327,10 +456,12 @@ function createColumns(
       key: "stt",
       titleAlign: "center",
     },
+    { title: "Mã môn học", key: "code" },
     {
-      title: "Môn học",
+      title: "Tên Môn học",
       key: "monhoc",
     },
+
     {
       title: "Danh mục",
       key: "danhmuc",
@@ -341,35 +472,23 @@ function createColumns(
     {
       title: "Học phí(VNĐ)",
       key: "hocphi",
-      defaultSortOrder: "ascend",
       sorter: "default",
+      render(row) {
+        return row.fee_type == 1
+          ? "miễn phí"
+          : Number(row.hocphi).toLocaleString("en-US");
+      },
     },
+
     {
       title: "Số buổi",
       key: "sobuoi",
-      defaultSortOrder: "ascend",
       sorter: "default",
     },
     {
       title: "Số lớp",
       key: "solop",
-      defaultSortOrder: "ascend",
       sorter: "default",
-    },
-    {
-      title: "Số học viên chưa xếp lớp",
-      key: "chuaxep",
-      defaultSortOrder: "ascend",
-      sorter: "default",
-    },
-    {
-      title: "Ngày tạo",
-      key: "created_at",
-      defaultSortOrder: "ascend",
-      sorter: "default",
-      render(row) {
-        return dayjs(row.created_at).format("DD-MM-YYYY");
-      },
     },
     {
       title: "Trạng thái",
@@ -607,6 +726,14 @@ function createColumns(
               <n-form-item label="Output Require" path="output_require">
                 <n-input
                   v-model:value="formValue.output_require"
+                  placeholder="Nhập output require"
+                />
+              </n-form-item>
+            </n-gi>
+            <n-gi>
+              <n-form-item label="teacher" path="teacher">
+                <n-select
+                  v-model:value="formValue.teacher"
                   placeholder="Nhập output require"
                 />
               </n-form-item>

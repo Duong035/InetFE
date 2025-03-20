@@ -1,7 +1,6 @@
 <script setup>
 import { ref, watch, onMounted, reactive, nextTick, toRaw } from "vue";
 import { useRoute } from "vue-router";
-import Schedule from "@/components/daotao/hocvienct/Schedule.vue";
 const message = useMessage();
 const emit = defineEmits(["apiSuccess"]);
 const route = useRoute();
@@ -97,22 +96,22 @@ if (localNeedId.value && localNeedId.value !== "") {
     const errorCode = error.value.data.error;
     const errorMessage =
       ERROR_CODES[errorCode] ||
-      resVerify.value?.message ||
+      resData.value?.message ||
       "Đã xảy ra lỗi, vui lòng thử lại!";
 
     message.warning(errorMessage);
   }
-  showSpin.value = false;
   console.log(formValue);
+  showSpin.value = false;
 } else {
   showSpin.value = false;
 }
 
 const loadSubjects = async () => {
   try {
-    const response = await restAPI.cms.getSubjects({});
-    const rawData = toRaw(response.data.value.data);
-    if (response.status) {
+    const { data: resData, error } = await restAPI.cms.getAllSubject({});
+    const rawData = toRaw(resData.value.data);
+    if (resData.value.status) {
       Subjectarray.value = rawData
         .map(({ id, name }) => ({
           id,
@@ -175,7 +174,6 @@ const handleSubmit = async (e) => {
   } = formValue;
 
   const formattedShortShifts = await formatShortShifts(short_shifts);
-  console.log("Formatted Short Shifts:", formattedShortShifts);
 
   let body = {
     student_id: route.query.id || null,
@@ -191,8 +189,6 @@ const handleSubmit = async (e) => {
     short_shifts: formattedShortShifts,
     studying_start_date: formatDate(studying_start_date),
   };
-
-  console.log("Final Payload:", body);
 
   try {
     if (localNeedId.value && String(localNeedId.value).trim() !== "") {

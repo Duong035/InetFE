@@ -1,5 +1,6 @@
 <script lang="ts">
 import { NButton, type DataTableColumns } from "naive-ui";
+
 import dayjs from "dayjs";
 import {
   defineComponent,
@@ -11,8 +12,11 @@ import {
   toRaw,
 } from "vue";
 import { message } from "ant-design-vue";
+import VueDatePicker from "@vuepic/vue-datepicker";
+import "@vuepic/vue-datepicker/dist/main.css";
 
 export default defineComponent({
+  components: { VueDatePicker },
   setup() {
     interface RowData {
       id: string;
@@ -22,7 +26,6 @@ export default defineComponent({
       status: string;
       endAt: string;
       name: string;
-      code: string;
       totalLessons: number;
     }
 
@@ -44,7 +47,17 @@ export default defineComponent({
     const { restAPI } = useApi();
     const data = ref<RowData[]>([]);
     const isLoading = ref(false);
-    const router = useRouter();
+    const selectedSubject = ref("");
+    const selectedClassType = ref("");
+    const dates = ref<Date[]>([]);
+    // Biến để hiển thị/ẩn form xếp lịch
+    const showSchedule = ref(false);
+    // Lưu thông tin lớp học được chọn để xếp lịch
+    const currentClass = ref<RowData | null>(null);
+    const scheduleMode = ref<"date" | "week">("week");
+    const displayDate = ref<Date>(new Date());
+    const selectedValue = ref<Date | null>(null);
+
     //lọc theo loại lớp học
     const classTypeOptions = [
       { label: "Tất cả loại lớp học", value: "" },
@@ -52,12 +65,10 @@ export default defineComponent({
       { label: "Offline", value: "2" },
       { label: "Hybrid", value: "3" },
     ];
-    const selectedClassType = ref("");
     // lọc theo môn học
     const subjectOptions = ref<{ label: string; value: string }[]>([
       { label: "Tất cả môn học", value: "" },
     ]);
-    const selectedSubject = ref("");
 
     const filteredData = computed(() =>
       data.value.filter(
@@ -69,52 +80,43 @@ export default defineComponent({
     );
 
     const loadData = async () => {
-      isLoading.value = true;
       try {
         const { data: resData, error } = await restAPI.cms.getClasses({});
 
         if (error?.value) {
-          throw new Error(error.value.data?.message || "Lỗi tải dữ liệu");
+          message.error(error?.value?.data?.message || "Lỗi tải dữ liệu");
+          return;
         }
 
         const rawData = toRaw(resData.value)?.data?.classes;
-
-        data.value = rawData
-          .map((item: any, index: number) => ({
+        if (Array.isArray(rawData)) {
+          data.value = rawData.map((item: any, index: number) => ({
             stt: index + 1,
-            code: item.code || "N/A",
             id: item.id || "N/A",
-            subjectName: item.subject?.name || "N/A",
             classType: item.type ? `${item.type}` : "N/A",
             startAt: item.start_at ? item.start_at.split("T")[0] : "N/A",
             endAt: item.end_at ? item.end_at.split("T")[0] : "N/A",
             status: item.status,
             name: item.name,
+            subjectName: item.subject?.name || "N/A",
             totalLessons: item.subject?.total_lessons,
-          }))
-          .filter((row: any) => row.status === 3);
+          }));
 
-        // Lấy danh sách môn học từ dữ liệu
-        const subjects = [
-          ...new Set(
-            rawData
-              .map((item: any) => item.subject?.name)
-              .filter((s: any) => typeof s === "string"),
-          ),
-          ...new Set(
-            rawData
-              .map((item: any) => item.subject?.total_lessons)
-              .filter((s: any) => typeof s === "string"),
-          ),
-        ];
-
-        subjectOptions.value = [
-          { label: "Tất cả môn học", value: "" },
-          ...subjects.map((subject) => ({
-            label: String(subject), // Ép kiểu về string
-            value: String(subject),
-          })),
-        ];
+          // Lấy danh sách môn học từ dữ liệu
+          const subjects = [
+            ...new Set(rawData.map((item: any) => item.subject?.name || "N/A")),
+            ...new Set(
+              rawData.map((item: any) => item.subject?.total_lessons || "N/A"),
+            ),
+          ];
+          subjectOptions.value = [
+            { label: "Tất cả môn học", value: "" },
+            ...subjects.map((subject) => ({ label: subject, value: subject })),
+          ];
+        } else {
+          console.error("Unexpected API response:", rawData);
+          message.error("Dữ liệu không hợp lệ từ API.");
+        }
       } catch (err) {
         console.error("Error loading data:", err);
         message.error("Lỗi tải dữ liệu.");
@@ -140,54 +142,46 @@ export default defineComponent({
 
       return statusMap[status] || "Không xác định";
     }
-
-    // HÀM CHỈNH SỬA LỚP HỌC
-    const editRow = (row: any) => {
-      if (!row.id) {
-        console.error("ID lớp học không hợp lệ:", row);
-        return;
-      }
-
-      console.log("Edit:", row);
-      router.push({
-        path: "lophocinfo",
-        query: { id: row.id.toString() },
+    function handleSave() {
+      // Xử lý logic lưu lịch học ở đây
+      console.log("Lưu lịch học", {
+        mode: scheduleMode.value,
+        selectedValue: selectedValue.value,
       });
-      message.success(`Chỉnh sửa lớp học: ${row.name}`);
+      // Ví dụ: gọi API, hoặc emit event
+    }
+
+    const handleClose = () => {
+      showSchedule.value = false;
+      currentClass.value = null;
+      selectedValue.value = null;
+      scheduleMode.value = "week";
+      dates.value = [];
     };
 
-    const deleteRow = (row: RowData) => {
-      console.log("Delete:", row);
-      message.warning(`Dừng hoạt động lớp: ${row.name}`);
+    //button action
+    const assignClass = (row: RowData) => {
+      console.log("Xếp lịch cho lớp:", row);
+      message.success(`Xếp lịch lớp học: ${row.name}`);
+      // Gán thông tin lớp đang chọn
+      currentClass.value = row;
+      // Hiển thị phần xếp lịch
+      showSchedule.value = true;
     };
-
-    const addRow = (row: RowData) => {
-      console.log("Add:", row);
-      message.info(`Thêm lớp học liên quan đến: ${row.name}`);
-    };
-
     function createColumns(): DataTableColumns<RowData> {
       return [
         { title: "STT", key: "stt", titleAlign: "center" },
-        { title: "Mã lớp học", key: "code", titleAlign: "center" },
-        { title: "Tên Lớp học", key: "name", titleAlign: "center" },
-        { title: "Tên môn học", key: "subjectName", titleAlign: "center" },
+        { title: "tên Lớp học", key: "name" },
+        { title: "Tên môn học", key: "subjectName" },
         {
           title: "Loại lớp học",
           key: "classType",
-          titleAlign: "center",
           render(row) {
             return convertClassType(Number(row.classType));
           },
         },
         {
-          title: "Số buổi học",
-          key: "totalLessons",
-          titleAlign: "center",
-        },
-        {
           title: "Thời gian học",
-          align: "center",
           key: "timeRange",
           render(row) {
             return (
@@ -199,7 +193,6 @@ export default defineComponent({
         },
         {
           title: "Trạng thái",
-          align: "center",
           key: "status",
           render(row) {
             const status = getClassStatus(Number(row.status));
@@ -232,54 +225,18 @@ export default defineComponent({
         {
           title: "Hành động",
           key: "actions",
-          align: "center",
+          titleAlign: "center",
           render(row) {
             return h("div", { class: "flex gap-2 justify-center" }, [
               h(
                 NButton,
                 {
                   size: "small",
-                  type: "primary",
+                  style: { color: "#fff", background: "#1890ff" },
                   quaternary: true,
-                  onClick: () => editRow(row),
+                  onClick: () => assignClass(row), // Thay đổi hàm xử lý
                 },
-                {
-                  default: () =>
-                    h("i", {
-                      class: "fa-regular fa-pen-to-square",
-                      style: "color: green;",
-                    }),
-                },
-              ),
-              h(
-                NButton,
-                {
-                  size: "small",
-                  type: "error",
-                  quaternary: true,
-                  onClick: () => deleteRow(row),
-                },
-                {
-                  default: () =>
-                    h("i", { class: "fas fa-ban", style: "color: red;" }),
-                },
-              ),
-              h(
-                NButton,
-                {
-                  size: "small",
-                  type: "warning",
-                  quaternary: true,
-
-                  onClick: () => addRow(row),
-                },
-                {
-                  default: () =>
-                    h("i", {
-                      class: "fa-solid fa-square-plus",
-                      style: "color: orange;",
-                    }),
-                },
+                { default: () => "Xếp lớp" },
               ),
             ]);
           },
@@ -301,6 +258,15 @@ export default defineComponent({
       selectedClassType,
       subjectOptions,
       selectedSubject,
+      showSchedule,
+      currentClass,
+      scheduleMode,
+      displayDate,
+      selectedValue,
+      dates,
+      handleSave,
+      VueDatePicker,
+      handleClose,
     };
   },
 });
@@ -308,28 +274,64 @@ export default defineComponent({
 
 <template>
   <div class="h-full w-full overflow-auto rounded-2xl bg-white">
-    <div class="flex gap-4 p-4">
-      <n-select
-        v-model:value="selectedSubject"
-        :options="subjectOptions"
-        style="width: 200px"
-      />
-      <n-select
-        v-model:value="selectedClassType"
-        :options="classTypeOptions"
-        style="width: 200px"
-      />
-    </div>
+    <n-data-table
+      :columns="columns"
+      :data="data"
+      :bordered="false"
+      :single-line="false"
+      :pagination="pagination"
+    />
+    <div v-show="showSchedule" class="mt-4 rounded-md border p-4">
+      <h2 class="mb-2 text-xl font-bold">
+        Xếp lịch học cho lớp: {{ currentClass?.name }}
+      </h2>
 
-    <div class="h-full bg-white text-black">
-      <n-data-table
-        :bordered="false"
-        :single-line="false"
-        :columns="columns"
-        :data="filteredData"
-        :scroll-x="1000"
-        :pagination="pagination"
-      />
+      <div>
+        <!-- Chọn chế độ: Tuần / Chọn ngày -->
+        <div class="mb-4 flex items-center gap-3">
+          <n-radio-group v-model:value="scheduleMode">
+            <n-space>
+              <n-radio value="week">Tuần</n-radio>
+              <n-radio value="date"> Chọn ngày </n-radio>
+            </n-space>
+          </n-radio-group>
+          <!-- Ghi chú hiển thị khi chọn 'date' -->
+          <span v-if="scheduleMode === 'date'" class="text-xs text-gray-400">
+            (Hệ thống sẽ không tự tạo buổi học theo lịch tuần)
+          </span>
+        </div>
+
+        <!-- Lịch -->
+        <VueDatePicker
+          v-model="dates"
+          :min-date="currentClass?.startAt"
+          :max-date="currentClass?.endAt"
+          multi-dates
+          inline
+          auto-apply
+        />
+
+        <!-- Thông tin số buổi -->
+        <div class="mt-4 flex items-center justify-between">
+          <span>Số buổi cuối tháng: 0 buổi</span>
+          <span>Số buổi của lớp: {{ currentClass?.totalLessons }}</span>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <n-button
+          type="primary"
+          @click="
+            () => {
+              handleSave();
+              showSchedule = false;
+            }
+          "
+        >
+          Lưu
+        </n-button>
+        <n-button class="ml-2" @click="handleClose"> Đóng </n-button>
+      </div>
     </div>
   </div>
 </template>

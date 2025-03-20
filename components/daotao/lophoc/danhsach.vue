@@ -77,18 +77,6 @@ export default defineComponent({
         },
 
         {
-          title: "Số môn học hoàn thành",
-          key: "mhht",
-          defaultSortOrder: "ascend",
-          sorter: "default",
-        },
-        {
-          title: "Môn đã xếp lớp",
-          key: "mdxl",
-          defaultSortOrder: "ascend",
-          sorter: "default",
-        },
-        {
           title: "Ngày cập nhật",
           key: "ncn",
           defaultSortOrder: "ascend",
@@ -139,49 +127,57 @@ export default defineComponent({
           key: "actions",
           titleAlign: "center",
           render(row) {
-            return h("div", [
-              h(
-                NButton,
-                {
-                  size: "small",
-                  quaternary: true,
-                  style: { backgroundColor: "transparent", color: "green" },
-                  onClick: () => edit(row),
-                },
-                {
-                  default: () =>
-                    h("i", {
-                      class: "fa-regular fa-pen-to-square",
-                    }),
-                },
-              ),
-              h(
-                NButton,
-                {
-                  size: "small",
-                  quaternary: true,
-                  style: { backgroundColor: "transparent", color: "red" },
-                  onClick: () => openDeleteModal("single", row.id),
-                },
-                { default: () => h("i", { class: "fa-solid fa-trash" }) },
-              ),
-              h(
-                NDropdown,
-                {
-                  trigger: "click",
-                  options: actionMenu,
-                  quaternary: true,
-                  style: { color: "gray" },
-                  onSelect(key) {
-                    if (key === "Xếp lớp") {
-                      edit(row);
-                    } else if (key === "Dừng hoạt động") {
-                    }
+            return h(
+              "div",
+              { style: { display: "flex", alignItems: "center" } },
+              [
+                h(
+                  NButton,
+                  {
+                    size: "small",
+                    quaternary: true,
+                    style: { backgroundColor: "transparent", color: "green" },
+                    onClick: () => edit(row),
                   },
-                },
-                { default: () => h("i", { class: "fa-solid fa-ellipsis-v" }) },
-              ),
-            ]);
+                  {
+                    default: () =>
+                      h("i", {
+                        class: "fa-regular fa-pen-to-square",
+                      }),
+                  },
+                ),
+                h(
+                  NButton,
+                  {
+                    size: "small",
+                    quaternary: true,
+                    style: { backgroundColor: "transparent", color: "red" },
+                    onClick: () => openDeleteModal("single", row.id),
+                  },
+                  { default: () => h("i", { class: "fa-solid fa-trash" }) },
+                ),
+                h(
+                  NDropdown,
+                  {
+                    size: "large",
+                    trigger: "hover",
+                    options: actionMenu,
+                    quaternary: true,
+                    style: { color: "gray", backgroundColor: "trasparent" },
+                    onSelect(key) {
+                      if (key === "Xếp lớp") {
+                        edit(row);
+                      } else if (key === "Dừng hoạt động") {
+                        // Xử lý khi chọn "Dừng hoạt động"
+                      }
+                    },
+                  },
+                  {
+                    default: () => h("i", { class: "fa-solid fa-ellipsis-v" }),
+                  },
+                ),
+              ],
+            );
           },
         },
       ];
@@ -494,80 +490,6 @@ const actionMenu = [
               <i class="fa-solid fa-plus ml-1 px-2"></i>
             </n-button>
           </div>
-          <!-- <div>
-            <nav>
-              <ul class="mt-5 flex flex-row gap-5 text-xl text-gray-400">
-                <li class="cursor-pointer duration-75 hover:text-blue-500">
-                  <NuxtLink
-                    to="#"
-                    @click="
-                      (() => {
-                        activeItem = 'Tất cả trạng thái';
-                        filterStatus();
-                      })()
-                    "
-                    :class="{
-                      'text-blue-500 underline underline-offset-8 duration-150':
-                        activeItem === 'Tất cả trạng thái',
-                    }"
-                  >
-                    Tất cả trạng thái
-                  </NuxtLink>
-                </li>
-                <li class="cursor-pointer duration-75 hover:text-blue-500">
-                  <NuxtLink
-                    to="#"
-                    @click="
-                      (() => {
-                        activeItem = 'Đang học';
-                        filterStatus();
-                      })()
-                    "
-                    :class="{
-                      'text-blue-500 underline underline-offset-8 duration-150':
-                        activeItem === 'Đang học',
-                    }"
-                  >
-                    Đang học
-                  </NuxtLink>
-                </li>
-                <li class="cursor-pointer duration-75 hover:text-blue-500">
-                  <NuxtLink
-                    to="#"
-                    @click="
-                      (() => {
-                        activeItem = 'Chưa xếp lớp';
-                        filterStatus();
-                      })()
-                    "
-                    :class="{
-                      'text-blue-500 underline underline-offset-8 duration-150':
-                        activeItem === 'Chưa xếp lớp',
-                    }"
-                  >
-                    Chưa xếp lớp
-                  </NuxtLink>
-                </li>
-                <li class="cursor-pointer duration-75 hover:text-blue-500">
-                  <NuxtLink
-                    to="#"
-                    @click="
-                      (() => {
-                        activeItem = 'Bảo lưu';
-                        filterStatus();
-                      })()
-                    "
-                    :class="{
-                      'text-blue-500 underline underline-offset-8 duration-150':
-                        activeItem === 'Bảo lưu',
-                    }"
-                  >
-                    Bảo lưu
-                  </NuxtLink>
-                </li>
-              </ul>
-            </nav>
-          </div> -->
 
           <n-grid
             class="min-h-fit w-full"
@@ -583,11 +505,7 @@ const actionMenu = [
                 />
               </n-form-item>
             </n-gi>
-            <n-gi span="1">
-              <n-form-item>
-                <n-select :options="options" placeholder="Tuần này" />
-              </n-form-item>
-            </n-gi>
+
             <n-gi span="1">
               <n-form-item>
                 <n-select
@@ -671,6 +589,7 @@ const actionMenu = [
     <n-modal v-model:show="showDeleteModal">
       <n-card
         title="Xác nhận xóa"
+        closable
         @close="showDeleteModal = false"
         style="width: 400px"
       >

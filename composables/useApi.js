@@ -17,26 +17,43 @@ const API_ENDPOINTS = {
     provinces: "/api/admin/provinces",
     districts: "/api/admin/districts",
     branches: "/api/admin/branches",
-    shift: "/api/admin/work-session",
-    shifts: "/api/admin/work-sessions",
     staff: "/api/admin/users",
     category: "/api/admin/category",
     categories: "/api/admin/categories",
+    subject: "/api/admin/subject",
     subjects: "/api/admin/subjects",
+    subject: "/api/admin/subject",
+    all_subject: "/api/admin/subject/all",
     classes: "/api/admin/classes",
-    User: "/api/admin/users",
     class: "/api/admin/class",
+    cancel_class: "/api/admin/class/cancel",
     permissionGroup: "/api/admin/permission-grp",
     permissionTag: "/api/admin/permission-tags",
+    lesson: "/api/admin/lesson",
+    lessons: "/api/admin/lessons",
+    lesson_data: "/api/admin/lesson-data",
+    lesson_datas: "/api/admin/lesson-datas",
+    classrooms: "/api/admin/classrooms",
+    classroom: "/api/admin/classroom",
+    shift: "/api/admin/work-session",
+    shifts: "/api/admin/work-sessions",
+    lessons: "/api/admin/lessons",
+    lesson_data: "/api/admin/lesson-data",
+    classrooms: "/api/admin/classrooms",
+    classroom: "/api/admin/classroom",
+    center: "/api/admin/center",
+    calendar: "/api/admin/teach-schedule",
+    schedule_class_student: "/api/admin/schedule-class/by-student",
   },
 };
 
 class Request {
   constructor() {
-    const route = useRoute()
-    this.baseURL = "http://localhost:3000"
-    this.accessToken = `Bearer ${useUserStore()?.userInfo?.token}`
-    this.headers = {}
+    const route = useRoute();
+    // this.baseURL = "http://localhost:3000";
+    this.baseURL = "http://10.50.20.169:3000";
+    this.accessToken = `Bearer ${useUserStore()?.userInfo?.token}`;
+    this.headers = {};
     this.handleFetch = {
       onRequest() {},
       onRequestError({ _, __, error }) {
@@ -90,11 +107,7 @@ class Request {
       method,
       headers,
       ...options,
-      // onResponse({ response }) {
-      //   if (!response.ok) {
-      //     message.error(`Error: ${response.statusText}`);
-      //   }
-      // },
+      ...this.handleFetch,
     });
   }
 
@@ -146,13 +159,24 @@ class CMSManager {
   async resendOtp(data) {
     return this.request.post(API_ENDPOINTS.cms.resend_otp, data);
   }
-  //__________________________________________________________________________________________
-
-  // user_____________________________________________________________________________________
-  async getUser(data) {
-    return this.request.get(API_ENDPOINTS.cms.User, data);
+  // Staff____________________________________________________________________________________
+  async getStaff(data) {
+    return this.request.get(API_ENDPOINTS.cms.staff, data);
+  }
+  async getStaffDetails(data) {
+      return this.request.get(`${API_ENDPOINTS.cms.staff}/${data.id}`, data)
+  }
+  async createStaff(data) {
+    return this.request.post(API_ENDPOINTS.cms.staff, data)
+  }
+  async updateStaff(data) {
+    return this.request.put(`${API_ENDPOINTS.cms.staff}/${data.id}`, data)
+  }
+  async deleteStaff(data) {
+    return this.request.delete(`${API_ENDPOINTS.cms.staff}`, data)
   }
   //__________________________________________________________________________________________
+
 
   //Unit______________________________________________________________________________________
   async getUnitInformation(data) {
@@ -239,32 +263,71 @@ class CMSManager {
   async getSubjects(data) {
     return this.request.get(API_ENDPOINTS.cms.subjects, data);
   }
+  async getAllSubject(data) {
+    return this.request.get(API_ENDPOINTS.cms.all_subject, data)
+  }
+  async getSubjectDetail(data) {
+    return this.request.get(`${API_ENDPOINTS.cms.subject}?id=${data.id}`, data)
+  }
+  async createSubject(data) {
+    return this.request.post(API_ENDPOINTS.cms.subject, data)
+  }
+  async updateSubject(data) {
+    return this.request.patch(API_ENDPOINTS.cms.subject, data)
+  }
   //__________________________________________________________________________________________
 
-   // Shift____________________________________________________________________________________
-   async getShift(data) {
+  //lesson____________________________________________________________________________________
+  async createLesson(data) {
+    return this.request.post(API_ENDPOINTS.cms.lesson, data)
+  }
+  async getListLesson(data) {
+    return this.request.get(`${API_ENDPOINTS.cms.lessons}?relation=${data.id}`, data)
+  }
+  async getLessonDetail(data) {
+    return this.request.get(`${API_ENDPOINTS.cms.lesson}?id=${data.id}`, data)
+  }
+  async updateLesson(data) {
+    return this.request.patch(API_ENDPOINTS.cms.lesson, data)
+  }
+  async deleteLesson(data) {
+    return this.request.delete(API_ENDPOINTS.cms.lesson, data)
+  }
+  //__________________________________________________________________________________________
+
+  //lesson data_______________________________________________________________________________
+  async createLessonData(data) {
+    return this.request.post(API_ENDPOINTS.cms.lesson_data, data)
+  }
+  async deleteLessonData(data) {
+    return this.request.delete(API_ENDPOINTS.cms.lesson_data, data)
+  }
+  async getListLessonData(data) {
+    return this.request.get(API_ENDPOINTS.cms.lesson_datas, data)
+  }
+  async getLessonData(data) {
+    return this.request.get(`${API_ENDPOINTS.cms.lesson_data}?id=${data.id}`, data)
+  }
+  async updateLessonData(data) {
+    return this.request.patch(API_ENDPOINTS.cms.lesson_data, data)
+  }
+  //__________________________________________________________________________________________
+
+  //Shift_____________________________________________________________________________________
+  async getShift(data) {
     return this.request.get(API_ENDPOINTS.cms.shifts, data)
   }
   async getShiftDetail(data) {
-    return this.request.get(API_ENDPOINTS.cms.shift, data)
+    return this.request.get(API_ENDPOINTS.cms.shift, data);
   }
   async createShift(data) {
-    return this.request.post(API_ENDPOINTS.cms.shift, data)
+    return this.request.post(API_ENDPOINTS.cms.shift, data);
   }
   async updateShift(data) {
-    return this.request.patch(API_ENDPOINTS.cms.shift, data)
+    return this.request.patch(API_ENDPOINTS.cms.shift, data);
   }
   async deleteShift(data) {
     return this.request.delete(`${API_ENDPOINTS.cms.shift}/${data.id}`, data)
-  }
-  //__________________________________________________________________________________________
-
-  //administrative - Đơn vị hành chính________________________________________________________
-  async getProvinces(data) {
-    return this.request.get(API_ENDPOINTS.cms.provinces, data);
-  }
-  async getDistricts(data) {
-    return this.request.get(API_ENDPOINTS.cms.districts, data);
   }
   //__________________________________________________________________________________________
 
@@ -277,35 +340,125 @@ class CMSManager {
   }
 
   async getClassById(data) {
-    return this.request.get(`${API_ENDPOINTS.cms.class}/${id}`, data);
+    return this.request.get(`${API_ENDPOINTS.cms.class}/${data.id}`, data);
   }
 
   async updateClass(data) {
-    return this.request.patch(`${API_ENDPOINTS.cms.class}/${id}`, data);
+    return this.request.patch(API_ENDPOINTS.cms.class, data);
   }
 
   async deleteClass(data) {
-    return this.request.delete(`${API_ENDPOINTS.cms.class}/${id}`, data);
+    return this.request.delete(`${API_ENDPOINTS.cms.class}/${data.id}`, data);
+  }
+  
+  //__________________________________________________________________________________________
+
+  //classroom_________________________________________________________________________________
+  async getClassrooms(data) {
+    return this.request.get(API_ENDPOINTS.cms.classrooms, data);
+  }
+  async createClassroom(data) {
+    return this.request.post(API_ENDPOINTS.cms.classrooms, data);
+  }
+  async getDetailClassroom(data) {
+    return this.request.get(`${API_ENDPOINTS.cms.classroom}/:${data.id}`, data);
+  }
+  async updateClassroom(data) {
+    return this.request.put(`${API_ENDPOINTS.cms.classroom}/:${data.id}`, data);
+  }
+  async deleteClassroom(data) {
+    return this.request.delete(
+      `${API_ENDPOINTS.cms.classroom}/:${data.id}`,
+      data,
+    );
   }
   //__________________________________________________________________________________________
 
   // Permissions groups_______________________________________________________________________
   async getPermissionGroups(data) {
-    return this.request.get(API_ENDPOINTS.cms.permissionGroup, data)
+    return this.request.get(API_ENDPOINTS.cms.permissionGroup, data);
   }
   async getPermissionGroupsDetails(data) {
     return this.request.get(`${API_ENDPOINTS.cms.permissionGroup}/${data.id}`, data)
   }
+  async getPermissionGroupsExport(data) {
+    return this.request.get(API_ENDPOINTS.cms.permissionGroupExport, data)
+  }
+  async createPermissionGroups(data) {
+    return this.request.post(API_ENDPOINTS.cms.permissionGroup, data)
+  }
+  async updatePermissionGroups(data) {
+    return this.request.put(`${API_ENDPOINTS.cms.permissionGroup}/${data.id}`, data)
+  }
   async deletePermissionGroups(data) {
-    return this.request.delete(`${API_ENDPOINTS.cms.permissionGroup}`, data)
+    return this.request.delete(`${API_ENDPOINTS.cms.permissionGroup}`, data);
   }
   //__________________________________________________________________________________________
 
   // Permissions tags_________________________________________________________________________
   async getPermissionTags(data) {
-    return this.request.get(API_ENDPOINTS.cms.permissionTag, data)
+    return this.request.get(API_ENDPOINTS.cms.permissionTag, data);
+  }
+  async getPermissionTagDetails(data) {
+    return this.request.get(`${API_ENDPOINTS.cms.permissionTag}/${data.id}`, data)
+  }
+  async createPermissionTag(data) {
+    return this.request.post(API_ENDPOINTS.cms.permissionTag, data)
+  }
+  async updatePermissionTag(data) {
+    return this.request.put(`${API_ENDPOINTS.cms.permissionTag}/${data.id}`, data)
+  }
+  async deletePermissionTag(data) {
+    return this.request.delete(`${API_ENDPOINTS.cms.permissionTag}`, data)
   }
   //__________________________________________________________________________________________
+
+  //administrative - Đơn vị hành chính________________________________________________________
+  async getProvinces(data) {
+    return this.request.get(API_ENDPOINTS.cms.provinces, data);
+  }
+  async getDistricts(data) {
+    return this.request.get(API_ENDPOINTS.cms.districts, data);
+  }
+  //__________________________________________________________________________________________
+
+  //Teach_schedule____________________________________________________________________________
+  async getCalendarDetails(data) {
+    return this.request.get(`${API_ENDPOINTS.cms.calendar}/${data.id}`, data)
+  }
+  async listCalendars(data) {
+    return this.request.get(API_ENDPOINTS.cms.calendar, data)
+  }
+  async createCalendar(data) {
+    return this.request.post(API_ENDPOINTS.cms.calendar, data)
+  }
+  async updateCalendar(data) {
+    return this.request.put(`${API_ENDPOINTS.cms.calendar}/${data.id}`, data)
+  }
+  async deleteCalendar(data) {
+    return this.request.delete(`${API_ENDPOINTS.cms.calendar}`, data)
+  }
+  //__________________________________________________________________________________________
+
+  //center____________________________________________________________________________________
+  async getCenter(data) {
+    return this.request.get(API_ENDPOINTS.cms.center, data);
+  }
+  async updateCenter(data) {
+    return this.request.put(API_ENDPOINTS.cms.center, data);
+  }
+  //__________________________________________________________________________________________
+
+  async getScheduleClassStudent(data) {
+    return this.request.get(API_ENDPOINTS.cms.schedule_class_student, data)
+  }
+
+  async deleteClass(data) {
+    return this.request.delete(`${API_ENDPOINTS.cms.class}/${data.id}`, data);
+  }
+  async cancelClass(data) {
+    return this.request.patch(`${API_ENDPOINTS.cms.cancel_class}/${data.id}`, data);
+  }
 }
 
 class RestAPI {
