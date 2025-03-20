@@ -62,7 +62,7 @@ const shift = ref([
     id: 2,
     name: "Tối",
     start: "18",
-    end: "23",
+    end: "22",
     start_time: "",
     end_time: "",
     work_session_id: "",

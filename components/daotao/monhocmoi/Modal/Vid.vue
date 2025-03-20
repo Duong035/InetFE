@@ -29,7 +29,6 @@ const uploadedFiles = ref([]);
 const uploadRef = ref(null);
 
 const triggerUpload = () => {
-  // Access hidden input inside <n-upload> and trigger click
   const fileInput = uploadRef.value?.$el.querySelector("input");
   if (fileInput) {
     fileInput.click();
@@ -51,14 +50,7 @@ const closeModal = () => {
     <n-modal
       v-model:show="isModalVisible"
       preset="card"
-      style="
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 90%;
-        max-width: 600px;
-      "
+      style="max-width: 600px"
       :header-style="{ padding: '10px' }"
       :closable="false"
       @update:show="closeModal"

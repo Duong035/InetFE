@@ -127,14 +127,7 @@ const closeModal = () => {
     <n-modal
       v-model:show="isModalVisible"
       preset="card"
-      style="
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 90%;
-        max-width: 600px;
-      "
+      style="max-width: 600px"
       :header-style="{ padding: '10px' }"
       :closable="false"
       @update:show="closeModal"

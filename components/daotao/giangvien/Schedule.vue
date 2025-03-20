@@ -82,7 +82,7 @@ const shift = ref([
     id: 2,
     name: "Tối",
     start: "18",
-    end: "23",
+    end: "22",
     start_time: "",
     end_time: "",
     work_session_id: "",
@@ -407,7 +407,8 @@ const listSession = async () => {
     session.title.includes(formValue.user_id),
   );
 };
-const createShifts = async () => {
+
+const createSession = async () => {
   if (!formValue.user_id) return;
 
   for (const s of shift.value) {
@@ -575,7 +576,6 @@ const loadShift = async () => {
       }
     }
   });
-  await listSession();
 };
 //_____________________________________________________________________________________
 
@@ -611,11 +611,12 @@ const loadData = async () => {
   console.log(typeof formValue.user_shifts);
   loadShift();
 };
-
+// 10.50.20.169:4000
 const scheduleSubmit = async () => {
   await listSession();
   if (!session.value.length) {
-    await createShifts();
+    await createSession();
+    await listSession();
   }
   const body = {
     user_id: formValue.user_id,

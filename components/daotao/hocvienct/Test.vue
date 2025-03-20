@@ -605,7 +605,6 @@ if (formValue.user_id && formValue.user_id !== "") {
   }
   console.log(formValue);
   loadShift();
-} else {
 }
 
 const scheduleSubmit = async () => {

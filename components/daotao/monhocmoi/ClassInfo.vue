@@ -32,7 +32,6 @@ const formValue = reactive({
   thumbnail: "AA",
   color: "red",
   code: null,
-  id: computed(() => route.query.id || null),
   name: null,
   category_id: null,
   teacher_ids: [],
@@ -192,8 +191,8 @@ const handleSubmit = async (e) => {
     // validate
     if (id) {
       console.log(id);
+      body.id = id;
       const { data: resUpdate, error } = await restAPI.cms.updateSubject({
-        id,
         body,
       });
       if (resUpdate?.value?.status) {

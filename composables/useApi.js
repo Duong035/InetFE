@@ -26,6 +26,7 @@ const API_ENDPOINTS = {
     all_subject: "/api/admin/subject/all",
     classes: "/api/admin/classes",
     class: "/api/admin/class",
+    cancel_class: "/api/admin/class/cancel",
     permissionGroup: "/api/admin/permission-grp",
     permissionTag: "/api/admin/permission-tags",
     lesson: "/api/admin/lesson",
@@ -42,14 +43,15 @@ const API_ENDPOINTS = {
     classroom: "/api/admin/classroom",
     center: "/api/admin/center",
     calendar: "/api/admin/teach-schedule",
-
+    schedule_class_student: "/api/admin/schedule-class/by-student",
   },
 };
 
 class Request {
   constructor() {
     const route = useRoute();
-    this.baseURL = "http://localhost:3000";
+    // this.baseURL = "http://localhost:3000";
+    this.baseURL = "http://10.50.20.169:3000";
     this.accessToken = `Bearer ${useUserStore()?.userInfo?.token}`;
     this.headers = {};
     this.handleFetch = {
@@ -447,6 +449,16 @@ class CMSManager {
   }
   //__________________________________________________________________________________________
 
+  async getScheduleClassStudent(data) {
+    return this.request.get(API_ENDPOINTS.cms.schedule_class_student, data)
+  }
+
+  async deleteClass(data) {
+    return this.request.delete(`${API_ENDPOINTS.cms.class}/${data.id}`, data);
+  }
+  async cancelClass(data) {
+    return this.request.patch(`${API_ENDPOINTS.cms.cancel_class}/${data.id}`, data);
+  }
 }
 
 class RestAPI {
