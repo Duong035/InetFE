@@ -20,6 +20,7 @@ export default defineComponent({
       classType: string;
       startAt: string;
       status: number;
+      status: number;
       endAt: string;
       name: string;
       code: string;
@@ -30,7 +31,11 @@ export default defineComponent({
       page: 1,
 
       pageSize: 10,
+
+      pageSize: 10,
       showSizePicker: true,
+
+      pageSizes: [5, 10, 15],
 
       pageSizes: [5, 10, 15],
       itemCount: computed(() => filteredData.value.length),
@@ -91,6 +96,7 @@ export default defineComponent({
           endAt: item.end_at ? item.end_at.split("T")[0] : "N/A",
           status: item.status,
           name: item.name,
+          totalLessons: item.total_lessons,
           totalLessons: item.total_lessons,
         }));
 
@@ -155,16 +161,17 @@ export default defineComponent({
       });
       message.success(`Chỉnh sửa lớp học: ${row.name}`);
     };
-
-    const cancelRow = async (row: any) => {
-      if (!row.id) {
-        console.error("ID lớp học không hợp lệ:", row);
+    // HÀM HỦY LỚP
+    const cancelRow = async (id: string) => {
+      if (!id) {
+        console.error("ID lớp học không hợp lệ:");
         return;
       }
+      console.log("Đang xóa lớp học với ID:", id);
 
       try {
-        const { data: resData, error } = await restAPI.cms.cancelClass({
-          id: row.id,
+        const { error } = await restAPI.cms.cancelClass({
+          id,
         });
 
         if (error?.value) {
@@ -173,17 +180,14 @@ export default defineComponent({
           );
         }
 
-        // Cập nhật dữ liệu trong danh sách
-        const targetRow = data.value.find((item) => item.id === row.id);
-        if (targetRow) targetRow.status = 4;
-
-        message.success(`Lớp học "${row.name}" đã được hủy.`);
+        message.success(`Lớp học đã được hủy.`);
+        await loadData();
       } catch (err) {
         console.error("Lỗi khi cập nhật trạng thái lớp học:", err);
         message.error("Không thể cập nhật trạng thái lớp học.");
       }
     };
-
+    // HÀM XÓA LỚP
     const deleteRow = async (row: RowData) => {
       if (confirm("Bạn có chắc chắn muốn xóa lớp học này không?")) {
         try {
@@ -202,6 +206,27 @@ export default defineComponent({
           message.error("lỗi khi xóa lớp học");
         }
       }
+    };
+
+    // HÀM NHÂN BẢN LỚP
+    const duplicateRow = (row: RowData) => {
+      if (!row.id) {
+        console.error("ID lớp học không hợp lệ:", row);
+        return;
+      }
+
+      console.log("Duplicate:", row);
+
+      router.push({
+        path: "lophocinfo",
+        query: {
+          subject: row.subjectName,
+          branch_id: row.id, // Điều chỉnh nếu branch_id có dữ liệu riêng
+          description: row.name, // Điều chỉnh nếu description có dữ liệu riêng
+        },
+      });
+
+      message.success(`Nhân bản lớp học: ${row.name}`);
     };
 
     function createColumns(): DataTableColumns<RowData> {
@@ -275,6 +300,9 @@ export default defineComponent({
             const isCancelled = row.status === 4;
             const isFinished = row.status === 3;
 
+            const isCancelled = row.status === 4;
+            const isFinished = row.status === 3;
+
             return h("div", { class: "flex gap-2 justify-center" }, [
               h(
                 NButton,
@@ -283,6 +311,8 @@ export default defineComponent({
                   type: "primary",
                   quaternary: true,
                   onClick: () => editRow(row),
+
+                  disabled: isCancelled,
 
                   disabled: isCancelled,
                 },
@@ -314,14 +344,29 @@ export default defineComponent({
                   size: "small",
                   type: "warning",
                   quaternary: true,
-
-                  onClick: () => deleteRow(row),
+                  onClick: () => duplicateRow(row),
                 },
                 {
                   default: () =>
                     h("i", {
                       class: "fa-solid fa-square-plus",
                       style: "color: orange;",
+                    }),
+                },
+              ),
+              h(
+                NButton,
+                {
+                  size: "small",
+                  type: "error",
+                  quaternary: true,
+                  onClick: () => deleteRow(row),
+                },
+                {
+                  default: () =>
+                    h("i", {
+                      class: "fa-solid fa-trash",
+                      style: "color: red;",
                     }),
                 },
               ),

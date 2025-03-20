@@ -275,6 +275,10 @@ class CMSManager {
   async updateSubject(data) {
     return this.request.patch(API_ENDPOINTS.cms.subject, data)
   }
+
+  async deleteSubject(data) {
+    return this.request.delete(API_ENDPOINTS.cms.subject, data);
+  }
   //__________________________________________________________________________________________
 
   //lesson____________________________________________________________________________________

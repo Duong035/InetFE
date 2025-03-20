@@ -1,7 +1,6 @@
 <script setup>
 import { ref, reactive, onMounted, nextTick, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import axios from "axios";
 
 const railStyle = ({ focused, checked }) => {
   const style = {};
@@ -195,6 +194,7 @@ const handleSubmit = async (e) => {
       const { data: resUpdate, error } = await restAPI.cms.updateSubject({
         body,
       });
+
       if (resUpdate?.value?.status) {
         message.success("Cập nhật thông tin môn học thành công!");
       } else {
