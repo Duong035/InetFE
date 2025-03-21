@@ -48,10 +48,12 @@ export default defineComponent({
     const isLoading = ref(false);
     const router = useRouter();
 
-    // //
-    // const isCancelModalVisible = ref(false);
-    // const cancelReason = ref("");
-    // const cancelingClassId = ref<string | null>(null);
+
+
+    const isCancelModalVisible = ref(false);
+    const cancelReason = ref("");
+    const cancelingClassId = ref<string | null>(null);
+
 
     //lọc theo loại lớp học
     const classTypeOptions = [
@@ -163,30 +165,34 @@ export default defineComponent({
     };
     //HÀM HỦY LỚP
     const confirmCancel = async () => {
-      // if (!cancelingClassId.value) return;
-      // try {
-      //   const { error } = await restAPI.cms.cancelClass({
-      //     id: cancelingClassId.value,
-      //     body: { cancel_reason: cancelReason.value }, // Gửi lý do hủy
-      //   });
-      //   if (error?.value) {
-      //     throw new Error(error.value.data?.message || "Lỗi khi hủy lớp học");
-      //   }
-      //   message.success("Lớp học đã được hủy.");
-      //   isCancelModalVisible.value = false;
-      //   await loadData();
-      // } catch (err) {
-      //   console.error("Lỗi khi hủy lớp học:", err);
-      //   message.error("Không thể hủy lớp học.");
-      // }
+
+      if (!cancelingClassId.value) return;
+      try {
+        const { error } = await restAPI.cms.cancelClass({
+          id: cancelingClassId.value,
+          body: { cancel_reason: cancelReason.value }, // Gửi lý do hủy
+        });
+
+        if (error?.value) {
+          throw new Error(error.value.data?.message || "Lỗi khi hủy lớp học");
+        }
+
+        message.success("Lớp học đã được hủy.");
+        isCancelModalVisible.value = false;
+        await loadData();
+      } catch (err) {
+        console.error("Lỗi khi hủy lớp học:", err);
+        message.error("Không thể hủy lớp học.");
+      }
     };
 
     // LÝ DO HỦY LỚP
-    // const openCancelModal = (id: string) => {
-    //   cancelingClassId.value = id;
-    //   cancelReason.value = "";
-    //   isCancelModalVisible.value = true;
-    // };
+    const openCancelModal = (id: string) => {
+      cancelingClassId.value = id;
+      cancelReason.value = "";
+      isCancelModalVisible.value = true;
+    };
+
 
     // HÀM XÓA LỚP
     const deleteRow = async (row: RowData) => {
@@ -322,7 +328,9 @@ export default defineComponent({
                   size: "small",
                   type: "error",
                   quaternary: true,
-                  // onClick: () => openCancelModal(row.id),
+
+                  onClick: () => openCancelModal(row.id),
+
                   disabled: isCancelled || isFinished,
                 },
                 {
@@ -383,8 +391,10 @@ export default defineComponent({
       selectedClassType,
       subjectOptions,
       selectedSubject,
-      // isCancelModalVisible,
-      // cancelReason,
+
+      isCancelModalVisible,
+      cancelReason,
+
       confirmCancel,
     };
   },
@@ -416,7 +426,9 @@ export default defineComponent({
         :pagination="pagination"
       />
     </div>
-    <!-- <n-modal v-model:show="isCancelModalVisible">
+
+    <n-modal v-model:show="isCancelModalVisible">
+
       <n-card
         title="Xác nhận hủy lớp học"
         style="width: 400px"
@@ -435,6 +447,8 @@ export default defineComponent({
           </div>
         </template>
       </n-card>
-    </n-modal> -->
+
+    </n-modal>
+
   </div>
 </template>
