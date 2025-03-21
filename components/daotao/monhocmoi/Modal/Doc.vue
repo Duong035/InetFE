@@ -133,8 +133,8 @@ const closeModal = () => {
       @update:show="closeModal"
     >
       <n-form :model="formValue" :rules="rules" ref="formRef">
-        <n-grid cols="3" :x-gap="20">
-          <n-gi span="3">
+        <n-grid cols="1" :x-gap="20">
+          <n-gi span="1">
             <h1 v-if="is_addnew" class="text-2xl font-bold text-[#133D85]">
               Tải lên tài liệu mới cho bài học
             </h1>
@@ -143,7 +143,7 @@ const closeModal = () => {
             </h1>
             <div class="mt-5"></div>
           </n-gi>
-          <n-gi span="2">
+          <n-gi span="1">
             <n-form-item label="Tên tài liệu:" path="name">
               <n-input
                 placeholder="Nhập tên tài liệu"
@@ -151,23 +151,14 @@ const closeModal = () => {
               ></n-input>
             </n-form-item>
           </n-gi>
-          <n-gi>
-            <n-form-item
-              label="Trạng thái hoạt động"
-              label-placement="left"
-              class="mt-7"
-            >
-              <n-checkbox v-model:checked="formValue.is_live"></n-checkbox>
-            </n-form-item>
-          </n-gi>
-          <n-gi span="3">
+          <n-gi span="1">
             <n-form-item label="Tài liệu:">
               <n-upload :max="1" :multiple="false" @change="handleFileChange">
                 <n-upload-dragger v-if="uploadedFiles.length < 1">
                   <n-text style="font-size: 16px">
                     Chọn file để tải lên hoặc kéo 1 tệp vào đây
                   </n-text>
-                  <n-p depth="3" style="font-size: 14px">
+                  <n-p depth="1" style="font-size: 14px">
                     Dung lượng tối đa 20Mb. Hỗ trợ các định dạng file: doc, pdf,
                     xls, xlsx, pptx, png, jpeg.
                   </n-p>
@@ -175,7 +166,7 @@ const closeModal = () => {
               </n-upload>
             </n-form-item>
           </n-gi>
-          <n-gi span="3">
+          <n-gi span="1">
             <n-grid cols="2" :x-gap="20">
               <n-gi>
                 <n-button

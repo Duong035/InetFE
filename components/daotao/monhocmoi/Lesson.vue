@@ -11,15 +11,23 @@ const isLessonVisible = ref(false);
 const is_addnew = ref(false);
 const lessonarray = ref([]);
 const componentKey = ref(0);
-
 const refreshComponent = () => {
   componentKey.value += 1;
 };
 
+const pageName = computed(() => route.path.split("/")[2]);
+const props = defineProps({
+  correctSubjectId: String,
+});
+
 const formValue = reactive({
   id: null,
   name: null,
-  subject_id: computed(() => route.query.id || null),
+  subject_id: computed(() =>
+    pageName.value === "lophocinfo"
+      ? props.correctSubjectId
+      : route.query.id || null,
+  ),
   child_lessons: [],
 });
 
@@ -33,7 +41,6 @@ const addchildLesson = (customLesson = {}) => {
   formValue.child_lessons.push({
     name: customLesson.name ?? null,
     position: formValue.child_lessons.length + 1,
-    subject_id: route.query.id || null,
     free_trial: customLesson.free_trial ?? false,
     is_live: customLesson.is_live ?? false,
   });
@@ -121,7 +128,8 @@ function CancelLModal() {
 
 //Data_______________________________________________________________________________
 async function getLesson() {
-  const lesson_id = route.query.id;
+  const lesson_id =
+    pageName.value === "lophocinfo" ? props.correctSubjectId : route.query.id;
   if (!lesson_id) return;
 
   try {
@@ -212,15 +220,13 @@ async function handleSubmit() {
     const { data: resUpdate, error } = await restAPI.cms.updateLesson({
       body: finalBody,
     });
-    //loop through child_lessons and update child_lessons
     if (resUpdate?.value?.status) {
       if (body.child_lessons && Array.isArray(body.child_lessons)) {
         for (const child of body.child_lessons) {
           try {
-            child.parent_id = id; // Ensure the child is linked to the parent lesson
+            child.parent_id = id;
 
             if (child.id) {
-              // Update existing child lesson
               const { data: resChildUpdate, error: childError } =
                 await restAPI.cms.updateLesson({ body: [child] });
 
@@ -231,11 +237,9 @@ async function handleSubmit() {
                 );
               }
             } else {
-              // Create new child lesson
               child.parent_id = id;
               const { data: resChildCreate, error: childCreateError } =
                 await restAPI.cms.createLesson({ body: child });
-
               if (!resChildCreate?.value?.status) {
                 console.warn(
                   `Failed to create child lesson:`,
@@ -327,7 +331,11 @@ const getPlaceholder = (item) => {
         <div class="-mt-2" v-if="activeDropdown === `lesson-${item.stt}`">
           <!-- Content to be shown when active -->
           <div class="mt-2 border-b-2"></div>
-          <DaotaoMonhocmoiNewsub :lessonId="item.id" :key="componentKey" />
+          <DaotaoMonhocmoiNewsub
+            :lessonId="item.id"
+            :key="componentKey"
+            :correctSubjectId="formValue.subject_id"
+          />
           <div class="border-b-2"></div>
         </div>
       </div>
