@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { message } from "ant-design-vue";
-import { useRoute } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
+
 import dayjs from "dayjs";
 
 // API
@@ -22,12 +23,13 @@ interface ClassData {
 }
 
 // Dữ liệu reactive
+const router = useRouter();
 const route = useRoute();
 const isSubmitting = ref(false);
 const subjects = ref<{ label: string; value: string }[]>([]);
 const branches = ref<{ label: string; value: string }[]>([]);
 const newId = route.query.id;
-
+const emit = defineEmits(["update-value"]);
 // Giá trị form
 const formValue = ref<ClassData>({
   id: null,
@@ -67,6 +69,7 @@ const fetchClassData = async () => {
         ? dayjs(data?.end_at).valueOf()
         : null;
       formValue.value.description = data?.description || "";
+      emit("update-value", formValue.value.subjects);
     } else {
       message.warning("Không tìm thấy thông tin lớp học.");
     }
@@ -161,6 +164,7 @@ const handleSubmit = async () => {
       ({ data: resData, error } = await restAPI.cms.createClass({
         body: JSON.stringify(payload),
       }));
+      router.push({ path: window.location.pathname, query: { id: newId } });
     }
 
     if (error?.value) {
@@ -185,6 +189,7 @@ const handleSubmit = async () => {
       description: "",
       branches: "",
     };
+    fetchClassData();
   } catch (err) {
     console.error(
       ` Lỗi khi ${formValue.value.id ? "cập nhật" : "tạo"} lớp học:`,

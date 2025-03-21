@@ -442,7 +442,7 @@ export default defineComponent({
       ],
       positionoptions: [
         {
-          label: "Tất cả trạng thái",
+          label: "Tất cả vai trò",
           value: "",
         },
         { label: "Giảng viên", value: 1 },

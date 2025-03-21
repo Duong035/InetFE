@@ -10,31 +10,11 @@ const dropdowns = reactive<{ [key: string]: boolean }>({
 });
 const isCollapsed = ref(false);
 const activeDropdown = ref("coban");
+const subjectID = ref("");
 
-const noidungarrey = ref([
-  {
-    id: 1,
-  },
-]);
-function addSubject() {
-  noidungarrey.value.push({
-    id: noidungarrey.value.length + 1,
-  });
-}
-function deleteSubject(value: number) {
-  noidungarrey.value = noidungarrey.value.filter((i) => i.id !== value);
-}
-function editSubject(value: number) {
-  noidungarrey.value = noidungarrey.value.map((i) => {
-    if (i.id === value) {
-      return {
-        ...i,
-        id: value,
-      };
-    }
-    return i;
-  });
-}
+const handleUpdate = (value: string) => {
+  subjectID.value = value;
+};
 
 const toggleDropdown = (menu: string) => {
   if (menu.startsWith("noidung-")) {
@@ -174,7 +154,7 @@ const toggleDropdown = (menu: string) => {
               <ul v-if="dropdowns.coban" class="w-ful h-full">
                 <li>
                   <div class="w-ful h-full" v-if="!isCollapsed">
-                    <DaotaoLophocNewclass />
+                    <DaotaoLophocNewclass @update-value="handleUpdate" />
                   </div>
                 </li>
               </ul>
@@ -203,72 +183,7 @@ const toggleDropdown = (menu: string) => {
               </div>
               <ul v-if="dropdowns.noidung" class="w-ful h-full">
                 <li>
-                  <div class="w-ful h-full" v-if="!isCollapsed">
-                    <div class="px-5">
-                      <div v-for="item in noidungarrey" :key="item.id">
-                        <div>
-                          <li
-                            :class="[
-                              'cursor-pointer py-2',
-                              activeDropdown === `noidung-${item.id}`
-                                ? 'text-[#133D85]'
-                                : 'text-gray-600',
-                            ]"
-                            @click="toggleDropdown(`noidung-${item.id}`)"
-                          >
-                            <div
-                              :class="[
-                                'flex h-full w-full items-center justify-between rounded-2xl bg-gray-200 px-1',
-                                activeDropdown === `noidung-${item.id}`
-                                  ? 'text-[#133D85]'
-                                  : 'text-gray-600',
-                              ]"
-                            >
-                              <div
-                                class="my-2 flex h-full w-full items-center justify-between px-5"
-                              >
-                                <p>Chương {{ item.id }}</p>
-                                <div>
-                                  <button
-                                    @click="editSubject(item.id)"
-                                    class="pr-5 text-green-500 hover:text-green-700"
-                                  >
-                                    <i
-                                      class="fas fa-regular fa-pen-to-square"
-                                    ></i>
-                                  </button>
-                                  <button
-                                    @click="deleteSubject(item.id)"
-                                    class="text-red-500 hover:text-red-700"
-                                  >
-                                    <i class="fas fa-trash-alt"></i>
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </li>
-                          <div
-                            class="-mt-2"
-                            v-if="activeDropdown === `noidung-${item.id}`"
-                          >
-                            <!-- Content to be shown when active -->
-                            <div class="mt-2 border-b-2"></div>
-                            <DaotaoMonhocmoiNewsub />
-                            <div class="border-b-2"></div>
-                          </div>
-                        </div>
-                      </div>
-                      <n-button
-                        round
-                        type="info"
-                        class="mt-2 h-12 w-48 rounded-2xl text-xl"
-                        @click="addSubject"
-                      >
-                        Thêm mới
-                        <i class="fa-solid fa-plus ml-3"></i>
-                      </n-button>
-                    </div>
-                  </div>
+                  <DaotaoMonhocmoiLesson :correctSubjectId="subjectID" />
                 </li>
               </ul>
             </li>

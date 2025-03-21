@@ -1,10 +1,11 @@
 <script setup>
 import { NModal } from "naive-ui";
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, watch } from "vue";
 import { useRoute } from "vue-router";
 
 const props = defineProps({
   lessonId: String,
+  correctSubjectId: String,
 });
 
 //1: youtube video, 2: s3 video, 3: text, 4: test, 5: document
@@ -25,6 +26,8 @@ const isModal = ref(null);
 const lessonData = ref([]);
 const childLesson = ref([]);
 let lessonDataID = null;
+
+// const pageName = computed(() => route.path.split("/")[2]);
 
 const formValue = reactive({
   id: null,
@@ -240,7 +243,7 @@ const addchildLesson = (customLesson = {}) => {
     name: customLesson.name ?? null,
     position: childLesson.value.length + 1,
     parent_id: props.lessonId,
-    subject_id: route.query.id || null,
+    subject_id: props.correctSubjectId || null,
     free_trial: customLesson.free_trial ?? false,
     is_live: customLesson.is_live ?? false,
   });
@@ -275,14 +278,14 @@ watch(isModalVisible, (newValue, oldValue) => {
 const handleFormSubmit = async (body) => {
   body.lesson_id = lessonDataID;
   if (body.id) {
-    await updateLesson(body);
+    await updateLessondata(body);
   } else {
-    await createLesson(body);
+    await createLessondata(body);
   }
   getLessonData();
 };
 
-const createLesson = async (body) => {
+const createLessondata = async (body) => {
   const { data: resCreate, error } = await restAPI.cms.createLessonData({
     body,
   });
@@ -299,7 +302,7 @@ const createLesson = async (body) => {
   }
 };
 
-const updateLesson = async (body) => {
+const updateLessondata = async (body) => {
   let finalBody = [body];
   const { data: resUpdate, error } = await restAPI.cms.updateLessonData({
     body: finalBody,
@@ -319,6 +322,7 @@ const updateLesson = async (body) => {
 
 const handleSubmit = async () => {
   if (isLoading.value) return;
+  isLoading.value = true;
   if (isModal.value == "buoihoc") {
     addchildLesson({
       name: lessondate.name,
@@ -340,9 +344,12 @@ const handleSubmit = async () => {
   } else {
     const body = [{ ...formValue }];
     const { data: resUpdate, error } = await restAPI.cms.updateLesson({ body });
-    console.log("status", resUpdate);
     if (resUpdate?.value?.status) {
-      message.success("Cập nhật bài học thành công!");
+      message.success(
+        formValue.is_live
+          ? "Tạo buổi học thành công!"
+          : "Tạo bài học thành công!",
+      );
     } else {
       const errorCode = error.value?.data?.error;
       console.log("error", errorCode);
@@ -355,6 +362,7 @@ const handleSubmit = async () => {
   }
   isModalVisible.value = false;
   getLesson();
+  isLoading.value = false;
 };
 //___________________________________________________________________________________
 
@@ -389,6 +397,7 @@ const currentLesson = computed({
 //___________________________________________________________________________________
 
 onMounted(() => {
+  console.log(props.correctSubjectId);
   getLesson();
   getLessonData();
 });
@@ -419,7 +428,7 @@ onMounted(() => {
             <div
               class="my-2 flex h-full w-full items-center justify-between px-5"
             >
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2 text-[#133D85]">
                 <i
                   v-if="item.is_live"
                   class="fa-solid fa-person-chalkboard text-sm"

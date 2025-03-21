@@ -56,8 +56,8 @@ const closeModal = () => {
       @update:show="closeModal"
     >
       <n-form>
-        <n-grid cols="3" :x-gap="20">
-          <n-gi span="3">
+        <n-grid cols="1" :x-gap="20">
+          <n-gi span="1">
             <h1 v-if="is_addnew" class="text-2xl font-bold text-[#133D85]">
               Tải lên video mới cho bài học
             </h1>
@@ -66,21 +66,12 @@ const closeModal = () => {
             </h1>
             <div class="mt-5"></div>
           </n-gi>
-          <n-gi span="2">
+          <n-gi span="1">
             <n-form-item label="Tên video:">
               <n-input placeholder="Nhập tên video"></n-input>
             </n-form-item>
           </n-gi>
-          <n-gi>
-            <n-form-item
-              label="Trạng thái hoạt động"
-              label-placement="left"
-              class="mt-7"
-            >
-              <n-checkbox v-model:checked="formValue.is_live"></n-checkbox>
-            </n-form-item>
-          </n-gi>
-          <n-gi span="3">
+          <n-gi span="1">
             <n-form-item label="Video:">
               <n-grid cols="2" :x-gap="20">
                 <n-gi span="1">
@@ -115,8 +106,8 @@ const closeModal = () => {
               </n-grid>
             </n-form-item>
           </n-gi>
-          <n-gi span="3"></n-gi>
-          <n-gi span="3">
+          <n-gi span="1"></n-gi>
+          <n-gi span="1">
             <n-grid cols="2" :x-gap="20">
               <n-gi>
                 <n-button
@@ -132,7 +123,6 @@ const closeModal = () => {
                   round
                   type="info"
                   class="h-12 w-full rounded-2xl text-lg"
-                  @click.prevent="handleSubmit"
                 >
                   Lưu
                 </n-button>

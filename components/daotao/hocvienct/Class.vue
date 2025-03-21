@@ -14,21 +14,7 @@ export default defineComponent({
   setup() {
     const paginationReactive = reactive({
       page: 2,
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-pageSize: 10,,,,,,,,,,,,,,
+      pageSize: 10,
       showSizePicker: true,
 
       pageSizes: [5, 10, 15],

@@ -14,6 +14,7 @@ const railStyle = ({ focused, checked }) => {
 };
 const message = useMessage();
 const route = useRoute();
+const router = useRouter();
 const scheduleRef = ref(null);
 const { restAPI } = useApi();
 const isLoading = ref(false);
@@ -206,7 +207,6 @@ const submitSchedule = async () => {
 };
 const handleSubmit = async (e) => {
   if (isLoading.value) return;
-  await submitSchedule();
   isLoading.value = true;
   e.preventDefault();
   const {
@@ -250,6 +250,7 @@ const handleSubmit = async (e) => {
   try {
     await formRef.value?.validate();
     if (id) {
+      await submitSchedule();
       const { data: resUpdate, error } = await restAPI.cms.updateStaff({
         id,
         body,
@@ -271,6 +272,8 @@ const handleSubmit = async (e) => {
       });
       if (resCreate?.value?.status) {
         message.success("Tạo nhân viên thành công!");
+        const newId = resCreate.value.data;
+        router.push({ path: window.location.pathname, query: { id: newId } });
       } else {
         const errorCode = error.value?.data?.error;
         const errorMessage =
@@ -281,8 +284,6 @@ const handleSubmit = async (e) => {
       }
     }
   } catch (err) {
-    message.error("Vui lòng kiểm tra lại thông tin!");
-    console.error("API error:", err);
   } finally {
     isLoading.value = false;
   }
@@ -464,7 +465,7 @@ onMounted(() => {
               />
             </n-form-item>
           </n-gi>
-          <n-gi span="2" v-show="formValue.id !== null">
+          <n-gi span="2" v-if="formValue.id !== null">
             <n-grid cols="2" :x-gap="20" responsive="screen">
               <n-gi span="2">
                 <DaotaoGiangvienSchedule
