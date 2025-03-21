@@ -1,3 +1,4 @@
+
 <script lang="ts">
 import type { DataTableColumns } from "naive-ui";
 import {
@@ -9,8 +10,8 @@ import {
   onMounted,
   toRaw,
 } from "vue";
-import { NButton, NDataTable } from "naive-ui";
-import { useRoute } from "vue-router";
+import { NButton, NDataTable, NDropdown } from "naive-ui";
+import { useRouter, useRoute } from "vue-router";
 
 export default defineComponent({
   setup() {
@@ -24,7 +25,7 @@ export default defineComponent({
     const message = useMessage();
 
     const route = useRoute();
-    const classId = ref(route.params.id);
+    const classId = computed(() => route.query.id || null);
     const { restAPI } = useApi();
     const data = ref<RowData[]>([]);
 
@@ -92,7 +93,6 @@ export default defineComponent({
     const fetchStudents = async () => {
       try {
         const { data: resData, error } = await restAPI.cms.getStudents({});
-
         if (error?.value) {
           message.error(
             error?.value?.data?.message || "Lỗi tải danh sách học viên",
@@ -112,9 +112,13 @@ export default defineComponent({
     // Gửi danh sách học viên đã chọn lên API
     const handleSubmit = async () => {
       try {
-        const { error } = await restAPI.cms.addStudentsToClass({
+        const body = {
           class_id: classId.value,
           student_id: selectedStudents.value,
+        };
+        console.log(JSON.stringify(body, null, 2));
+        const { error } = await restAPI.cms.addStudentsToClass({
+          body,
         });
 
         if (error?.value) {
@@ -127,12 +131,13 @@ export default defineComponent({
       } catch (err) {
         message.error("Lỗi khi gửi dữ liệu.");
       }
+      loadData();
     };
     // Cấu hình cột cho bảng học viên
     const studentColumns: DataTableColumns<any> = [
-      { type: "selection" },
+      { type: "selection" }, // Thêm title và key
+      { title: "ID", key: "id" },
       { title: "Tên học viên", key: "full_name" },
-      { title: "Số điện thoại", key: "phone" },
       { title: "Email", key: "email" },
     ];
 
@@ -236,3 +241,4 @@ export default defineComponent({
     </div>
   </div>
 </template>
+

@@ -177,7 +177,6 @@ const handleSubmit = async (e) => {
     status,
     type: Number(type),
   };
-  console.log(body);
   try {
     await formRef.value?.validate();
     if (id) {

@@ -1,118 +1,23 @@
-<script setup lang="ts">
-import { NModal } from "naive-ui";
-import { reactive, ref, watch, nextTick } from "vue";
-import { useRoute } from "vue-router";
+<script setup>
+import { DaotaoMonhocmoiLesson } from "#components";
+import { reactive, ref } from "vue";
 
-const dropdowns = reactive<{ [key: string]: boolean }>({
+const isCollapsed = ref(false);
+const dropdowns = reactive({
   coban: true,
   noidung: false,
   chungchi: false,
   caidat: false,
   chamsoc: false,
 });
-
-const message = useMessage();
-const { restAPI } = useApi();
-const route = useRoute();
-const isCollapsed = ref(false);
-const isLoading = ref(false);
 const activeDropdown = ref("coban");
-const lessonarray = ref<{ stt: number; Lessonid: string }[]>([]);
-const Lesson = reactive<{ stt: number; name: string }[]>([]);
-const isModalVisible = ref(false);
 
-const formValue = reactive({
-  name: null,
-  duration: null,
-  difficulty: null,
-  freeTrial: false,
-  childrens: [],
-});
-
-function addLesson() {
-  lessonarray.value.push({
-    stt: lessonarray.value.length + 1,
-    Lessonid: "",
-  });
-}
-
-const addchildLesson = () => {
-  const newLesson = { stt: Lesson.length + 1, name: "" };
-  Lesson.push(newLesson);
-  console.log("Updated Lesson:", Lesson);
-};
-
-const difficultyOptions = ref([
-  { label: "Dễ", value: "easy" },
-  { label: "Trung bình", value: "medium" },
-  { label: "Khó", value: "hard" },
-]);
-
-const getDisabledMinutes = (selectedHour) => {
-  const allMinutes = Array.from({ length: 60 }, (_, i) => i);
-
-  if (selectedHour === 0) {
-    return allMinutes.filter((minute) => minute < 45);
-  }
-
-  if (selectedHour === 2) {
-    return allMinutes.filter((minute) => minute !== 0);
-  }
-
-  return [];
-};
-
-watch(isModalVisible, (newValue) => {
-  if (!newValue) {
-    Lesson.value = [];
-  }
-});
-
-function addSubject() {
-  isModalVisible.value = true;
-}
-
-async function getLesson() {
-  const lesson_id = route.query.id;
-
-  if (!lesson_id) return;
-
-  try {
-    const { data: resData } = await restAPI.cms.getListLesson();
-
-    const filteredData = resData.value.data.filter(
-      (item) => item.subject_id === lesson_id,
-    );
-
-    lessonarray.value = filteredData.map((item, index) => ({
-      stt: index + 1,
-      Needid: item.id,
-      student_id: item.student_id, // Include student_id
-      branch_id: item.branch_id, // Include branch_id
-    }));
-  } catch (error) {
-    console.error("Error fetching need data:", error);
-  }
-}
-
-const handleSubmit = async (e) => {
-  if (isLoading.value) return;
-  const { name, duration, difficulty, freeTrial, childrens } = formValue;
-
-  let body = { name, duration, difficulty, freeTrial, childrens };
-  console.log(body);
-  console.log(Lesson);
-};
-
-const toggleDropdown = (menu: string) => {
+const toggleDropdown = (menu) => {
   if (menu.startsWith("noidung-")) {
-    if (activeDropdown.value === menu) {
-      activeDropdown.value = "";
-    } else {
-      activeDropdown.value = menu;
-    }
+    activeDropdown.value = activeDropdown.value === menu ? "" : menu;
     return;
   }
+
   if (dropdowns[menu]) {
     dropdowns[menu] = false;
     activeDropdown.value = "";
@@ -124,20 +29,8 @@ const toggleDropdown = (menu: string) => {
     activeDropdown.value = menu;
   }
 };
-
-watch(
-  Lesson,
-  (newValue) => {
-    console.log("Lesson updated:", newValue);
-  },
-  { deep: true },
-);
-// Removed the local watch function declaration
-onMounted(async () => {
-  await nextTick();
-  getLesson();
-});
 </script>
+
 <template>
   <div class="flex h-full w-full">
     <div class="flex h-full w-1/6">
@@ -167,14 +60,14 @@ onMounted(async () => {
             :class="[
               'relative flex cursor-pointer items-center py-3 pl-3 pr-10',
               activeDropdown.startsWith('noidung')
-                ? '-mr-12 bg-gray-50 pr-0 text-[#133D85]'
+                ? '-mr-14 bg-gray-50 pr-0 text-[#133D85]'
                 : 'text-[#4D6FA8]',
             ]"
           >
             <i
               :class="[
-                'pr-3 text-[8px]',
-                activeDropdown.startsWith('noidung')
+                'pr-3 text-[8px] text-[#133D85]',
+                activeDropdown === 'noidung'
                   ? 'fa-solid fa-circle text-[#133D85]'
                   : 'fa-solid fa-circle-dot text-[#4D6FA8]',
               ]"
@@ -192,7 +85,7 @@ onMounted(async () => {
           >
             <i
               :class="[
-                'pr-3 text-[8px]',
+                'pr-3 text-[8px] text-[#133D85]',
                 activeDropdown === 'chungchi'
                   ? 'fa-solid fa-circle text-[#133D85]'
                   : 'fa-solid fa-circle-dot text-[#4D6FA8]',
@@ -211,13 +104,13 @@ onMounted(async () => {
           >
             <i
               :class="[
-                'pr-3 text-[8px]',
+                'pr-3 text-[8px] text-[#133D85]',
                 activeDropdown === 'caidat'
                   ? 'fa-solid fa-circle text-[#133D85]'
                   : 'fa-solid fa-circle-dot text-[#4D6FA8]',
               ]"
-            ></i
-            >Cài đặt
+            ></i>
+            Cài đặt
           </li>
         </ul>
       </nav>
@@ -249,9 +142,9 @@ onMounted(async () => {
                   "
                 ></i>
               </div>
-              <ul v-if="dropdowns.coban" class="w-ful h-full">
+              <ul v-if="dropdowns.coban" class="h-full w-full">
                 <li>
-                  <div class="w-ful h-full" v-if="!isCollapsed">
+                  <div class="h-full w-full" v-if="!isCollapsed">
                     <DaotaoMonhocmoiClassInfo />
                   </div>
                 </li>
@@ -281,204 +174,7 @@ onMounted(async () => {
               </div>
               <ul v-if="dropdowns.noidung" class="w-ful h-full">
                 <li>
-                  <div class="w-ful h-full" v-if="!isCollapsed">
-                    <div class="px-5">
-                      <div v-for="item in lessonarray" :key="item.stt">
-                        <div>
-                          <li
-                            :class="[
-                              'cursor-pointer py-2',
-                              activeDropdown === `noidung-${item.stt}`
-                                ? 'text-[#133D85]'
-                                : 'text-gray-600',
-                            ]"
-                            @click="toggleDropdown(`noidung-${item.stt}`)"
-                          >
-                            <div
-                              :class="[
-                                'flex h-full w-full items-center justify-between rounded-2xl bg-gray-200 px-1',
-                                activeDropdown === `noidung-${item.stt}`
-                                  ? 'text-[#133D85]'
-                                  : 'text-gray-600',
-                              ]"
-                            >
-                              <div
-                                class="my-2 flex h-full w-full items-center justify-between px-5"
-                              >
-                                <p>{{ item.Lessonid }}</p>
-                                <div>
-                                  <button
-                                    @click="editSubject(item.stt)"
-                                    class="pr-5 text-green-500 hover:text-green-700"
-                                  >
-                                    <i
-                                      class="fas fa-regular fa-pen-to-square"
-                                    ></i>
-                                  </button>
-                                  <button
-                                    @click="deleteSubject(item.stt)"
-                                    class="text-red-500 hover:text-red-700"
-                                  >
-                                    <i class="fas fa-trash-alt"></i>
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </li>
-                          <div
-                            class="-mt-2"
-                            v-if="activeDropdown === `noidung-${item.stt}`"
-                          >
-                            <!-- Content to be shown when active -->
-                            <div class="mt-2 border-b-2"></div>
-                            <DaotaoMonhocmoiNewsub />
-                            <div class="border-b-2"></div>
-                          </div>
-                        </div>
-                      </div>
-                      <n-button
-                        round
-                        type="info"
-                        class="mt-2 h-12 w-48 rounded-2xl text-xl"
-                        @click="addSubject"
-                      >
-                        Thêm mới
-                        <i class="fa-solid fa-plus ml-3"></i>
-                      </n-button>
-                      <n-modal-provider>
-                        <n-modal
-                          v-model:show="isModalVisible"
-                          preset="card"
-                          style="
-                            position: fixed;
-                            top: 40%;
-                            left: 50%;
-                            transform: translate(-50%, -50%);
-                            width: 90%;
-                            max-width: 600px;
-                          "
-                          :header-style="{ padding: '10px' }"
-                        >
-                          <n-form>
-                            <n-grid cols="2" :x-gap="20">
-                              <n-gi>
-                                <h1 class="text-2xl font-bold text-[#133D85]">
-                                  Thêm chương mới
-                                </h1>
-                                <div class="mt-5"></div>
-                              </n-gi>
-                              <n-gi span="2">
-                                <n-form-item label="Tên bài học mới">
-                                  <n-input
-                                    v-model:value="formValue.name"
-                                    placeholder="Nhập tên bài học"
-                                  ></n-input>
-                                </n-form-item>
-                              </n-gi>
-                              <n-gi>
-                                <n-form-item label="Thời lượng bài học">
-                                  <n-time-picker
-                                    v-model:value="formValue.duration"
-                                    format="HH:mm"
-                                    :hours="[0, 1, 2]"
-                                    :is-minute-disabled="
-                                      (minute, hour) =>
-                                        getDisabledMinutes(hour).includes(
-                                          minute,
-                                        )
-                                    "
-                                    style="width: 250px"
-                                    placeholder="Chọn thời lượng"
-                                  />
-                                </n-form-item>
-                              </n-gi>
-
-                              <n-gi>
-                                <n-form-item label="Mức độ">
-                                  <n-select
-                                    v-model:value="formValue.difficulty"
-                                    :options="difficultyOptions"
-                                    placeholder="Chọn độ khó"
-                                  />
-                                </n-form-item>
-                              </n-gi>
-
-                              <n-gi>
-                                <n-form-item
-                                  label="Học thử miễn phí"
-                                  label-placement="left"
-                                >
-                                  <n-checkbox
-                                    v-model:checked="formValue.freeTrial"
-                                  ></n-checkbox>
-                                </n-form-item>
-                              </n-gi>
-                              <n-gi span="2">
-                                <n-form-item
-                                  label="Thêm các nội dung nằm trong bài học này"
-                                >
-                                  <p class="-mt-6 text-[#4D6FA8]">
-                                    Nhập tên nội dung trước và thêm nội dung chi
-                                    tiết từng bài học ở bước sau
-                                  </p>
-                                </n-form-item>
-                              </n-gi>
-                              <n-gi span="2" class="-mt-8 mb-5">
-                                <n-grid
-                                  cols="15"
-                                  :x-gap="20"
-                                  v-for="(item, index) in Lesson"
-                                  :key="item.stt"
-                                >
-                                  <n-gi span="14" class="mb-2">
-                                    <n-input
-                                      v-model="Lesson[index].name"
-                                      placeholder="Nhập tên nội dung"
-                                    ></n-input>
-                                  </n-gi>
-                                  <n-gi>
-                                    <button
-                                      class="pt-3 text-red-500 hover:text-red-700"
-                                      @click="removeLesson(index)"
-                                    >
-                                      <i class="fas fa-trash-alt"></i>
-                                    </button>
-                                  </n-gi>
-                                </n-grid>
-                              </n-gi>
-                              <n-gi span="2" class="mb-5">
-                                <span
-                                  class="cursor-pointer text-sm text-[#00A2EB]"
-                                  @click="addchildLesson"
-                                >
-                                  + Thêm nội dung mới
-                                </span>
-                              </n-gi>
-                              <n-gi>
-                                <n-button
-                                  ghost
-                                  class="h-12 w-full rounded-2xl text-lg"
-                                  @click="isModalVisible = false"
-                                >
-                                  Hủy
-                                </n-button>
-                              </n-gi>
-                              <n-gi>
-                                <n-button
-                                  round
-                                  type="info"
-                                  class="h-12 w-full rounded-2xl text-lg"
-                                  @click.prevent="handleSubmit"
-                                >
-                                  Lưu
-                                </n-button>
-                              </n-gi>
-                            </n-grid>
-                          </n-form>
-                        </n-modal>
-                      </n-modal-provider>
-                    </div>
-                  </div>
+                  <DaotaoMonhocmoiLesson />
                 </li>
               </ul>
             </li>
@@ -504,9 +200,9 @@ onMounted(async () => {
                   "
                 ></i>
               </div>
-              <ul v-if="dropdowns.chungchi" class="w-ful h-full">
+              <ul v-if="dropdowns.chungchi" class="h-full w-full">
                 <li>
-                  <div class="w-ful h-full" v-if="!isCollapsed">
+                  <div class="h-full w-full" v-if="!isCollapsed">
                     <DaotaoHocvienctClass />
                   </div>
                 </li>
@@ -539,5 +235,6 @@ onMounted(async () => {
         </nav>
       </div>
     </div>
+    <DelModal @confirm-delete="handleConfirmDelete" ref="delref" />
   </div>
 </template>

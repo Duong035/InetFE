@@ -331,13 +331,6 @@ const handleSubmit = () => {
                 >
                   Lưu
                 </button>
-                <button
-                  type="button"
-                  class="rounded bg-blue-500 px-6 py-2 text-white shadow hover:bg-blue-600"
-                  @click="$router.push('auth/login')"
-                >
-                  Đăng xuất
-                </button>
               </div>
             </div>
 
