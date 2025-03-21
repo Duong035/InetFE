@@ -1,4 +1,3 @@
-
 <script lang="ts">
 import type { DataTableColumns } from "naive-ui";
 import {
@@ -10,8 +9,8 @@ import {
   onMounted,
   toRaw,
 } from "vue";
-import { NButton, NDataTable, NDropdown } from "naive-ui";
-import { useRouter, useRoute } from "vue-router";
+import { NButton, NDataTable } from "naive-ui";
+import { useRoute } from "vue-router";
 
 export default defineComponent({
   setup() {
@@ -25,7 +24,7 @@ export default defineComponent({
     const message = useMessage();
 
     const route = useRoute();
-    const classId = computed(() => route.query.id || null);
+    const classId = ref(route.params.id);
     const { restAPI } = useApi();
     const data = ref<RowData[]>([]);
 
@@ -93,6 +92,7 @@ export default defineComponent({
     const fetchStudents = async () => {
       try {
         const { data: resData, error } = await restAPI.cms.getStudents({});
+
         if (error?.value) {
           message.error(
             error?.value?.data?.message || "Lỗi tải danh sách học viên",
@@ -112,13 +112,28 @@ export default defineComponent({
     // Gửi danh sách học viên đã chọn lên API
     const handleSubmit = async () => {
       try {
-        const body = {
-          class_id: classId.value,
+        const classIdFromPath = newId || route.params.id;
+
+        if (!classIdFromPath) {
+          message.error("Không tìm thấy ID lớp học!");
+          return;
+        }
+
+        if (!selectedStudents.value || selectedStudents.value.length === 0) {
+          message.error("Vui lòng chọn ít nhất một học viên!");
+          return;
+        }
+
+        const requestData = {
+          class_id: classIdFromPath,
           student_id: selectedStudents.value,
         };
-        console.log(JSON.stringify(body, null, 2));
+        console.log(" Giá trị selectedStudents:", selectedStudents.value);
+
+        console.log(" Gửi request với dữ liệu:", requestData);
+
         const { error } = await restAPI.cms.addStudentsToClass({
-          body,
+          body: requestData,
         });
 
         if (error?.value) {
@@ -128,16 +143,18 @@ export default defineComponent({
 
         message.success("Thêm học viên thành công!");
         showModal.value = false;
+        await loadData();
       } catch (err) {
+        console.error("Lỗi khi gửi dữ liệu:", err);
         message.error("Lỗi khi gửi dữ liệu.");
       }
-      loadData();
     };
+
     // Cấu hình cột cho bảng học viên
     const studentColumns: DataTableColumns<any> = [
-      { type: "selection" }, // Thêm title và key
-      { title: "ID", key: "id" },
+      { type: "selection" },
       { title: "Tên học viên", key: "full_name" },
+      { title: "Số điện thoại", key: "phone" },
       { title: "Email", key: "email" },
     ];
 
@@ -241,4 +258,3 @@ export default defineComponent({
     </div>
   </div>
 </template>
-
