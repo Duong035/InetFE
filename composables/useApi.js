@@ -301,6 +301,15 @@ class CMSManager {
   async getClasses(data) {
     return this.request.get(API_ENDPOINTS.cms.classes, data);
   }
+  async getClassStudent(data) {
+    return this.request.get(
+      `${API_ENDPOINTS.cms.class}/${data.id}/student`,
+      data,
+    );
+  }
+  async addStudentsToClass(data) {
+    return this.request.post(`${API_ENDPOINTS.cms.class}/add-student`, data);
+  }
 
   async getClassById(data) {
     return this.request.get(`${API_ENDPOINTS.cms.class}/${data.id}`, data);
