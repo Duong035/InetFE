@@ -28,7 +28,7 @@ const route = useRoute();
 const isSubmitting = ref(false);
 const subjects = ref<{ label: string; value: string }[]>([]);
 const branches = ref<{ label: string; value: string }[]>([]);
-const newId = route.query.id;
+const newId = computed(() => route.query.id || null);
 const emit = defineEmits(["update-value"]);
 // Giá trị form
 const formValue = ref<ClassData>({
@@ -47,12 +47,12 @@ const formValue = ref<ClassData>({
 //  HÀM LẤY THÔNG TIN LỚP HỌC THEO ID
 const fetchClassData = async () => {
   try {
+    console.log(newId.value);
     const { data: resData } = await restAPI.cms.getClassById({
-      id: newId,
+      id: newId.value,
     });
 
     if (resData.value?.status) {
-      console.log("Dữ liệu lớp học:", resData);
       const data = resData.value?.data;
 
       formValue.value.id = data?.id || null;
@@ -125,11 +125,6 @@ const handleSubmit = async () => {
   isSubmitting.value = true;
 
   try {
-    console.log(
-      "Giá trị form trước khi gửi:",
-      JSON.stringify(formValue.value, null, 2),
-    );
-
     const isUpdating = !!formValue.value.id; // Nếu có ID thì là cập nhật
     const payload = {
       id: formValue.value.id,
@@ -148,11 +143,6 @@ const handleSubmit = async () => {
       group_url: "",
     };
 
-    console.log(
-      `${isUpdating ? "Cập nhật" : "Tạo mới"} lớp học với payload:`,
-      JSON.stringify(payload, null, 2),
-    );
-
     let resData, error;
     if (isUpdating) {
       // Cập nhật lớp học (PATCH)
@@ -164,7 +154,8 @@ const handleSubmit = async () => {
       ({ data: resData, error } = await restAPI.cms.createClass({
         body: JSON.stringify(payload),
       }));
-      router.push({ path: window.location.pathname, query: { id: newId } });
+      const classId = resData.value.data.id;
+      router.push({ path: window.location.pathname, query: { id: classId } });
     }
 
     if (error?.value) {
@@ -207,7 +198,6 @@ const handleSubmit = async () => {
 onMounted(() => {
   fetchSubjects();
   fetchBranches();
-  console.log("ID lớp học0:", newId);
 
   fetchClassData();
 });

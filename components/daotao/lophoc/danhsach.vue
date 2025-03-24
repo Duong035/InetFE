@@ -101,8 +101,15 @@ export default defineComponent({
         }
 
         // Kiểm tra dữ liệu trả về có phải là một mảng không
+        console.log(data.value);
         const rawData = resData.value?.data;
-        studentsList.value = Array.isArray(rawData?.data) ? rawData.data : [];
+
+        studentsList.value = Array.isArray(rawData?.data)
+          ? rawData.data.filter(
+              (student) =>
+                !data.value.map((record) => record.id).includes(student.id),
+            )
+          : [];
         showModal.value = true;
       } catch (err) {
         message.error("Lỗi tải danh sách học viên.");
