@@ -717,6 +717,7 @@ export const ERROR_CODES = {
   6049: "Ca làm đã gán dữ liệu. Không thể chỉnh sửa.",
 
   // Lesson data errors
+  6090: "Đã đạt số buổi học tối đa",
   6060: "Đường link youtube không hợp lệ",
   6061: "Nội dung đoạn văn không hợp lệ",
   6062: "Loại điểm không chính xác",

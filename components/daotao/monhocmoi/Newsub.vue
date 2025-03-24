@@ -6,8 +6,9 @@ import { useRoute } from "vue-router";
 const props = defineProps({
   lessonId: String,
   correctSubjectId: String,
+  lessonCount: Number,
 });
-
+const emit = defineEmits(["update:lessonCount"]);
 //1: youtube video, 2: s3 video, 3: text, 4: test, 5: document
 
 const route = useRoute();
@@ -58,6 +59,7 @@ function toggleDropdown(id) {
 const delref = ref(null);
 const deleteAction = ref(null);
 const itemId = ref(null);
+const islive_true = ref(false);
 
 const showDeleteModal = (action, title, id) => {
   deleteAction.value = action;
@@ -81,7 +83,11 @@ async function deleteCLesson(value) {
     body,
   });
   if (delData?.value?.status) {
-    message.success("Xóa bài học thành công!");
+    if (islive_true.value) {
+      message.success("Xóa buổi học thành công!");
+    } else {
+      message.success("Xóa bài học thành công!");
+    }
   } else {
     const errorCode = error.value?.data?.error;
     const errorMessage =
@@ -91,6 +97,7 @@ async function deleteCLesson(value) {
 
     message.warning(errorMessage);
   }
+  islive_true.value = false;
   getLesson();
 }
 
@@ -239,19 +246,31 @@ const lessondate = reactive({
 });
 
 const addchildLesson = (customLesson = {}) => {
+  console.log(props.lessonCount);
+  if (props.lessonCount == route.query.num) {
+    message.error("Đạt số buổi học tối đa cho môn học");
+    return;
+  }
+  if (customLesson.is_live) {
+    emit("update:lessonCount", props.lessonCount + 1);
+  }
+  console.log("+", lesson_count.value);
+
   child_lessons.value.push({
     name: customLesson.name ?? null,
-    position: childLesson.value.length + 1,
+    position: child_lessons.value.length + 1,
     parent_id: props.lessonId,
     subject_id: props.correctSubjectId || null,
     free_trial: customLesson.free_trial ?? false,
     is_live: customLesson.is_live ?? false,
   });
 };
+
 const removeLesson = (value) => {
   if (child_lessons.value.length > 0) {
     child_lessons.value.splice(value, 1);
   }
+  emit("update:lessonCount", props.lessonCount - 1);
 };
 
 function showModal(source, isnew) {
@@ -332,14 +351,18 @@ const handleSubmit = async () => {
   }
   if (is_addnew.value) {
     for (const lesson of child_lessons.value) {
-      try {
-        const { data: resCreate } = await restAPI.cms.createLesson({
-          body: lesson,
-        });
-      } catch (err) {
-        console.error(`Error creating lesson ${lesson.name}:`, err);
+      const { data: resCreate, error } = await restAPI.cms.createLesson({
+        body: lesson,
+      });
+      if (resCreate.value?.status) {
+        if (lesson.is_live) {
+          message.success("Tạo buổi học thành công!!");
+        } else {
+          message.success("Tạo bài học thành công!!");
+        }
+      } else {
+        message.error("Đã đạt tối đa số buổi học!");
       }
-      message.success("Tạo bài học thành công!");
     }
   } else {
     const body = [{ ...formValue }];
@@ -352,17 +375,17 @@ const handleSubmit = async () => {
       );
     } else {
       const errorCode = error.value?.data?.error;
-      console.log("error", errorCode);
       const errorMessage =
         ERROR_CODES[errorCode] ||
         resUpdate?.value?.message ||
-        "Đã xảy ra lỗi, vui lòng thử lại!";
+        "Đã xảy ra lỗi, vui lòng thử lại!!";
       message.warning(errorMessage);
     }
   }
   isModalVisible.value = false;
   getLesson();
   isLoading.value = false;
+  islive_true.value = false;
 };
 //___________________________________________________________________________________
 
@@ -370,9 +393,13 @@ const handleSubmit = async () => {
 const sortedChildLesson = computed(() => {
   if (!childLesson.value || childLesson.value.length === 0) return [];
 
-  return childLesson.value
-    .slice()
-    .sort((a, b) => (b.is_live ? 1 : -1) - (a.is_live ? 1 : -1));
+  return childLesson.value.slice().sort((a, b) => {
+    // First, prioritize `is_live` (true first)
+    if (a.is_live !== b.is_live) return b.is_live - a.is_live;
+
+    // Then, sort alphabetically by `name`
+    return a.name.localeCompare(b.name);
+  });
 });
 
 const caseDisplay = computed(() => {
@@ -397,7 +424,6 @@ const currentLesson = computed({
 //___________________________________________________________________________________
 
 onMounted(() => {
-  console.log(props.correctSubjectId);
   getLesson();
   getLessonData();
 });
@@ -445,11 +471,12 @@ onMounted(() => {
                 </button>
                 <button
                   @click.stop="
+                    islive_true = item.is_live;
                     showDeleteModal(
                       deleteCLesson,
                       item.is_live ? 'Xóa buổi học' : 'Xóa bài học ',
                       item.id,
-                    )
+                    );
                   "
                   class="text-red-500 hover:text-red-700"
                 >

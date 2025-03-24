@@ -184,19 +184,23 @@ const handleSubmit = async (e) => {
     output_require,
     is_active,
   };
-  console.log(JSON.stringify(body, null, 2));
 
   try {
     // validate
     if (id) {
       console.log(id);
       body.id = id;
+      console.log(JSON.stringify(body, null, 2));
+
       const { data: resUpdate, error } = await restAPI.cms.updateSubject({
         body,
       });
 
       if (resUpdate?.value?.status) {
         message.success("Cập nhật thông tin môn học thành công!");
+        router.replace({
+          query: { ...route.query, num: body.total_lessons },
+        });
       } else {
         message.error(error.value.data.message);
       }
@@ -207,7 +211,10 @@ const handleSubmit = async (e) => {
       if (resCreate?.value?.status) {
         message.success("Tạo môn học thành công!");
         const newId = resCreate.value.data.id;
-        router.push({ path: window.location.pathname, query: { id: newId } });
+        router.push({
+          path: window.location.pathname,
+          query: { id: newId, num: body.total_lessons },
+        });
       } else {
         const errorCode = error.value.data.error;
         const errorMessage =

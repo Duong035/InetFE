@@ -93,8 +93,8 @@ async function getNeed() {
     Nhucauarrey.value = filteredData.map((item, index) => ({
       stt: index + 1,
       Needid: item.id,
-      student_id: item.student_id, // Include student_id
-      branch_id: item.branch_id, // Include branch_id
+      student_id: item.student_id,
+      branch_id: item.branch_id,
     }));
     singleBranchId.value =
       Nhucauarrey.value.length > 0 ? Nhucauarrey.value[0].branch_id : null;

@@ -72,7 +72,7 @@ const handleSubmit = async (e) => {
       });
       return navigateTo("/dashboard");
     } else {
-      const errorCode = error.value.data.error;
+      const errorCode = error.value?.data?.error;
       const errorMessage =
         ERROR_CODES[errorCode] ||
         resVerify.value?.message ||

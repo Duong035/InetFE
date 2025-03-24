@@ -287,7 +287,7 @@ class CMSManager {
     return this.request.post(API_ENDPOINTS.cms.lesson, data)
   }
   async getListLesson(data) {
-    return this.request.get(`${API_ENDPOINTS.cms.lessons}?relation=${data.id}`, data)
+    return this.request.get(`${API_ENDPOINTS.cms.lessons}?relation=${data.id}&children=true`, data)
   }
   async getLessonDetail(data) {
     return this.request.get(`${API_ENDPOINTS.cms.lesson}?id=${data.id}`, data)
