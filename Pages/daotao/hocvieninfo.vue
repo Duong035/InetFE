@@ -474,13 +474,6 @@ onMounted(async () => {
                   "
                 ></i>
               </div>
-              <ul v-if="dropdowns.phuhuynh" class="w-ful h-full">
-                <li>
-                  <div class="rounded-b-2xl border-[4px] border-gray-200">
-                    <DaotaoHocvienctNTest />
-                  </div>
-                </li>
-              </ul>
             </li>
             <li class="rounded-2xl text-[#133D85]">
               <div

@@ -6,9 +6,7 @@ import { useRoute } from "vue-router";
 const props = defineProps({
   lessonId: String,
   correctSubjectId: String,
-  lessonCount: Number,
 });
-const emit = defineEmits(["update:lessonCount"]);
 //1: youtube video, 2: s3 video, 3: text, 4: test, 5: document
 
 const route = useRoute();
@@ -246,16 +244,6 @@ const lessondate = reactive({
 });
 
 const addchildLesson = (customLesson = {}) => {
-  console.log(props.lessonCount);
-  if (props.lessonCount == route.query.num) {
-    message.error("Đạt số buổi học tối đa cho môn học");
-    return;
-  }
-  if (customLesson.is_live) {
-    emit("update:lessonCount", props.lessonCount + 1);
-  }
-  console.log("+", lesson_count.value);
-
   child_lessons.value.push({
     name: customLesson.name ?? null,
     position: child_lessons.value.length + 1,
@@ -270,7 +258,6 @@ const removeLesson = (value) => {
   if (child_lessons.value.length > 0) {
     child_lessons.value.splice(value, 1);
   }
-  emit("update:lessonCount", props.lessonCount - 1);
 };
 
 function showModal(source, isnew) {
@@ -349,43 +336,54 @@ const handleSubmit = async () => {
       is_live: true,
     });
   }
-  if (is_addnew.value) {
-    for (const lesson of child_lessons.value) {
-      const { data: resCreate, error } = await restAPI.cms.createLesson({
-        body: lesson,
-      });
-      if (resCreate.value?.status) {
-        if (lesson.is_live) {
-          message.success("Tạo buổi học thành công!!");
+  try {
+    if (is_addnew.value) {
+      for (const lesson of child_lessons.value) {
+        const { data: resCreate, error } = await restAPI.cms.createLesson({
+          body: lesson,
+        });
+        if (resCreate.value?.status) {
+          if (lesson.is_live) {
+            message.success("Tạo buổi học thành công!!");
+          } else {
+            message.success("Tạo bài học thành công!!");
+          }
         } else {
-          message.success("Tạo bài học thành công!!");
+          const errorCode = error.value?.data?.error;
+          const errorMessage =
+            ERROR_CODES[errorCode] ||
+            resCreate?.value?.message ||
+            "Đã xảy ra lỗi, vui lòng thử lại!!";
+          message.error(errorMessage);
         }
+      }
+    } else {
+      const body = [{ ...formValue }];
+      const { data: resUpdate, error } = await restAPI.cms.updateLesson({
+        body,
+      });
+      if (resUpdate?.value?.status) {
+        message.success(
+          formValue.is_live
+            ? "Tạo buổi học thành công!"
+            : "Tạo bài học thành công!",
+        );
       } else {
-        message.error("Đã đạt tối đa số buổi học!");
+        const errorCode = error.value?.data?.error;
+        const errorMessage =
+          ERROR_CODES[errorCode] ||
+          resUpdate?.value?.message ||
+          "Đã xảy ra lỗi, vui lòng thử lại!!";
+        message.error(errorMessage);
       }
     }
-  } else {
-    const body = [{ ...formValue }];
-    const { data: resUpdate, error } = await restAPI.cms.updateLesson({ body });
-    if (resUpdate?.value?.status) {
-      message.success(
-        formValue.is_live
-          ? "Tạo buổi học thành công!"
-          : "Tạo bài học thành công!",
-      );
-    } else {
-      const errorCode = error.value?.data?.error;
-      const errorMessage =
-        ERROR_CODES[errorCode] ||
-        resUpdate?.value?.message ||
-        "Đã xảy ra lỗi, vui lòng thử lại!!";
-      message.warning(errorMessage);
-    }
+  } catch {
+  } finally {
+    isModalVisible.value = false;
+    getLesson();
+    isLoading.value = false;
+    islive_true.value = false;
   }
-  isModalVisible.value = false;
-  getLesson();
-  isLoading.value = false;
-  islive_true.value = false;
 };
 //___________________________________________________________________________________
 

@@ -59,38 +59,38 @@ class Request {
         console.error("Request error: ", error.message);
       },
       onResponse() {},
-      onResponseError({ _, response }) {
-        if (response._data?.error === 6039) {
-          const numberOfLectures = Number(response._data?.message);
+      onResponseError({ _, __, response }) {
+        // if (response._data?.error === 6039) {
+        //   const numberOfLectures = Number(response._data?.message);
 
-          if (isNaN(numberOfLectures))
-            return window["$message"].error("Unknown error");
+        //   if (isNaN(numberOfLectures))
+        //     return window["$message"].error("Unknown error");
 
-          if (numberOfLectures > 0)
-            return window["$message"].error(
-              t(response._data?.error, {
-                numberOfLectures: response._data?.message,
-              }),
-            );
+        //   if (numberOfLectures > 0)
+        //     return window["$message"].error(
+        //       t(response._data?.error, {
+        //         numberOfLectures: response._data?.message,
+        //       }),
+        //     );
 
-          if (numberOfLectures < 0)
-            return window["$message"].error(
-              t("lectures.exceeded", {
-                numberOfLectures: response._data?.message * -1,
-              }),
-            );
-        }
-        if (route.path.includes("profile")) return;
-        if (response._data?.error === 2008) return;
-        else
-          window["$message"].error(
-            ERROR_CODES[response._data?.error] || response._data?.message,
-          );
+        //   if (numberOfLectures < 0)
+        //     return window["$message"].error(
+        //       t("lectures.exceeded", {
+        //         numberOfLectures: response._data?.message * -1,
+        //       }),
+        //     );
+        // }
+        // if (route.path.includes("profile")) return;
+        // if (response._data?.error === 2008) return;
+        // else
+        //   window["$message"].error(
+        //     ERROR_CODES[response._data?.error] || response._data?.message,
+        //   );
 
-        console.error("Response error: ", response._data?.message);
+        // console.error("Response error: ", response._data?.message);
 
-        if (response.status == 401 || response._data?.error === 6101)
-          return navigateTo(window["$loginUrl"], { external: true });
+        // if (response.status == 401 || response._data?.error === 6101)
+        //   return navigateTo(window["$loginUrl"], { external: true });
       },
     };
   }

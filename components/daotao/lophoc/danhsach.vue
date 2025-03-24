@@ -107,26 +107,35 @@ export default defineComponent({
           data.value.map((student) => student.id),
         );
 
+        // Lọc và xử lý trạng thái học viên
         studentsList.value = allStudents
           .filter((student: any) => !existingStudentIds.has(student.id))
           .map((student: any) => ({
             ...student,
             accstatus:
-              Number(student.status) === 2
+              student.status != null && Number(student.status) === 2
                 ? "Hoạt động"
-                : Number(student.status) === 1
+                : student.status != null && Number(student.status) === 1
                   ? "Không hoạt động"
                   : "N/A",
           }));
 
-        // Lọc ra các học viên chưa có trong lớp
-        studentsList.value = allStudents.filter(
-          (student: any) => !existingStudentIds.has(student.id),
-        );
-
         showModal.value = true;
       } catch (err) {
+        console.error("Lỗi tải danh sách học viên:", err);
         message.error("Lỗi tải danh sách học viên.");
+      }
+    };
+
+    // ✅ Hàm xử lý trạng thái
+    const getStatusLabel = (status: number | null | undefined): string => {
+      switch (status) {
+        case 2:
+          return " Hoạt động";
+        case 1:
+          return " Không hoạt động";
+        default:
+          return " N/A";
       }
     };
     // const fetchStudents = async () => {
@@ -199,6 +208,7 @@ export default defineComponent({
       { title: "Tên học viên", key: "full_name" },
       { title: "Số điện thoại", key: "phone" },
       { title: "Email", key: "email" },
+      { title: "Trạng thái", key: "status" },
     ];
 
     function createColumns(): DataTableColumns<RowData> {

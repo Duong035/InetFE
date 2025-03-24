@@ -11,7 +11,6 @@ const isLessonVisible = ref(false);
 const is_addnew = ref(false);
 const lessonarray = ref([]);
 const componentKey = ref(0);
-const lesson_count = ref(0);
 const refreshComponent = () => {
   componentKey.value += 1;
 };
@@ -39,14 +38,6 @@ const lessondate = reactive({
 
 //child_lessons__________________________________________________________________________
 const addchildLesson = (customLesson = {}) => {
-  if (customLesson.is_live) {
-    if (lesson_count.value == route.query.num) {
-      message.error("Đạt số buổi học tối đa cho môn học");
-      return;
-    }
-    lesson_count.value++;
-  }
-
   formValue.child_lessons.push({
     name: customLesson.name ?? null,
     position: formValue.child_lessons.length + 1,
@@ -61,7 +52,6 @@ const removeLesson = (value, is_live) => {
   if (formValue.child_lessons.length > 0) {
     formValue.child_lessons.splice(value, 1);
   }
-  if (is_live) lesson_count.value--;
 };
 //___________________________________________________________________________________
 
@@ -153,9 +143,6 @@ async function getLesson() {
       id: lesson.id,
       name: lesson.name,
     }));
-    lesson_count.value = resData.value?.data?.[0]?.childrens
-      ? resData.value.data[0].childrens.filter((child) => child.is_live).length
-      : 0;
   } catch (error) {
     console.error("Error fetching lesson data:", error);
   }
@@ -176,7 +163,6 @@ async function deleteLesson(value) {
       ERROR_CODES[errorCode] ||
       resdel?.value?.message ||
       "Đã xảy ra lỗi, vui lòng thử lại!";
-
     message.warning(errorMessage);
   }
   getLesson();
@@ -212,79 +198,82 @@ async function handleSubmit() {
     child_lessons,
   };
 
-  if (id === null) {
-    const { data: resCreate, error } = await restAPI.cms.createLesson({
-      body,
-    });
-    if (resCreate?.value?.status) {
-      message.success("Tạo chương thành công!");
-      isModalVisible.value = false;
+  try {
+    if (id === null) {
+      const { data: resCreate, error } = await restAPI.cms.createLesson({
+        body,
+      });
+      if (resCreate?.value?.status) {
+        message.success("Tạo chương thành công!");
+        isModalVisible.value = false;
+      } else {
+        const errorCode = error.value.data.error;
+        const errorMessage =
+          ERROR_CODES[errorCode] ||
+          resData.value?.message ||
+          "Đã xảy ra lỗi, vui lòng thử lại!";
+        message.error(errorMessage);
+      }
     } else {
-      const errorCode = error.value?.data?.error;
-      const errorMessage =
-        ERROR_CODES[errorCode] ||
-        resCreate?.value?.message ||
-        "Đã xảy ra lỗi, vui lòng thử lại!";
+      body.id = id;
+      let finalBody = [body];
 
-      message.warning(errorMessage);
-    }
-  } else {
-    body.id = id;
-    let finalBody = [body];
-
-    const { data: resUpdate, error } = await restAPI.cms.updateLesson({
-      body: finalBody,
-    });
-    if (resUpdate?.value?.status) {
-      if (body.child_lessons && Array.isArray(body.child_lessons)) {
-        for (const child of body.child_lessons) {
-          try {
-            child.parent_id = id;
-
-            if (child.id) {
-              const { data: resChildUpdate, error: childError } =
-                await restAPI.cms.updateLesson({ body: [child] });
-
-              if (!resChildUpdate?.value?.status) {
-                console.warn(
-                  `Failed to update child lesson ${child.id}:`,
-                  childError?.value,
-                );
-              }
-            } else {
+      const { data: resUpdate, error } = await restAPI.cms.updateLesson({
+        body: finalBody,
+      });
+      if (resUpdate?.value?.status) {
+        if (body.child_lessons && Array.isArray(body.child_lessons)) {
+          for (const child of body.child_lessons) {
+            try {
               child.parent_id = id;
-              const { data: resChildCreate, error: childCreateError } =
-                await restAPI.cms.createLesson({ body: child });
-              if (!resChildCreate?.value?.status) {
-                console.warn(
-                  `Failed to create child lesson:`,
-                  childCreateError?.value,
-                );
+
+              if (child.id) {
+                const { data: resChildUpdate, error: childError } =
+                  await restAPI.cms.updateLesson({ body: [child] });
+
+                if (!resChildUpdate?.value?.status) {
+                  console.warn(
+                    `Failed to update child lesson ${child.id}:`,
+                    childError?.value,
+                  );
+                }
               } else {
+                child.parent_id = id;
+                const { data: resChildCreate, error: childCreateError } =
+                  await restAPI.cms.createLesson({ body: child });
+                if (!resChildCreate?.value?.status) {
+                  console.warn(
+                    `Failed to create child lesson:`,
+                    childCreateError?.value,
+                  );
+                } else {
+                }
               }
+            } catch (err) {
+              console.error(
+                `Error processing child lesson ${child.id || "(new)"}:`,
+                err,
+              );
             }
-          } catch (err) {
-            console.error(
-              `Error processing child lesson ${child.id || "(new)"}:`,
-              err,
-            );
           }
         }
-      }
-      message.success("Cập nhật chương thành công!");
-      isModalVisible.value = false;
-    } else {
-      const errorCode = error.value?.data?.error;
-      const errorMessage =
-        ERROR_CODES[errorCode] ||
-        resUpdate?.value?.message ||
-        "Đã xảy ra lỗi, vui lòng thử lại!";
+        message.success("Cập nhật chương thành công!");
+        isModalVisible.value = false;
+      } else {
+        const errorCode = error.value?.data?.error;
+        const errorMessage =
+          ERROR_CODES[errorCode] ||
+          resUpdate?.value?.message ||
+          "Đã xảy ra lỗi, vui lòng thử lại!";
 
-      message.warning(errorMessage);
+        message.warning(errorMessage);
+      }
     }
+  } catch {
+  } finally {
+    getLesson();
+    refreshComponent();
   }
-  getLesson();
-  refreshComponent();
 }
 
 onMounted(async () => {
@@ -350,7 +339,6 @@ const getPlaceholder = (item) => {
             :lessonId="item.id"
             :key="componentKey"
             :correctSubjectId="formValue.subject_id"
-            :lessonCount="lesson_count"
           />
           <div class="border-b-2"></div>
         </div>
