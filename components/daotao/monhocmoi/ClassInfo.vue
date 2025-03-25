@@ -28,26 +28,14 @@ const formValue = reactive({
   color: "red",
   code: null,
   id: computed(() => route.query.id || null),
-  thumbnail: "AA",
-  color: "red",
-  code: null,
   name: null,
-  category_id: null,
   teacher_ids: [],
   total_lessons: null,
   fee_type: null,
   origin_fee: null,
   discount_fee: null,
   category_id: null,
-  teacher_ids: [],
-  total_lessons: null,
-  fee_type: null,
-  origin_fee: null,
-  discount_fee: null,
   description: null,
-  input_require: null,
-  output_require: null,
-  is_active: true,
   input_require: null,
   output_require: null,
   is_active: true,
@@ -131,9 +119,7 @@ if (formValue.id) {
     formValue.total_lessons = String(data?.total_lessons ?? "");
     formValue.name = data?.name;
     formValue.category_id = data?.category?.id;
-    formValue.teacher_ids = Array.isArray(data.teachers)
-      ? data.teachers[0].id
-      : "";
+    formValue.teacher_ids = data.teachers.map((teacher) => teacher.id);
     formValue.fee_type = String(data?.fee_type);
     formValue.origin_fee = data?.origin_fee;
     formValue.discount_fee = data?.discount_fee;
@@ -310,6 +296,7 @@ onMounted(async () => {
           <n-gi span="1 m:4">
             <n-form-item label="Giảng viên phụ trách" path="teacher">
               <n-select
+                multiple
                 v-model:value="formValue.teacher_ids"
                 :options="Staffarray"
                 label-field="full_name"

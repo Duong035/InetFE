@@ -11,6 +11,118 @@ const isLessonVisible = ref(false);
 const is_addnew = ref(false);
 const lessonarray = ref([]);
 const componentKey = ref(0);
+const formRef = ref(null);
+const railStyle = ({ focused, checked }) => {
+  const style = {};
+  if (checked) {
+    style.background = "#2080f0";
+    if (focused) {
+      style.boxShadow = "0 0 0 2px #2080f0";
+    }
+  }
+  return style;
+};
+
+//massadd____________________________________________________________________________
+const exist = ref(0);
+const createdNumber = computed(() => exist.value);
+const massadd = ref(false);
+const number = ref(0);
+const mainName = ref("");
+const Addform = ref([]);
+const Max = computed(() => route.query.num - exist.value);
+
+const updateAddform = () => {
+  Addform.value = Array.from({ length: number.value }, (_, index) => ({
+    name: mainName.value
+      ? `${mainName.value} ${exist.value + index + 1}`
+      : `${exist.value + index + 1}`,
+    is_trial: false,
+    is_live: true,
+  }));
+};
+
+watch(number, (newVal, oldVal) => {
+  if (newVal > oldVal) {
+    for (let i = oldVal; i < newVal; i++) {
+      Addform.value.push({
+        name: mainName.value
+          ? `${mainName.value} ${exist.value + i + 1}`
+          : `${exist.value + i + 1}`,
+        is_trial: false,
+        is_live: true,
+      });
+    }
+  } else {
+    Addform.value.length = newVal;
+  }
+});
+
+watch(mainName, (newVal) => {
+  Addform.value.forEach((item, index) => {
+    item.name = newVal
+      ? `${newVal} ${exist.value + index + 1}`
+      : `${exist.value + index + 1}`;
+  });
+});
+
+const masterChecked = computed({
+  get: () => {
+    const checkedCount = Addform.value.filter((item) => item.is_trial).length;
+    if (checkedCount === 0) return false;
+    if (checkedCount === Addform.value.length) return true;
+    return null;
+  },
+  set: (value) => {
+    Addform.value.forEach((item) => {
+      item.is_trial = value;
+    });
+  },
+});
+
+const handleSave = () => {
+  if (massadd.value) {
+    saveMassLessons();
+  } else {
+    saveSingleLesson();
+  }
+};
+
+const saveSingleLesson = () => {
+  addchildLesson({
+    name: lessondate.name,
+    free_trial: lessondate.free_trial,
+    is_live: true,
+  });
+};
+
+const saveMassLessons = () => {
+  Addform.value.forEach((lesson) => {
+    addchildLesson({
+      name: lesson.name,
+      free_trial: lesson.is_trial,
+      is_live: true,
+    });
+  });
+};
+
+// Submit function
+// const handleSubmit = () => {
+//   const submittedData = Addform.value.map(({ name, is_trial, is_live }) => ({
+//     name,
+//     is_trial,
+//     is_live,
+//   }));
+
+//   console.log("Form Submitted:", submittedData);
+//   alert(JSON.stringify(submittedData, null, 2));
+// };
+//___________________________________________________________________________________
+
+//rules______________________________________________________________________________
+
+//___________________________________________________________________________________
+
 const refreshComponent = () => {
   componentKey.value += 1;
 };
@@ -36,7 +148,7 @@ const lessondate = reactive({
   free_trial: false,
 });
 
-//child_lessons__________________________________________________________________________
+//child_lessons______________________________________________________________________
 const addchildLesson = (customLesson = {}) => {
   formValue.child_lessons.push({
     name: customLesson.name ?? null,
@@ -74,6 +186,7 @@ const toggleDropdown = (menu) => {
 };
 
 function showChapterModal() {
+  getLesson();
   is_addnew.value = true;
   isModalVisible.value = true;
 }
@@ -119,6 +232,10 @@ watch(isLessonVisible, (newValue, oldValue) => {
       name: null,
       free_trial: false,
     });
+    massadd.value = false;
+    Addform.value = [];
+    number.value = 0;
+    mainName.value = 0;
   }
 });
 
@@ -142,7 +259,12 @@ async function getLesson() {
       stt: index,
       id: lesson.id,
       name: lesson.name,
+      childrens: lesson.childrens || [],
     }));
+    exist.value = lessonarray.value.reduce(
+      (count, lesson) => count + lesson.childrens.length,
+      0,
+    );
   } catch (error) {
     console.error("Error fetching lesson data:", error);
   }
@@ -275,6 +397,9 @@ async function handleSubmit() {
     refreshComponent();
   }
 }
+const handleChildEvent = () => {
+  getLesson();
+};
 
 onMounted(async () => {
   await nextTick();
@@ -339,6 +464,8 @@ const getPlaceholder = (item) => {
             :lessonId="item.id"
             :key="componentKey"
             :correctSubjectId="formValue.subject_id"
+            :creatednumber="createdNumber"
+            @childFunctionExecuted="handleChildEvent"
           />
           <div class="border-b-2"></div>
         </div>
@@ -430,7 +557,7 @@ const getPlaceholder = (item) => {
             <n-modal
               v-model:show="isLessonVisible"
               preset="card"
-              style="max-width: 460px"
+              style="width: auto; max-width: unset"
               :header-style="{ padding: '10px' }"
               :closable="false"
             >
@@ -441,24 +568,105 @@ const getPlaceholder = (item) => {
                   </h1>
                 </n-gi>
                 <!-- Note: rules -->
-                <n-gi span="2">
-                  <n-form-item label="Tiêu đề buổi học:">
-                    <n-input
-                      v-model:value="lessondate.name"
-                      placeholder="Nhập tiêu đề buổi học"
-                    ></n-input>
-                  </n-form-item>
-                </n-gi>
-                <n-gi span="2">
+                <n-gi>
                   <n-form-item
-                    label="Cho phép học thử"
+                    label="Tạo buổi học hàng loạt"
                     label-placement="left"
                     :show-feedback="false"
+                    path="number"
                   >
-                    <n-checkbox
-                      v-model:checked="lessondate.free_trial"
-                    ></n-checkbox>
+                    <n-switch v-model:value="massadd" :rail-style="railStyle" />
                   </n-form-item>
+                </n-gi>
+                <n-gi span="2" v-if="!massadd">
+                  <n-gi>
+                    <n-form-item label="Tiêu đề buổi học:" path="mainname">
+                      <n-input
+                        v-model:value="lessondate.name"
+                        placeholder="Nhập tiêu đề buổi học"
+                      ></n-input>
+                    </n-form-item>
+                  </n-gi>
+                  <n-gi>
+                    <n-form-item
+                      label="Cho phép học thử"
+                      label-placement="left"
+                      :show-feedback="false"
+                    >
+                      <n-checkbox
+                        v-model:checked="lessondate.free_trial"
+                      ></n-checkbox>
+                    </n-form-item>
+                  </n-gi>
+                </n-gi>
+                <n-gi span="2" v-else class="mb-5">
+                  <n-grid cols="2" :x-gap="20" :y-gap="10">
+                    <n-gi>
+                      <n-form-item label="Số buổi học">
+                        <n-input-number
+                          v-model:value="number"
+                          clearable
+                          :min="0"
+                          :max="Max"
+                          placeholder="Nhập số lượng"
+                        />
+                      </n-form-item>
+                    </n-gi>
+
+                    <n-gi>
+                      <n-form-item label="Tiêu đề buổi học">
+                        <n-input
+                          v-model:value="mainName"
+                          placeholder="Nhập tiêu đề buổi học"
+                        />
+                      </n-form-item>
+                    </n-gi>
+
+                    <n-gi>
+                      <h1 class="text-lg font-bold text-[#133D85]">
+                        Danh sách buổi học
+                      </h1>
+                    </n-gi>
+                    <n-gi>
+                      <n-checkbox
+                        v-model:checked="masterChecked"
+                        :indeterminate="masterChecked === null"
+                        :style="{
+                          fontSize: '18px',
+                          '--n-font-weight': 'bold',
+                          '--n-text-color': '#133D85',
+                        }"
+                      >
+                        Chọn tất cả
+                      </n-checkbox>
+                    </n-gi>
+
+                    <!-- Dynamic Fields -->
+                    <n-gi
+                      v-for="(item, index) in Addform"
+                      :key="index"
+                      span="2"
+                    >
+                      <n-grid cols="2" :x-gap="20">
+                        <n-gi>
+                          <!-- Dynamic Input Field (Readonly, absolute value) -->
+                          <n-input v-model:value="item.name" readonly />
+                        </n-gi>
+                        <n-gi class="mt-2">
+                          <!-- Child Checkbox -->
+                          <n-checkbox
+                            v-model:checked="item.is_trial"
+                            :style="{
+                              '--n-font-weight': 'bold',
+                              '--n-text-color': '#133D85',
+                            }"
+                          >
+                            Cho phép học thử
+                          </n-checkbox>
+                        </n-gi>
+                      </n-grid>
+                    </n-gi>
+                  </n-grid>
                 </n-gi>
                 <n-gi>
                   <n-button
@@ -474,13 +682,7 @@ const getPlaceholder = (item) => {
                     round
                     type="info"
                     class="h-12 w-full rounded-2xl text-lg"
-                    @click="
-                      addchildLesson({
-                        name: lessondate.name,
-                        free_trial: lessondate.free_trial,
-                        is_live: true,
-                      })
-                    "
+                    @click="handleSave"
                   >
                     Lưu
                   </n-button>

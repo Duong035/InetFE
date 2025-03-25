@@ -353,6 +353,9 @@ class CMSManager {
   async deleteClass(data) {
     return this.request.delete(`${API_ENDPOINTS.cms.class}/${data.id}`, data);
   }
+  async cancelClass(data) {
+    return this.request.patch(`${API_ENDPOINTS.cms.cancel_class}/${data.id}`, data);
+  }
   //__________________________________________________________________________________________
 
   //Test
@@ -465,17 +468,7 @@ class CMSManager {
     return this.request.put(API_ENDPOINTS.cms.center, data);
   }
   //__________________________________________________________________________________________
-
-  async getScheduleClassStudent(data) {
-    return this.request.get(API_ENDPOINTS.cms.schedule_class_student, data)
-  }
-
-  async deleteClass(data) {
-    return this.request.delete(`${API_ENDPOINTS.cms.class}/${data.id}`, data);
-  }
-  async cancelClass(data) {
-    return this.request.patch(`${API_ENDPOINTS.cms.cancel_class}/${data.id}`, data);
-  }
+ 
 }
 
 class RestAPI {

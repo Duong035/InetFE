@@ -1,70 +1,106 @@
 <script setup>
-// import { onMounted } from "vue";
-// import { useUserStore } from "@/stores/userStore";
-// const userStore = useUserStore();
-// const userRole = computed(() => userStore.userInfo?.role_id);
-// const permissionMapping = {
-//   "staff/list": ["staff/list/permissions", "staff/setting/permissions"],
-// };
-// onMounted(() => {
-//   console.log(permissionMapping);
-// });
-
 import { ref, watch, computed } from "vue";
 
 const exist = ref(4);
 const massadd = ref(false);
-const number = ref(1); // Number of input fields
-const mainName = ref(""); // Separate name input (not part of formValue)
-const formValue = ref([]);
+const number = ref(0); // Number starts at 0
+const mainName = ref(""); // Separate name input (not part of Addform)
+const Addform = ref([]);
+const errors = ref({ number: "", mainName: "" });
 
-// Initialize formValue with at least 1 item
-const initializeForm = () => {
-  formValue.value = Array.from({ length: number.value }, (_, index) => ({
-    name: "",
+// Function to update Addform based on number input
+const updateAddform = () => {
+  Addform.value = Array.from({ length: number.value }, (_, index) => ({
+    name: mainName.value
+      ? `${mainName.value} ${exist.value + index + 1}`
+      : `${exist.value + index + 1}`,
     is_trial: false,
-    index: exist.value + index + 1, // Start numbering from `exist + 1`
   }));
 };
 
-// Ensure `formValue` matches `number`
+// Watch number changes and update Addform accordingly
 watch(number, (newVal, oldVal) => {
+  if (newVal < 1) {
+    errors.value.number = "Số lượng phải lớn hơn 0"; // Number must be > 0
+  } else {
+    errors.value.number = "";
+  }
+
   if (newVal > oldVal) {
     for (let i = oldVal; i < newVal; i++) {
-      formValue.value.push({
-        name: "",
+      Addform.value.push({
+        name: mainName.value
+          ? `${mainName.value} ${exist.value + i + 1}`
+          : `${exist.value + i + 1}`,
         is_trial: false,
-        index: exist.value + i + 1, // Keep numbering in sync
+        is_live: true, // Always set to true
       });
     }
   } else {
-    formValue.value.length = newVal; // Trim if number decreases
+    Addform.value.length = newVal;
   }
+});
+
+// Watch mainName changes and update names
+watch(mainName, (newVal) => {
+  if (!newVal) {
+    errors.value.mainName = "Tên chính không được để trống"; // Main name is required
+  } else {
+    errors.value.mainName = "";
+  }
+
+  Addform.value.forEach((item, index) => {
+    item.name = newVal
+      ? `${newVal} ${exist.value + index + 1}`
+      : `${exist.value + index + 1}`;
+  });
 });
 
 // Master checkbox logic
 const masterChecked = computed({
   get: () => {
-    const checkedCount = formValue.value.filter((item) => item.is_trial).length;
-    if (checkedCount === 0) return false; // None checked
-    if (checkedCount === formValue.value.length) return true; // All checked
-    return null; // Some checked
+    const checkedCount = Addform.value.filter((item) => item.is_trial).length;
+    if (checkedCount === 0) return false;
+    if (checkedCount === Addform.value.length) return true;
+    return null;
   },
   set: (value) => {
-    formValue.value.forEach((item) => {
-      item.is_trial = value; // Set all child checkboxes to the master value
+    Addform.value.forEach((item) => {
+      item.is_trial = value;
     });
   },
 });
 
-// Submit function
-const handleSubmit = () => {
-  console.log("Form Submitted:", formValue.value);
-  alert(JSON.stringify(formValue.value, null, 2)); // Show form values in alert
+// Validate inputs before submitting
+const validateForm = () => {
+  let valid = true;
+
+  if (number.value < 1) {
+    errors.value.number = "Số lượng phải lớn hơn 0";
+    valid = false;
+  }
+
+  if (!mainName.value) {
+    errors.value.mainName = "Tên chính không được để trống";
+    valid = false;
+  }
+
+  return valid;
 };
 
-// Initialize form on load
-initializeForm();
+// Submit function
+const handleSubmit = () => {
+  if (!validateForm()) return; // Stop if validation fails
+
+  const submittedData = Addform.value.map(({ name, is_trial, is_live }) => ({
+    name,
+    is_trial,
+    is_live, // Always included in submission
+  }));
+
+  console.log("Form Submitted:", submittedData);
+  alert(JSON.stringify(submittedData, null, 2));
+};
 </script>
 
 <template>
@@ -76,20 +112,24 @@ initializeForm();
     <div v-if="!massadd">A</div>
     <div v-else>
       <n-grid cols="2" :x-gap="20" :y-gap="10">
-        <!-- Number Input -->
+        <!-- Number Input (Required) -->
         <n-gi>
           <n-input-number
             v-model:value="number"
             clearable
-            :min="1"
+            :min="0"
             :max="10"
-            placeholder="Enter number"
+            placeholder="Nhập số lượng"
           />
+          <n-text v-if="errors.number" type="error">{{ errors.number }}</n-text>
         </n-gi>
 
-        <!-- Separate Name Input (Not in formValue) -->
+        <!-- Separate Name Input (Required) -->
         <n-gi>
-          <n-input v-model:value="mainName" placeholder="Enter main name" />
+          <n-input v-model:value="mainName" placeholder="Nhập tên chính" />
+          <n-text v-if="errors.mainName" type="error">{{
+            errors.mainName
+          }}</n-text>
         </n-gi>
 
         <!-- Master Checkbox Section -->
@@ -106,16 +146,11 @@ initializeForm();
         </n-gi>
 
         <!-- Dynamic Fields -->
-        <n-gi v-for="(item, index) in formValue" :key="index" span="2">
-          <n-grid cols="2" :x-gap="20">
+        <n-gi v-for="(item, index) in Addform" :key="index" span="2">
+          <n-grid cols="3" :x-gap="20">
             <n-gi>
-              <!-- Dynamic Input Field -->
-              <n-input
-                v-model:value="item.name"
-                :placeholder="
-                  mainName ? `${mainName} ${item.index}` : `${item.index}`
-                "
-              />
+              <!-- Dynamic Input Field (Readonly, absolute value) -->
+              <n-input v-model:value="item.name" readonly />
             </n-gi>
             <n-gi>
               <!-- Child Checkbox -->
