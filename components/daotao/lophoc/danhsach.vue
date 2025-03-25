@@ -53,7 +53,6 @@ export default defineComponent({
 
     onMounted(() => {
       loadData();
-      console.log("ID lớp học1:", newId);
     });
     // gọi danh sách học viên
     const loadData = async () => {
@@ -100,21 +99,70 @@ export default defineComponent({
           return;
         }
 
-        // Kiểm tra dữ liệu trả về có phải là một mảng không
-        console.log(data.value);
         const rawData = resData.value?.data;
+        const allStudents = Array.isArray(rawData?.data) ? rawData.data : [];
 
-        studentsList.value = Array.isArray(rawData?.data)
-          ? rawData.data.filter(
-              (student) =>
-                !data.value.map((record) => record.id).includes(student.id),
-            )
-          : [];
+        // Lấy danh sách ID của học viên đã có trong lớp
+        const existingStudentIds = new Set(
+          data.value.map((student) => student.id),
+        );
+
+        // Lọc và xử lý trạng thái học viên
+        studentsList.value = allStudents
+          .filter((student: any) => !existingStudentIds.has(student.id))
+          .map((student: any) => ({
+            ...student,
+            accstatus:
+              student.status != null && Number(student.status) === 2
+                ? "Hoạt động"
+                : student.status != null && Number(student.status) === 1
+                  ? "Không hoạt động"
+                  : "N/A",
+          }));
+
         showModal.value = true;
       } catch (err) {
+        console.error("Lỗi tải danh sách học viên:", err);
         message.error("Lỗi tải danh sách học viên.");
       }
     };
+
+    // ✅ Hàm xử lý trạng thái
+    const getStatusLabel = (status: number | null | undefined): string => {
+      switch (status) {
+        case 2:
+          return " Hoạt động";
+        case 1:
+          return " Không hoạt động";
+        default:
+          return " N/A";
+      }
+    };
+    // const fetchStudents = async () => {
+    //   try {
+    //     const { data: resData, error } = await restAPI.cms.getStudents({});
+
+    //     if (error?.value) {
+    //       message.error(
+    //         error?.value?.data?.message || "Lỗi tải danh sách học viên",
+    //       );
+    //       return;
+    //     }
+
+    //     // Kiểm tra dữ liệu trả về có phải là một mảng không
+    //     const rawData = resData.value?.data;
+
+    //     studentsList.value = Array.isArray(rawData?.data)
+    //       ? rawData.data.filter(
+    //           (student) =>
+    //             !data.value.map((record) => record.id).includes(student.id),
+    //         )
+    //       : [];
+    //     showModal.value = true;
+    //   } catch (err) {
+    //     message.error("Lỗi tải danh sách học viên.");
+    //   }
+    // };
 
     // Gửi danh sách học viên đã chọn lên API
     const handleSubmit = async () => {
@@ -135,9 +183,6 @@ export default defineComponent({
           class_id: classIdFromPath,
           student_id: selectedStudents.value,
         };
-        console.log(" Giá trị selectedStudents:", selectedStudents.value);
-
-        console.log(" Gửi request với dữ liệu:", requestData);
 
         const { error } = await restAPI.cms.addStudentsToClass({
           body: requestData,
@@ -163,6 +208,7 @@ export default defineComponent({
       { title: "Tên học viên", key: "full_name" },
       { title: "Số điện thoại", key: "phone" },
       { title: "Email", key: "email" },
+      { title: "Trạng thái", key: "status" },
     ];
 
     function createColumns(): DataTableColumns<RowData> {
@@ -218,7 +264,7 @@ export default defineComponent({
     <div class="flex-1">
       <div class="h-full text-black">
         <n-card class="h-full bg-gray-50">
-          <div class="flex items-center justify-between text-[#133D85]">
+          <div class="mb-5 flex items-center justify-between text-[#133D85]">
             <h1 class="text-4xl font-bold">
               Danh sách học viên của lớp {{ classId }}
             </h1>
@@ -236,13 +282,11 @@ export default defineComponent({
             :data="data"
             :pagination="pagination"
           />
-          <n-modal v-model:show="showModal">
-            <n-card
-              style="width: 800px"
-              title="Chọn học viên"
-              closable
-              @close="showModal = false"
-            >
+          <n-modal v-model:show="showModal" :closable="false">
+            <n-card style="width: 800px" @close="showModal = false">
+              <h1 class="mb-5 text-2xl font-bold text-[#133D85]">
+                Chọn học viên
+              </h1>
               <n-data-table
                 :columns="studentColumns"
                 :data="studentsList"
@@ -252,10 +296,20 @@ export default defineComponent({
 
               <template #footer>
                 <div class="flex justify-end space-x-2">
-                  <n-button @click="showModal = false">Hủy</n-button>
-                  <n-button type="primary" @click="handleSubmit"
-                    >Xác nhận</n-button
+                  <n-button
+                    ghost
+                    @click="showModal = false"
+                    style="width: 100px"
                   >
+                    Hủy
+                  </n-button>
+                  <n-button
+                    type="info"
+                    @click="handleSubmit"
+                    style="width: 100px"
+                  >
+                    Xác nhận
+                  </n-button>
                 </div>
               </template>
             </n-card>

@@ -147,7 +147,7 @@ export default defineComponent({
     function edit(value: RowData) {
       router.push({
         path: "monhocinfo",
-        query: { id: value.id },
+        query: { id: value.id, num: value.sobuoi },
       });
     }
 

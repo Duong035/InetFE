@@ -48,12 +48,9 @@ export default defineComponent({
     const isLoading = ref(false);
     const router = useRouter();
 
-
-
     const isCancelModalVisible = ref(false);
     const cancelReason = ref("");
     const cancelingClassId = ref<string | null>(null);
-
 
     //lọc theo loại lớp học
     const classTypeOptions = [
@@ -159,13 +156,12 @@ export default defineComponent({
       console.log("Edit:", row);
       router.push({
         path: "lophocinfo",
-        query: { id: row.id.toString() },
+        query: { id: row.id.toString(), num: row.totalLessons },
       });
       message.success(`Chỉnh sửa lớp học: ${row.name}`);
     };
     //HÀM HỦY LỚP
     const confirmCancel = async () => {
-
       if (!cancelingClassId.value) return;
       try {
         const { error } = await restAPI.cms.cancelClass({
@@ -192,7 +188,6 @@ export default defineComponent({
       cancelReason.value = "";
       isCancelModalVisible.value = true;
     };
-
 
     // HÀM XÓA LỚP
     const deleteRow = async (row: RowData) => {
@@ -428,7 +423,6 @@ export default defineComponent({
     </div>
 
     <n-modal v-model:show="isCancelModalVisible">
-
       <n-card
         title="Xác nhận hủy lớp học"
         style="width: 400px"
@@ -447,8 +441,6 @@ export default defineComponent({
           </div>
         </template>
       </n-card>
-
     </n-modal>
-
   </div>
 </template>

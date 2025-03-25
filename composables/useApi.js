@@ -59,38 +59,38 @@ class Request {
         console.error("Request error: ", error.message);
       },
       onResponse() {},
-      onResponseError({ _, response }) {
-        if (response._data?.error === 6039) {
-          const numberOfLectures = Number(response._data?.message);
+      onResponseError({ _, __, response }) {
+        // if (response._data?.error === 6039) {
+        //   const numberOfLectures = Number(response._data?.message);
 
-          if (isNaN(numberOfLectures))
-            return window["$message"].error("Unknown error");
+        //   if (isNaN(numberOfLectures))
+        //     return window["$message"].error("Unknown error");
 
-          if (numberOfLectures > 0)
-            return window["$message"].error(
-              t(response._data?.error, {
-                numberOfLectures: response._data?.message,
-              }),
-            );
+        //   if (numberOfLectures > 0)
+        //     return window["$message"].error(
+        //       t(response._data?.error, {
+        //         numberOfLectures: response._data?.message,
+        //       }),
+        //     );
 
-          if (numberOfLectures < 0)
-            return window["$message"].error(
-              t("lectures.exceeded", {
-                numberOfLectures: response._data?.message * -1,
-              }),
-            );
-        }
-        if (route.path.includes("profile")) return;
-        if (response._data?.error === 2008) return;
-        else
-          window["$message"].error(
-            ERROR_CODES[response._data?.error] || response._data?.message,
-          );
+        //   if (numberOfLectures < 0)
+        //     return window["$message"].error(
+        //       t("lectures.exceeded", {
+        //         numberOfLectures: response._data?.message * -1,
+        //       }),
+        //     );
+        // }
+        // if (route.path.includes("profile")) return;
+        // if (response._data?.error === 2008) return;
+        // else
+        //   window["$message"].error(
+        //     ERROR_CODES[response._data?.error] || response._data?.message,
+        //   );
 
-        console.error("Response error: ", response._data?.message);
+        // console.error("Response error: ", response._data?.message);
 
-        if (response.status == 401 || response._data?.error === 6101)
-          return navigateTo(window["$loginUrl"], { external: true });
+        // if (response.status == 401 || response._data?.error === 6101)
+        //   return navigateTo(window["$loginUrl"], { external: true });
       },
     };
   }
@@ -287,7 +287,7 @@ class CMSManager {
     return this.request.post(API_ENDPOINTS.cms.lesson, data)
   }
   async getListLesson(data) {
-    return this.request.get(`${API_ENDPOINTS.cms.lessons}?relation=${data.id}`, data)
+    return this.request.get(`${API_ENDPOINTS.cms.lessons}?relation=${data.id}&children=true`, data)
   }
   async getLessonDetail(data) {
     return this.request.get(`${API_ENDPOINTS.cms.lesson}?id=${data.id}`, data)
@@ -352,6 +352,9 @@ class CMSManager {
   }
   async deleteClass(data) {
     return this.request.delete(`${API_ENDPOINTS.cms.class}/${data.id}`, data);
+  }
+  async cancelClass(data) {
+    return this.request.patch(`${API_ENDPOINTS.cms.cancel_class}/${data.id}`, data);
   }
   //__________________________________________________________________________________________
 
@@ -465,17 +468,7 @@ class CMSManager {
     return this.request.put(API_ENDPOINTS.cms.center, data);
   }
   //__________________________________________________________________________________________
-
-  async getScheduleClassStudent(data) {
-    return this.request.get(API_ENDPOINTS.cms.schedule_class_student, data)
-  }
-
-  async deleteClass(data) {
-    return this.request.delete(`${API_ENDPOINTS.cms.class}/${data.id}`, data);
-  }
-  async cancelClass(data) {
-    return this.request.patch(`${API_ENDPOINTS.cms.cancel_class}/${data.id}`, data);
-  }
+ 
 }
 
 class RestAPI {

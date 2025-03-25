@@ -48,7 +48,7 @@ const toggleDropdown = (menu: string) => {
           <li
             @click="toggleDropdown('coban')"
             :class="[
-              'relative flex cursor-pointer items-center py-3 pl-3 pr-10',
+              'relative flex cursor-pointer items-center py-3 pl-3 pr-16',
               activeDropdown === 'coban'
                 ? '-mr-4 bg-gray-50 pr-0 text-[#133D85]'
                 : 'text-[#4D6FA8]',
@@ -58,8 +58,8 @@ const toggleDropdown = (menu: string) => {
               :class="[
                 'pr-3 text-[8px] text-[#133D85]',
                 activeDropdown === 'coban'
-                  ? 'fa-solchapterfa-circle text-[#133D85]'
-                  : 'fa-solchapterfa-circle-dot text-[#4D6FA8]',
+                  ? 'fa-solid fa-circle text-[#133D85]'
+                  : 'fa-solid fa-circle-dot text-[#4D6FA8]',
               ]"
             ></i>
             Thông tin cơ bản
@@ -67,7 +67,7 @@ const toggleDropdown = (menu: string) => {
           <li
             @click="toggleDropdown('noidung')"
             :class="[
-              'relative flex cursor-pointer items-center py-3 pl-3 pr-10',
+              'relative flex cursor-pointer items-center py-3 pl-3 pr-16',
               activeDropdown.startsWith('noidung')
                 ? '-mr-4 bg-gray-50 pr-0 text-[#133D85]'
                 : 'text-[#4D6FA8]',
@@ -77,8 +77,8 @@ const toggleDropdown = (menu: string) => {
               :class="[
                 'pr-3 text-[8px]',
                 activeDropdown.startsWith('noidung')
-                  ? 'fa-solchapterfa-circle text-[#133D85]'
-                  : 'fa-solchapterfa-circle-dot text-[#4D6FA8]',
+                  ? 'fa-solid fa-circle text-[#133D85]'
+                  : 'fa-solid fa-circle-dot text-[#4D6FA8]',
               ]"
             ></i>
             Nội dung bài giảng
@@ -86,7 +86,7 @@ const toggleDropdown = (menu: string) => {
           <li
             @click="toggleDropdown('xeplich')"
             :class="[
-              'relative flex cursor-pointer items-center py-3 pl-3 pr-10',
+              'relative flex cursor-pointer items-center py-3 pl-3 pr-16',
               activeDropdown === 'xeplich'
                 ? '-mr-4 bg-gray-50 pr-0 text-[#133D85]'
                 : 'text-[#4D6FA8]',
@@ -96,8 +96,8 @@ const toggleDropdown = (menu: string) => {
               :class="[
                 'pr-3 text-[8px]',
                 activeDropdown === 'xeplich'
-                  ? 'fa-solchapterfa-circle text-[#133D85]'
-                  : 'fa-solchapterfa-circle-dot text-[#4D6FA8]',
+                  ? 'fa-solid fa-circle text-[#133D85]'
+                  : 'fa-solid fa-circle-dot text-[#4D6FA8]',
               ]"
             ></i>
             Xếp lịch học
@@ -105,7 +105,7 @@ const toggleDropdown = (menu: string) => {
           <li
             @click="toggleDropdown('danhsach')"
             :class="[
-              'relative flex cursor-pointer items-center py-3 pl-3 pr-10',
+              'relative flex cursor-pointer items-center py-3 pl-3 pr-16',
               activeDropdown === 'danhsach'
                 ? '-mr-4 bg-gray-50 pr-0 text-[#133D85]'
                 : 'text-[#4D6FA8]',
@@ -115,8 +115,8 @@ const toggleDropdown = (menu: string) => {
               :class="[
                 'pr-3 text-[8px]',
                 activeDropdown === 'danhsach'
-                  ? 'fa-solchapterfa-circle text-[#133D85]'
-                  : 'fa-solchapterfa-circle-dot text-[#4D6FA8]',
+                  ? 'fa-solid fa-circle text-[#133D85]'
+                  : 'fa-solid fa-circle-dot text-[#4D6FA8]',
               ]"
             ></i
             >Danh sách học viên
@@ -229,7 +229,7 @@ const toggleDropdown = (menu: string) => {
                 ]"
               >
                 <span class="flex items-center">
-                  <div v-if="!isCollapsed">danh sách học viên</div>
+                  <div v-if="!isCollapsed">Danh sách học viên</div>
                 </span>
                 <i
                   :class="

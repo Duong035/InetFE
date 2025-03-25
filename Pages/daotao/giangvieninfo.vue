@@ -334,6 +334,7 @@ onMounted(() => {
               <n-gi>
                 <n-form-item label="Email" path="email">
                   <n-input
+                    type="email"
                     v-model:value="formValue.email"
                     placeholder="Nhập Email"
                   />

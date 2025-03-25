@@ -611,7 +611,7 @@ const loadData = async () => {
   console.log(typeof formValue.user_shifts);
   loadShift();
 };
-// 10.50.20.169:4000
+
 const scheduleSubmit = async () => {
   await listSession();
   if (!session.value.length) {

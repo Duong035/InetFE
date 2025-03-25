@@ -28,26 +28,14 @@ const formValue = reactive({
   color: "red",
   code: null,
   id: computed(() => route.query.id || null),
-  thumbnail: "AA",
-  color: "red",
-  code: null,
   name: null,
-  category_id: null,
   teacher_ids: [],
   total_lessons: null,
   fee_type: null,
   origin_fee: null,
   discount_fee: null,
   category_id: null,
-  teacher_ids: [],
-  total_lessons: null,
-  fee_type: null,
-  origin_fee: null,
-  discount_fee: null,
   description: null,
-  input_require: null,
-  output_require: null,
-  is_active: true,
   input_require: null,
   output_require: null,
   is_active: true,
@@ -131,9 +119,7 @@ if (formValue.id) {
     formValue.total_lessons = String(data?.total_lessons ?? "");
     formValue.name = data?.name;
     formValue.category_id = data?.category?.id;
-    formValue.teacher_ids = Array.isArray(data.teachers)
-      ? data.teachers[0].id
-      : "";
+    formValue.teacher_ids = data.teachers.map((teacher) => teacher.id);
     formValue.fee_type = String(data?.fee_type);
     formValue.origin_fee = data?.origin_fee;
     formValue.discount_fee = data?.discount_fee;
@@ -184,19 +170,23 @@ const handleSubmit = async (e) => {
     output_require,
     is_active,
   };
-  console.log(JSON.stringify(body, null, 2));
 
   try {
     // validate
     if (id) {
       console.log(id);
       body.id = id;
+      console.log(JSON.stringify(body, null, 2));
+
       const { data: resUpdate, error } = await restAPI.cms.updateSubject({
         body,
       });
 
       if (resUpdate?.value?.status) {
         message.success("Cập nhật thông tin môn học thành công!");
+        router.replace({
+          query: { ...route.query, num: body.total_lessons },
+        });
       } else {
         message.error(error.value.data.message);
       }
@@ -207,7 +197,10 @@ const handleSubmit = async (e) => {
       if (resCreate?.value?.status) {
         message.success("Tạo môn học thành công!");
         const newId = resCreate.value.data.id;
-        router.push({ path: window.location.pathname, query: { id: newId } });
+        router.push({
+          path: window.location.pathname,
+          query: { id: newId, num: body.total_lessons },
+        });
       } else {
         const errorCode = error.value.data.error;
         const errorMessage =
@@ -303,6 +296,7 @@ onMounted(async () => {
           <n-gi span="1 m:4">
             <n-form-item label="Giảng viên phụ trách" path="teacher">
               <n-select
+                multiple
                 v-model:value="formValue.teacher_ids"
                 :options="Staffarray"
                 label-field="full_name"
