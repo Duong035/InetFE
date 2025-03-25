@@ -36,6 +36,7 @@ export default defineComponent({
     const dataTableInstRef = ref<InstanceType<typeof NDataTable> | null>(null);
     const Status = ref("");
     const isLoading = ref(false);
+    const showDeleteModal = ref(false);
 
     const formValue = reactive({
       name: null,
@@ -43,7 +44,14 @@ export default defineComponent({
       description: null,
       is_active: true,
     });
-
+    function closeinsert() {
+      danhmucstate.value = "list";
+      danhmucId.value = "";
+      Object.assign(formValue, {
+        name: null,
+        description: null,
+      });
+    }
     function filterStatus() {
       if (dataTableInstRef.value) {
         return dataTableInstRef.value.filter(null);
@@ -205,6 +213,7 @@ export default defineComponent({
         description,
         is_active,
       };
+      let shouldExecuteFinally = true;
       try {
         if (danhmucId.value && String(danhmucId.value).trim() !== "") {
           const { data: resUpdate, error } = await restAPI.cms.updateCategory({
@@ -213,8 +222,11 @@ export default defineComponent({
           });
           if (resUpdate?.value?.status) {
             message.success("Cập nhật danh mục thành công!");
+            shouldExecuteFinally = true;
           } else {
             message.warning("Đã tồn tại danh mục với tên tương tự!");
+            shouldExecuteFinally = false;
+            return;
           }
         } else {
           const { data: resCreate, error } = await restAPI.cms.createCategory({
@@ -222,21 +234,30 @@ export default defineComponent({
           });
           if (resCreate?.value?.status) {
             message.success("Tạo danh mục thành công!");
+            shouldExecuteFinally = true;
           } else {
             message.error(error.value.data.error);
+            shouldExecuteFinally = false;
+            return;
           }
         }
       } catch {
       } finally {
-        isLoading.value = false;
-        loadData();
-        danhmucstate.value = "list";
+        if (shouldExecuteFinally) {
+          isLoading.value = false;
+          closeinsert();
+          loadData();
+        }
       }
     };
 
+    const confirmDelete = async () => {
+      handleDelete(danhmucId.value);
+      showDeleteModal.value = false;
+    };
     function delID(value: RowData) {
       danhmucId.value = value.id;
-      handleDelete(danhmucId.value);
+      showDeleteModal.value = true;
     }
     const handleDelete = async (e: string) => {
       if (isLoading.value) return;
@@ -270,6 +291,9 @@ export default defineComponent({
     });
 
     return {
+      showDeleteModal,
+      confirmDelete,
+      closeinsert,
       danhmucstate,
       isLoading,
       danhmucId,
@@ -460,10 +484,7 @@ export default defineComponent({
               <n-button
                 round
                 class="h-12 w-52 rounded-2xl text-lg text-blue-400"
-                @click="
-                  danhmucstate = 'list';
-                  danhmucId = '';
-                "
+                @click="closeinsert()"
               >
                 Hủy
               </n-button>
@@ -483,5 +504,21 @@ export default defineComponent({
         </n-gi>
       </n-grid>
     </div>
+    <n-modal v-model:show="showDeleteModal">
+      <n-card
+        title="Xác nhận xóa"
+        closable
+        @close="showDeleteModal = false"
+        style="width: 400px"
+      >
+        <p>Xác nhận xóa danh mục?</p>
+        <template #footer>
+          <n-space justify="end">
+            <n-button @click="showDeleteModal = false">Hủy</n-button>
+            <n-button type="error" @click="confirmDelete"> Xóa </n-button>
+          </n-space>
+        </template>
+      </n-card>
+    </n-modal>
   </div>
 </template>

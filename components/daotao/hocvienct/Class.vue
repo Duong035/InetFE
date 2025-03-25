@@ -88,16 +88,20 @@ const data = Array.from({ length: 46 }).map((_, index) => ({
         </n-button>
       </n-gi>
       <n-gi span="1 m:5">
-        <n-data-table
-          ref="dataTableInst"
-          :bordered="false"
-          :single-line="false"
-          :columns="columns"
-          :data="data"
-          :pagination="pagination"
-          :max-height="350"
-        />
+        <div class="w-full overflow-x-auto">
+          <n-data-table
+            ref="dataTableInst"
+            :bordered="false"
+            :single-line="false"
+            :columns="columns"
+            :data="data"
+            :pagination="pagination"
+            :max-height="350"
+            class="w-full"
+          />
+        </div>
       </n-gi>
+
       <n-gi span="1 m:1" offset="2" class="justify-center">
         <n-button round type="info" class="h-12 w-52 rounded-2xl text-lg">
           Lưu

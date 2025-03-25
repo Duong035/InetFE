@@ -674,7 +674,6 @@ const actionMenu = [
     <n-modal v-model:show="showDeleteModal">
       <n-card
         title="Xác nhận xóa"
-        closable
         @close="showDeleteModal = false"
         style="width: 400px"
       >

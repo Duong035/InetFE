@@ -1,12 +1,5 @@
 <script setup>
-import {
-  ref,
-  computed,
-  watch,
-  defineExpose,
-  onMounted,
-  watchEffect,
-} from "vue";
+import { ref, computed, watch, onMounted, watchEffect } from "vue";
 import dayjs from "dayjs";
 // const props = defineProps(["timeSlots", "shortShifts", "studying_start_date"]);
 const props = defineProps({
@@ -69,7 +62,7 @@ const shift = ref([
     id: 2,
     name: "Tối",
     start: "18",
-    end: "23",
+    end: "22",
     start_time: "",
     end_time: "",
     work_session_id: "",
@@ -456,6 +449,7 @@ onMounted(async () => {
         );
 
         if (matchingShortShift) {
+          console.log(typeof matchingShortShift);
           s.session.forEach((session) => {
             const day = session.value; // Get the day of the week
             const isChecked = matchingShortShift.day_of_week.includes(day);

@@ -15,7 +15,6 @@ const railStyle = ({ focused, checked }) => {
 
 const route = useRoute();
 const router = useRouter();
-
 const message = useMessage();
 const { restAPI } = useApi();
 const isLoading = ref(false);
@@ -29,7 +28,16 @@ const formValue = reactive({
   color: "red",
   code: null,
   id: computed(() => route.query.id || null),
+  thumbnail: "AA",
+  color: "red",
+  code: null,
   name: null,
+  category_id: null,
+  teacher_ids: [],
+  total_lessons: null,
+  fee_type: null,
+  origin_fee: null,
+  discount_fee: null,
   category_id: null,
   teacher_ids: [],
   total_lessons: null,
@@ -40,6 +48,9 @@ const formValue = reactive({
   input_require: null,
   output_require: null,
   is_active: true,
+  input_require: null,
+  output_require: null,
+  is_active: true,
 });
 
 const displayPrice = computed({
@@ -47,22 +58,20 @@ const displayPrice = computed({
   set: (value) => {
     if (formValue.fee_type !== "1") {
       formValue.origin_fee = value;
+      if (formValue.fee_type !== "1") {
+        formValue.origin_fee = value;
+      }
     }
   },
 });
 
-const displayDiscount = computed({
-  get: () => (formValue.fee_type === "1" ? "0" : formValue.discount_fee),
-  set: (value) => {
-    if (formValue.fee_type !== "1") {
-      formValue.discount_fee = value;
-    }
-  },
-});
 const options = [
   { label: "Sáng", value: "Sáng" },
   { label: "Tối", value: "Tối" },
 ];
+if (typeof window !== "undefined" && window.sessionStorage) {
+  token.value = `Bearer ${useUserStore()?.userInfo?.token}`;
+}
 if (typeof window !== "undefined" && window.sessionStorage) {
   token.value = `Bearer ${useUserStore()?.userInfo?.token}`;
 }
@@ -71,6 +80,7 @@ const loadTeacher = async () => {
     const { data: resData } = await restAPI.cms.getStaff({});
     if (resData.value?.status) {
       Staffarray.value = resData.value.data.data
+        .filter((staff) => staff.is_active && staff.position === 1)
         .map(({ id, full_name }) => ({
           id,
           full_name,
@@ -110,13 +120,11 @@ const loadCategory = async () => {
 
 if (formValue.id) {
   showSpin.value = true;
-  console.log(formValue.id);
   const { data: resData } = await restAPI.cms.getSubjectDetail({
     id: formValue.id,
   });
   if (resData.value?.status) {
     const data = resData.value?.data;
-    console.log(data);
     formValue.thumbnail = data?.thumbnail;
     formValue.color = data?.color;
     formValue.code = data?.code;
@@ -124,8 +132,8 @@ if (formValue.id) {
     formValue.name = data?.name;
     formValue.category_id = data?.category?.id;
     formValue.teacher_ids = Array.isArray(data.teachers)
-      ? data.teachers[0].full_name
-      : data.teachers.full_name;
+      ? data.teachers[0].id
+      : "";
     formValue.fee_type = String(data?.fee_type);
     formValue.origin_fee = data?.origin_fee;
     formValue.discount_fee = data?.discount_fee;
@@ -176,6 +184,7 @@ const handleSubmit = async (e) => {
     output_require,
     is_active,
   };
+  console.log(JSON.stringify(body, null, 2));
 
   try {
     // validate
@@ -198,10 +207,14 @@ const handleSubmit = async (e) => {
       if (resCreate?.value?.status) {
         message.success("Tạo môn học thành công!");
         const newId = resCreate.value.data.id;
-        console.log(newId);
         router.push({ path: window.location.pathname, query: { id: newId } });
       } else {
-        message.error(error.value.data.message);
+        const errorCode = error.value.data.error;
+        const errorMessage =
+          ERROR_CODES[errorCode] ||
+          resCreate.value?.message ||
+          "Đã xảy ra lỗi, vui lòng thử lại!";
+        message.warning(errorMessage);
       }
     }
   } catch {
@@ -221,7 +234,6 @@ onMounted(async () => {
   <n-spin :show="showSpin">
     <div class="px-5">
       <n-form :model="formValue">
-        <!-- :rules="rules" ref="formRef" -->
         <n-grid :x-gap="15" cols="1 m:4" responsive="screen" class="my-5">
           <n-gi>
             <n-form-item label="Ảnh đại diện khóa học" path="cover">
