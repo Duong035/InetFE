@@ -380,7 +380,7 @@ export default defineComponent({
         }
         itemId.value = null;
         const { data } = await restAPI.cms.getShift({});
-        const sessions = data.value.data.data.filter((session) =>
+        const sessions = data.value.data.data.filter((session: any) =>
           session.title.includes(itemId.value),
         );
         for (const session of sessions) {

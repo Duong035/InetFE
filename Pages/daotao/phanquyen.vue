@@ -147,7 +147,7 @@ export default defineComponent({
                 },
               },
               [
-                ...row.tags.slice(0, 4).map((tagText) => {
+                ...row.tags.slice(0, 4).map((tagText: string) => {
                   const tagName = tagText.split("(")[0].trim();
 
                   if (!tagColorMap.has(tagName)) {
@@ -311,7 +311,7 @@ export default defineComponent({
             stt: index + 1,
             name: item.name || "N/A",
             tags: item.tags
-              ? item.tags.map((tag) => `${tag.name}(${tag.countSelected})`)
+              ? item.tags.map((tag: any) => `${tag.name}(${tag.countSelected})`)
               : [],
             cre_date: item.created_at ? item.created_at.split("T")[0] : "N/A",
             status: item.is_active
