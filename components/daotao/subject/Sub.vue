@@ -393,7 +393,7 @@ function createColumns(
     {
       title: "Action",
       key: "actions",
-      titleAlign: "center",
+      align: "center",
       render(row) {
         return h("div", [
           h(
@@ -431,7 +431,7 @@ function createColumns(
 <template>
   <div class="flex h-full w-full overflow-auto rounded-2xl bg-gray-50">
     <!-- Main Content -->
-    <div class="flex-1" v-show="danhmucstate === 'list'">
+    <div class="m-10 flex-1" v-show="danhmucstate === 'list'">
       <!-- Content Area -->
       <div class="h-full bg-white text-black">
         <n-grid

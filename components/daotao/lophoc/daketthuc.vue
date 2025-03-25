@@ -150,7 +150,6 @@ export default defineComponent({
         return;
       }
 
-      console.log("Edit:", row);
       router.push({
         path: "lophocinfo",
         query: { id: row.id.toString() },
@@ -158,14 +157,40 @@ export default defineComponent({
       message.success(`Chỉnh sửa lớp học: ${row.name}`);
     };
 
-    const deleteRow = (row: RowData) => {
-      console.log("Delete:", row);
-      message.warning(`Dừng hoạt động lớp: ${row.name}`);
+    // HÀM XÓA LỚP
+    const deleteRow = async (row: RowData) => {
+      if (confirm("Bạn có chắc chắn muốn xóa lớp học này không?")) {
+        try {
+          const { error } = await restAPI.cms.deleteClass({
+            id: row.id,
+          });
+          if (error?.value) {
+            message.error(error.value.data?.message || "Lỗi khi xóa lớp học");
+
+            return;
+          }
+          data.value = data.value.filter((item) => item.id !== row.id);
+          message.success("Xóa lớp học thành công");
+          await loadData();
+        } catch (err) {
+          console.error("lối khi xóa lớp học:", err);
+          message.error("lỗi khi xóa lớp học");
+        }
+      }
     };
 
-    const addRow = (row: RowData) => {
-      console.log("Add:", row);
-      message.info(`Thêm lớp học liên quan đến: ${row.name}`);
+    // HÀM NHÂN BẢN LỚP
+    const duplicateRow = (row: RowData) => {
+      if (!row.id) {
+        console.error("ID lớp học không hợp lệ:", row);
+        return;
+      }
+
+      router.push({
+        path: "lophocinfo",
+      });
+
+      message.success(`Nhân bản lớp học: ${row.name}`);
     };
 
     function createColumns(): DataTableColumns<RowData> {
@@ -274,13 +299,29 @@ export default defineComponent({
                   type: "warning",
                   quaternary: true,
 
-                  onClick: () => addRow(row),
+                  onClick: () => duplicateRow(row),
                 },
                 {
                   default: () =>
                     h("i", {
                       class: "fa-solid fa-square-plus",
                       style: "color: orange;",
+                    }),
+                },
+              ),
+              h(
+                NButton,
+                {
+                  size: "small",
+                  type: "error",
+                  quaternary: true,
+                  onClick: () => deleteRow(row),
+                },
+                {
+                  default: () =>
+                    h("i", {
+                      class: "fa-solid fa-trash",
+                      style: "color: red;",
                     }),
                 },
               ),

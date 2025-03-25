@@ -23,19 +23,59 @@ export default defineComponent({
     const showSchedule = ref(false);
     const currentClass = ref<RowData | null>(null);
     const scheduleMode = ref<"date" | "week">("week");
-    const dates = ref<Date[]>([]);
+    const classrooms = ref<{ id: string; name: string }[]>([]);
+
     const route = useRoute();
     const newId = route.query.id;
+    const selectedDates = ref<Date[]>([]);
+    const schedule = ref<
+      {
+        date: string;
+        session: string | null;
+        time: string | null;
+        teacher: string | null;
+        assistant: string | null;
+        room: string | null;
+      }[]
+    >([]);
 
-    // ✅ Lọc ngày hợp lệ dựa trên startAt và endAt
+    //  Lọc ngày hợp lệ dựa trên startAt và endAt
     const availableDates = computed(() => {
       if (!currentClass.value) return [];
-      return dates.value.filter(
+      return selectedDates.value.filter(
         (date) =>
           new Date(date) >= new Date(currentClass.value!.startAt) &&
           new Date(date) <= new Date(currentClass.value!.endAt),
       );
     });
+
+    // Lọc ngày nếu ngày bắt đầu từ trước
+    const computedMinDate = computed(() => {
+      if (!currentClass.value) return new Date();
+
+      const startAt = currentClass.value.startAt
+        ? new Date(currentClass.value.startAt)
+        : null;
+      const today = new Date();
+
+      return startAt && startAt > today ? startAt : today;
+    });
+
+    // Load danh sách phòng học từ API
+    const loadClassrooms = async () => {
+      try {
+        const { data: resData, error } = await restAPI.cms.getClassrooms({});
+        if (error?.value) {
+          message.error(
+            error.value.data?.message || "Lỗi tải danh sách phòng học",
+          );
+          return;
+        }
+        classrooms.value = resData.value?.data?.classrooms || [];
+      } catch (err) {
+        message.error("Lỗi tải danh sách phòng học.");
+      }
+    };
 
     const loadData = async () => {
       try {
@@ -62,26 +102,37 @@ export default defineComponent({
       }
     };
 
-    // ✅ Hàm xử lý khi chọn ngày
-    const handleDateChange = (selectedDates: Date[]) => {
-      if (selectedDates.length > 0) {
-        showSchedule.value = true;
-        dates.value = selectedDates;
-      }
+    // Khi chọn ngày, cập nhật danh sách lịch học
+    const handleDateChange = (dates: Date[]) => {
+      selectedDates.value = dates;
+      schedule.value = dates.map((date) => ({
+        date: date.toISOString().split("T")[0],
+        session: null,
+        time: null,
+        teacher: null,
+        assistant: null,
+        room: null,
+      }));
     };
 
+    // Xoá một dòng lịch học
+    const removeSchedule = (index: number) => {
+      schedule.value.splice(index, 1);
+    };
+
+    // Xử lý lưu lịch học
     const handleSave = () => {
-      console.log("Lưu lịch học", {
-        mode: scheduleMode.value,
-        dates: dates.value,
-      });
-      showSchedule.value = false;
+      if (schedule.value.some((s) => !s.session || !s.teacher || !s.room)) {
+        message.error("Vui lòng điền đầy đủ thông tin bắt buộc!");
+        return;
+      }
+      console.log("Lịch học được lưu:", schedule.value);
     };
 
     const handleClose = () => {
       showSchedule.value = false;
       currentClass.value = null;
-      dates.value = [];
+      selectedDates.value = [];
       scheduleMode.value = "week";
     };
 
@@ -103,11 +154,14 @@ export default defineComponent({
       showSchedule,
       currentClass,
       scheduleMode,
-      dates,
+      computedMinDate,
       availableDates,
       handleSave,
       handleClose,
       handleDateChange,
+      selectedDates,
+      schedule,
+      removeSchedule,
     };
   },
 });
@@ -133,27 +187,119 @@ export default defineComponent({
           </span>
         </div>
 
-        <!-- ✅ VueDatePicker với sự kiện update -->
         <VueDatePicker
-          v-model="dates"
-          :min-date="currentClass?.startAt"
+          v-if="scheduleMode === 'date'"
+          v-model="selectedDates"
+          :min-date="computedMinDate"
           :max-date="currentClass?.endAt"
           multi-dates
           inline
           auto-apply
+          time-picker-inline
           @update:model-value="handleDateChange"
         />
 
-        <div class="mt-4 flex items-center justify-between">
-          <span>Số buổi cuối tháng: 0 buổi</span>
+        <div v-if="scheduleMode === 'date'">
+          <div class="mt-4 flex items-center justify-between">
+            <span>Số buổi cuối tháng: 0 buổi</span>
+          </div>
+          <span>Số buổi của lớp: {{ currentClass?.totalLessons }}</span>
         </div>
-        <span>Số buổi của lớp: {{ currentClass?.totalLessons }}</span>
       </div>
 
       <div class="mt-4">
         <n-button type="primary" @click="handleSave">Lưu</n-button>
         <n-button class="ml-2" @click="handleClose">Đóng</n-button>
       </div>
+      <div v-if="schedule.length" class="mt-4">
+        <table class="w-full border-collapse border text-sm">
+          <thead>
+            <tr class="bg-gray-100">
+              <th class="border p-2">Ngày học</th>
+              <th class="border p-2">Ca học *</th>
+              <th class="border p-2">Thời gian học *</th>
+              <th class="border p-2">Giảng viên *</th>
+              <th class="border p-2">Trợ giảng</th>
+              <th class="border p-2">Phòng học *</th>
+              <th class="border p-2">Xoá</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(item, index) in schedule" :key="index">
+              <td class="border p-2">{{ item.date }}</td>
+              <td class="border p-2">
+                <select
+                  v-model="item.session"
+                  class="w-full rounded border p-1"
+                >
+                  <option value="" disabled>Chọn ca học</option>
+                  <option value="Sáng">Sáng</option>
+                  <option value="Chiều">Chiều</option>
+                  <option value="Tối">Tối</option>
+                </select>
+              </td>
+              <td class="border p-2">
+                <input
+                  v-model="item.time"
+                  type="text"
+                  placeholder="Giờ bắt đầu - Giờ kết thúc"
+                  class="w-full rounded border p-1"
+                />
+              </td>
+              <td class="border p-2">
+                <select
+                  v-model="item.teacher"
+                  class="w-full rounded border p-1"
+                >
+                  <option value="" disabled>Chọn giảng viên</option>
+                  <option value="GV1">GV1</option>
+                  <option value="GV2">GV2</option>
+                </select>
+              </td>
+              <td class="border p-2">
+                <select
+                  v-model="item.assistant"
+                  class="w-full rounded border p-1"
+                >
+                  <option value="">Chọn trợ giảng</option>
+                  <option value="TA1">TA1</option>
+                  <option value="TA2">TA2</option>
+                </select>
+              </td>
+              <td class="border p-2">
+                <select v-model="item.room" class="w-full rounded border p-1">
+                  <option value="" disabled>Chọn phòng học</option>
+                  <option value="Phòng 101">Phòng 101</option>
+                  <option value="Phòng 102">Phòng 102</option>
+                </select>
+              </td>
+              <td class="border p-2 text-center">
+                <button @click="removeSchedule(index)" class="text-red-500">
+                  ❌
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="mt-4 flex justify-center">
+          <button
+            @click="handleSave"
+            class="rounded bg-blue-500 px-4 py-2 text-white"
+          >
+            Lưu
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
+<style scoped>
+table {
+  border: 1px solid #ddd;
+}
+th,
+td {
+  text-align: center;
+}
+</style>

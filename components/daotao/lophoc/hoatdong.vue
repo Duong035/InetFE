@@ -47,6 +47,9 @@ export default defineComponent({
     const data = ref<RowData[]>([]);
     const isLoading = ref(false);
     const router = useRouter();
+    const isCancelModalVisible = ref(false);
+    const cancelReason = ref("");
+    const cancelingClassId = ref<string | null>(null);
     //lọc theo loại lớp học
     const classTypeOptions = [
       { label: "Tất cả loại lớp học", value: "" },
@@ -150,22 +153,74 @@ export default defineComponent({
         return;
       }
 
-      console.log("Edit:", row);
       router.push({
         path: "lophocinfo",
         query: { id: row.id.toString() },
       });
       message.success(`Chỉnh sửa lớp học: ${row.name}`);
     };
+    //HÀM HỦY LỚP
+    const confirmCancel = async () => {
+      if (!cancelingClassId.value) return;
+      try {
+        const { error } = await restAPI.cms.cancelClass({
+          id: cancelingClassId.value,
+          body: { cancel_reason: cancelReason.value }, // Gửi lý do hủy
+        });
 
-    const deleteRow = (row: RowData) => {
-      console.log("Delete:", row);
-      message.warning(`Dừng hoạt động lớp: ${row.name}`);
+        if (error?.value) {
+          throw new Error(error.value.data?.message || "Lỗi khi hủy lớp học");
+        }
+
+        message.success("Lớp học đã được hủy.");
+        isCancelModalVisible.value = false;
+        await loadData();
+      } catch (err) {
+        console.error("Lỗi khi hủy lớp học:", err);
+        message.error("Không thể hủy lớp học.");
+      }
     };
 
-    const addRow = (row: RowData) => {
-      console.log("Add:", row);
-      message.info(`Thêm lớp học liên quan đến: ${row.name}`);
+    // LÝ DO HỦY LỚP
+    const openCancelModal = (id: string) => {
+      cancelingClassId.value = id;
+      cancelReason.value = "";
+      isCancelModalVisible.value = true;
+    };
+
+    // HÀM XÓA LỚP
+    const deleteRow = async (row: RowData) => {
+      if (confirm("Bạn có chắc chắn muốn xóa lớp học này không?")) {
+        try {
+          const { error } = await restAPI.cms.deleteClass({
+            id: row.id,
+          });
+          if (error?.value) {
+            message.error(error.value.data?.message || "Lỗi khi xóa lớp học");
+            return;
+          }
+          data.value = data.value.filter((item) => item.id !== row.id);
+          message.success("Xóa lớp học thành công");
+          await loadData();
+        } catch (err) {
+          console.error("lối khi xóa lớp học:", err);
+          message.error("lỗi khi xóa lớp học");
+        }
+      }
+    };
+
+    // HÀM NHÂN BẢN LỚP
+    const duplicateRow = (row: RowData) => {
+      if (!row.id) {
+        console.error("ID lớp học không hợp lệ:", row);
+        return;
+      }
+
+      router.push({
+        path: "lophocinfo",
+      });
+
+      message.success(`Nhân bản lớp học: ${row.name}`);
     };
 
     function createColumns(): DataTableColumns<RowData> {
@@ -259,27 +314,43 @@ export default defineComponent({
                   size: "small",
                   type: "error",
                   quaternary: true,
-                  onClick: () => deleteRow(row),
+                  onClick: () => openCancelModal(row.id),
                 },
                 {
                   default: () =>
                     h("i", { class: "fas fa-ban", style: "color: red;" }),
                 },
               ),
+
               h(
                 NButton,
                 {
                   size: "small",
                   type: "warning",
                   quaternary: true,
-
-                  onClick: () => addRow(row),
+                  onClick: () => duplicateRow(row),
                 },
                 {
                   default: () =>
                     h("i", {
                       class: "fa-solid fa-square-plus",
                       style: "color: orange;",
+                    }),
+                },
+              ),
+              h(
+                NButton,
+                {
+                  size: "small",
+                  type: "error",
+                  quaternary: true,
+                  onClick: () => deleteRow(row),
+                },
+                {
+                  default: () =>
+                    h("i", {
+                      class: "fa-solid fa-trash",
+                      style: "color: red;",
                     }),
                 },
               ),
@@ -303,6 +374,9 @@ export default defineComponent({
       selectedClassType,
       subjectOptions,
       selectedSubject,
+      isCancelModalVisible,
+      cancelReason,
+      confirmCancel,
     };
   },
 });
@@ -333,5 +407,25 @@ export default defineComponent({
         :pagination="pagination"
       />
     </div>
+    <n-modal v-model:show="isCancelModalVisible">
+      <n-card
+        title="Xác nhận hủy lớp học"
+        style="width: 400px"
+        closable
+        @close="isCancelModalVisible = false"
+      >
+        <n-input
+          v-model:value="cancelReason"
+          placeholder="Nhập lý do hủy lớp học..."
+          type="textarea"
+        />
+        <template #footer>
+          <div class="flex justify-end gap-2">
+            <n-button @click="isCancelModalVisible = false">Hủy</n-button>
+            <n-button type="error" @click="confirmCancel">Xác nhận</n-button>
+          </div>
+        </template>
+      </n-card>
+    </n-modal>
   </div>
 </template>

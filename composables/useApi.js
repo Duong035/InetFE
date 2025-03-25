@@ -36,7 +36,7 @@ const API_ENDPOINTS = {
     classrooms: "/api/admin/classrooms",
     classroom: "/api/admin/classroom",
     center: "/api/admin/center",
-    schedule_class_student: "/api/admin/schedule-class/student",
+    schedule_class: "/api/admin/schedule-class",
   },
 };
 
@@ -307,6 +307,12 @@ class CMSManager {
       data,
     );
   }
+  async deleteClassStudent(data) {
+    return this.request.delete(
+      `${API_ENDPOINTS.cms.class}/remove-student`,
+      data,
+    );
+  }
   async addStudentsToClass(data) {
     return this.request.post(`${API_ENDPOINTS.cms.class}/add-student`, data);
   }
@@ -385,8 +391,12 @@ class CMSManager {
     return this.request.put(API_ENDPOINTS.cms.center, data);
   }
   //schedule____________________________________________________________________________________
-  async getScheduleClassStudent(data) {
-    return this.request.get(API_ENDPOINTS.cms.schedule_class_student, data);
+
+  async getScheduleClass(data) {
+    return this.request.get(API_ENDPOINTS.cms.schedule_class, data);
+  }
+  async createScheduleClass(data) {
+    return this.request.post(API_ENDPOINTS.cms.schedule_class, data);
   }
 }
 

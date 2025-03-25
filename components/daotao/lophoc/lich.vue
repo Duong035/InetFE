@@ -8,14 +8,36 @@ import interactionPlugin from "@fullcalendar/interaction";
 const events = ref<any[]>([]);
 const { restAPI } = useApi();
 
+// const fetchEvents = async () => {
+//   try {
+//     const data = await restAPI.cms.getClasses({});
+//     events.value = data.map((event: any) => ({
+//       title: event.name,
+//       date: event.start_date,
+//       start: event.start_time,
+//       end: event.end_time,
+//     }));
+//   } catch (error) {
+//     console.error("Lỗi khi tải dữ liệu sự kiện:", error);
+//   }
+// };
+
 const fetchEvents = async () => {
   try {
-    const data = await restAPI.cms.getClasses({});
+    const response = await fetch(
+      "https://677e47a194bde1c1252b403f.mockapi.io/Data/User/schedule",
+    );
+
+    if (!response.ok) {
+      throw new Error(`Lỗi HTTP: ${response.status}`);
+    }
+
+    const data = await response.json();
+
     events.value = data.map((event: any) => ({
-      title: event.name,
-      date: event.start_date,
-      start: event.start_time,
-      end: event.end_time,
+      title: event.title || "Không có tên",
+      start: event.start_at || "N/A",
+      end: event.end_at || "N/A",
     }));
   } catch (error) {
     console.error("Lỗi khi tải dữ liệu sự kiện:", error);
@@ -38,39 +60,40 @@ const calendarOptions = ref({
   selectable: false,
   alldaySlot: false,
   contentHeight: "auto",
-  events: [
-    // nếu có data từ api trả về thì xóa hết trong event đi
-    {
-      title: "Design Thinking 1",
-      start: "2025-03-22T08:00:00",
-      end: "2025-03-22T10:30:00",
-      color: "#FBCFE8",
-    },
-    {
-      title: "Design Thinking 1",
-      start: "2025-03-18T10:30:00",
-      end: "2025-03-18T12:00:00",
-      color: "#86EFAC",
-    },
-    {
-      title: "Design Thinking 1",
-      start: "2025-03-19T08:00:00",
-      end: "2025-03-19T10:30:00",
-      color: "#93C5FD",
-    },
-    {
-      title: "Design Thinking 1",
-      start: "2025-03-17T13:00:00",
-      end: "2025-03-17T14:30:00",
-      color: "#FCA5A5",
-    },
-    {
-      title: "Design Thinking 1",
-      start: "2025-03-19T15:00:00",
-      end: "2025-03-19T16:30:00",
-      color: "#E9D5FF",
-    },
-  ],
+  events,
+  // : [
+  //   // nếu có data từ api trả về thì xóa hết trong event đi
+  //   {
+  //     title: "Design Thinking 1",
+  //     start: "2025-03-24T08:00:00",
+  //     end: "2025-03-24T10:30:00",
+  //     color: "#FBCFE8",
+  //   },
+  //   {
+  //     title: "Design Thinking 1",
+  //     start: "2025-03-24T10:30:00",
+  //     end: "2025-03-24T12:00:00",
+  //     color: "#86EFAC",
+  //   },
+  //   {
+  //     title: "Design Thinking 1",
+  //     start: "2025-03-24T08:00:00",
+  //     end: "2025-03-24T10:30:00",
+  //     color: "#93C5FD",
+  //   },
+  //   {
+  //     title: "Design Thinking 1",
+  //     start: "2025-03-27T13:00:00",
+  //     end: "2025-03-27T14:30:00",
+  //     color: "#FCA5A5",
+  //   },
+  //   {
+  //     title: "Design Thinking 1",
+  //     start: "2025-03-29T15:00:00",
+  //     end: "2025-03-29T16:30:00",
+  //     color: "#E9D5FF",
+  //   },
+  // ],
   select: (info: any) => {
     alert(`Bạn đã chọn: ${info.startStr} đến ${info.endStr}`);
   },

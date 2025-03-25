@@ -137,7 +137,7 @@ export default defineComponent({
         {
           title: "Action",
           key: "actions",
-          titleAlign: "center",
+          align: "center",
           render(row) {
             return h("div", [
               h(
@@ -179,7 +179,10 @@ export default defineComponent({
                     }
                   },
                 },
-                { default: () => h("i", { class: "fa-solid fa-ellipsis-v" }) },
+                {
+                  default: () =>
+                    h("i", { class: "fa-solid fa-ellipsis-vertical" }),
+                },
               ),
             ]);
           },

@@ -421,8 +421,6 @@ onMounted(async () => {
     .filter((slot) => slot.start !== null)
     .sort((a, b) => (a.start > b.start ? 1 : -1));
 
-  console.log("Selected Times:", selectedTimes.value);
-
   shift.value.forEach((s, index) => {
     if (selectedTimes.value[index]) {
       let selectedStart = selectedTimes.value[index].start;
@@ -464,15 +462,12 @@ onMounted(async () => {
 
             session.checked = isChecked;
 
-            // ✅ Call handleCheckedValue to update `listCheckedShifts`
             handleCheckedValue(day, isChecked, s.id);
           });
         }
       }
     }
   });
-
-  console.log("Updated Shifts:", shift.value);
 
   await listShifts();
 });
