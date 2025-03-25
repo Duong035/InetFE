@@ -468,7 +468,6 @@ class CMSManager {
     return this.request.put(API_ENDPOINTS.cms.center, data);
   }
   //__________________________________________________________________________________________
- 
 }
 
 class RestAPI {
