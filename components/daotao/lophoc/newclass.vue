@@ -250,8 +250,8 @@ onMounted(() => {
         <!-- Hình thức học -->
         <n-form-item label="Hình thức học *" class="flex-1">
           <n-radio-group v-model:value="formValue.studyMode">
-            <n-radio :value="1">Học offline</n-radio>
-            <n-radio :value="2">Học online</n-radio>
+            <n-radio :value="1">Học online</n-radio>
+            <n-radio :value="2">Học offline</n-radio>
             <n-radio :value="3">Học hybrid</n-radio>
           </n-radio-group>
         </n-form-item>
