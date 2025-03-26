@@ -3,6 +3,7 @@ import { defineComponent, ref, computed, onMounted, toRaw } from "vue";
 import { message } from "ant-design-vue";
 import VueDatePicker from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
+import dayjs from "dayjs";
 
 export default defineComponent({
   components: { VueDatePicker },
@@ -40,10 +41,10 @@ export default defineComponent({
       sessions: {} as Record<
         string,
         Array<{
-          session: null;
-          time: { start: string; end: string };
-          teacher: null;
-          room: null;
+          session: string | null;
+          time: { start: number | null; end: number | null };
+          teacher: string | null;
+          room: string | null;
         }>
       >,
     });
@@ -54,7 +55,7 @@ export default defineComponent({
       }
       formValue.value.sessions[day].push({
         session: null,
-        time: { start: "", end: "" },
+        time: { start: null, end: null },
         teacher: null,
         room: null,
       });
@@ -62,6 +63,77 @@ export default defineComponent({
 
     const removeSession = (day: string, index: number) => {
       formValue.value.sessions[day].splice(index, 1);
+    };
+
+    const sessionTimeRanges: Record<string, { start: number; end: number }> = {
+      Sáng: {
+        start: new Date().setHours(6, 0, 0, 0),
+        end: new Date().setHours(12, 0, 0, 0),
+      },
+      Chiều: {
+        start: new Date().setHours(12, 0, 0, 0),
+        end: new Date().setHours(18, 0, 0, 0),
+      },
+      Tối: {
+        start: new Date().setHours(18, 0, 0, 0),
+        end: new Date().setHours(22, 0, 0, 0),
+      },
+    };
+
+    const handleSessionChange = (
+      day: string,
+      sessionIndex: number,
+      sessionValue: string | null,
+    ) => {
+      if (sessionValue && sessionTimeRanges[sessionValue]) {
+        const { start, end } = sessionTimeRanges[sessionValue];
+
+        formValue.value.sessions[day][sessionIndex].time.start = start;
+        formValue.value.sessions[day][sessionIndex].time.end = end;
+      } else {
+        formValue.value.sessions[day][sessionIndex].time.start = null;
+        formValue.value.sessions[day][sessionIndex].time.end = null;
+      }
+    };
+
+    const getDisabledMinutes = (
+      selectedHour: number | null,
+      session: { time: { start: number | null; end: number | null } },
+      isEndPicker: boolean,
+    ): number[] => {
+      if (!session.time.start || !session.time.end || selectedHour === null) {
+        return [];
+      }
+
+      const startTime = new Date(session.time.start);
+      const endTime = new Date(session.time.end);
+
+      const startHour = startTime.getHours();
+      const startMinute = startTime.getMinutes();
+      const endHour = endTime.getHours();
+
+      // Find the session range
+      const sessionRange = sessionTimeRanges[session.session];
+      if (!sessionRange) return [];
+
+      const lastHour = new Date(sessionRange.end).getHours(); // Last possible hour
+
+      // 🛑 **If last possible hour is selected (end picker), only allow `:00`**
+      if (isEndPicker && selectedHour === lastHour) {
+        return Array.from({ length: 59 }, (_, i) => i + 1); // Disable everything except `00`
+      }
+
+      // 🛑 **If last selectable hour is selected (start picker), only allow `:00`**
+      if (!isEndPicker && selectedHour === lastHour - 1) {
+        return Array.from({ length: 59 }, (_, i) => i + 1); // Disable everything except `00`
+      }
+
+      // 🕐 If end hour is exactly 1 hour after start, disable minutes before startMinute
+      if (isEndPicker && selectedHour === startHour + 1) {
+        return Array.from({ length: startMinute }, (_, i) => i);
+      }
+
+      return [];
     };
 
     //________________________________________________________________________________________________________
@@ -165,6 +237,9 @@ export default defineComponent({
       addSession,
       removeSession,
       toggleDay,
+      handleSessionChange,
+      sessionTimeRanges,
+      getDisabledMinutes,
 
       data,
       showSchedule,
@@ -261,15 +336,106 @@ export default defineComponent({
                                 class="custom-tp-left"
                                 placeholder="Bắt đầu"
                                 format="HH:mm"
-                              >
-                                <p>-</p>
-                              </n-time-picker>
+                                v-model:value="
+                                  formValue.sessions[day]?.[0]?.time.start
+                                "
+                                :hours="
+                                  (() => {
+                                    if (
+                                      !formValue.sessions[day]?.[0]?.session ||
+                                      !sessionTimeRanges[
+                                        formValue.sessions[day][0].session
+                                      ]
+                                    )
+                                      return [];
+                                    const sessionRange =
+                                      sessionTimeRanges[
+                                        formValue.sessions[day][0].session
+                                      ];
+
+                                    const startHour = new Date(
+                                      sessionRange.start,
+                                    ).getHours();
+                                    const endHour = new Date(
+                                      sessionRange.end,
+                                    ).getHours();
+
+                                    return startHour < endHour
+                                      ? Array.from(
+                                          { length: endHour - startHour },
+                                          (_, i) => startHour + i,
+                                        )
+                                      : [];
+                                  })()
+                                "
+                                :is-minute-disabled="
+                                  (minute: number, hour: number | null) =>
+                                    hour !== null &&
+                                    getDisabledMinutes(
+                                      hour,
+                                      formValue.sessions[day]?.[0],
+                                      false,
+                                    ).includes(minute)
+                                "
+                              />
+
                               <n-time-picker
                                 class="custom-tp-right"
                                 placeholder="Kết thúc"
                                 format="HH:mm"
-                              >
-                              </n-time-picker>
+                                v-model:value="
+                                  formValue.sessions[day]?.[0]?.time.end
+                                "
+                                @update:value="
+                                  (value) => {
+                                    if (!formValue.sessions[day])
+                                      formValue.sessions[day] = [];
+                                    if (!formValue.sessions[day][0])
+                                      formValue.sessions[day][0] = {
+                                        time: { start: null, end: null },
+                                      };
+                                    formValue.sessions[day][0].time.end = value;
+                                  }
+                                "
+                                :hours="
+                                  (() => {
+                                    if (
+                                      !formValue.sessions[day]?.[0]?.session ||
+                                      !sessionTimeRanges[
+                                        formValue.sessions[day][0].session
+                                      ] ||
+                                      !formValue.sessions[day]?.[0]?.time.start
+                                    )
+                                      return [];
+                                    const sessionRange =
+                                      sessionTimeRanges[
+                                        formValue.sessions[day][0].session
+                                      ];
+                                    const startHour = new Date(
+                                      formValue.sessions[day][0].time.start,
+                                    ).getHours();
+                                    const endHour = new Date(
+                                      sessionRange.end,
+                                    ).getHours();
+
+                                    return startHour < endHour
+                                      ? Array.from(
+                                          { length: endHour - startHour },
+                                          (_, i) => startHour + i + 1,
+                                        )
+                                      : [];
+                                  })()
+                                "
+                                :is-minute-disabled="
+                                  (minute: number, hour: number | null) =>
+                                    hour !== null &&
+                                    getDisabledMinutes(
+                                      hour,
+                                      formValue.sessions[day]?.[0],
+                                      true,
+                                    ).includes(minute)
+                                "
+                              />
                             </n-input-group>
                           </n-form-item>
                         </n-gi>
@@ -306,6 +472,14 @@ export default defineComponent({
                               <n-select
                                 v-model:value="session.session"
                                 placeholder="Chọn ca học"
+                                :options="[
+                                  { label: 'Sáng', value: 'Sáng' },
+                                  { label: 'Chiều', value: 'Chiều' },
+                                  { label: 'Tối', value: 'Tối' },
+                                ]"
+                                @update:value="
+                                  handleSessionChange(day, sessionIndex, $event)
+                                "
                               />
                             </n-form-item>
                           </n-gi>
@@ -318,15 +492,84 @@ export default defineComponent({
                                   class="custom-tp-left"
                                   placeholder="Bắt đầu"
                                   format="HH:mm"
-                                >
-                                  <p>-</p>
-                                </n-time-picker>
+                                  v-model:value="session.time.start"
+                                  :hours="
+                                    (() => {
+                                      if (
+                                        !session.session ||
+                                        !sessionTimeRanges[session.session]
+                                      )
+                                        return [];
+                                      const sessionRange =
+                                        sessionTimeRanges[session.session];
+
+                                      const startHour = new Date(
+                                        sessionRange.start,
+                                      ).getHours();
+                                      const endHour = new Date(
+                                        sessionRange.end,
+                                      ).getHours();
+
+                                      return startHour < endHour
+                                        ? Array.from(
+                                            { length: endHour - startHour },
+                                            (_, i) => startHour + i,
+                                          )
+                                        : [];
+                                    })()
+                                  "
+                                  :is-minute-disabled="
+                                    (minute: number, hour: number | null) =>
+                                      hour !== null &&
+                                      getDisabledMinutes(
+                                        hour,
+                                        session,
+                                        false,
+                                      ).includes(minute)
+                                  "
+                                />
+
                                 <n-time-picker
                                   class="custom-tp-right"
                                   placeholder="Kết thúc"
                                   format="HH:mm"
-                                >
-                                </n-time-picker>
+                                  v-model:value="session.time.end"
+                                  :hours="
+                                    (() => {
+                                      if (
+                                        !session.session ||
+                                        !sessionTimeRanges[session.session] ||
+                                        !session.time.start
+                                      )
+                                        return [];
+
+                                      const sessionRange =
+                                        sessionTimeRanges[session.session];
+                                      const startHour = new Date(
+                                        session.time.start,
+                                      ).getHours();
+                                      const endHour = new Date(
+                                        sessionRange.end,
+                                      ).getHours();
+
+                                      return startHour < endHour
+                                        ? Array.from(
+                                            { length: endHour - startHour },
+                                            (_, i) => startHour + i + 1,
+                                          )
+                                        : [];
+                                    })()
+                                  "
+                                  :is-minute-disabled="
+                                    (minute: number, hour: number | null) =>
+                                      hour !== null &&
+                                      getDisabledMinutes(
+                                        hour,
+                                        session,
+                                        true,
+                                      ).includes(minute)
+                                  "
+                                />
                               </n-input-group>
                             </n-form-item>
                           </n-gi>

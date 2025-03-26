@@ -760,7 +760,12 @@ onMounted(() => {
     </n-gi>
     <template v-for="s in shift" :key="s">
       <n-gi span="4">
-        <n-flex align="center" :wrap="false" justify="space-between">
+        <n-flex
+          align="center"
+          :wrap="false"
+          justify="space-between"
+          class="px-5"
+        >
           <n-ellipsis
             :tooltip="{
               contentClass: 'text-[#133D85]  bg-white p-2 rd-2',
@@ -770,10 +775,10 @@ onMounted(() => {
             :line-clamp="2"
             >{{ s.name + ":" }}
           </n-ellipsis>
-          <n-input-group
-            class="rounded-15px -ml-5 mr-3 w-fit shrink-0 bg-white"
-          >
+          <n-input-group class="w-fit rounded-2xl border bg-[#F5F5F5]">
             <n-time-picker
+              class="custom-tp-left"
+              placeholder="Bắt đầu"
               v-model:value="shiftTimes[s.id].start"
               format="HH:mm"
               :hours="getStartHours[s.id] || []"
@@ -785,6 +790,8 @@ onMounted(() => {
               :disabled="!isAnyChecked(s.id)"
             />
             <n-time-picker
+              class="custom-tp-right"
+              placeholder="Kết thúc"
               v-model:value="shiftTimes[s.id].end"
               format="HH:mm"
               :hours="getEndHours[s.id] || []"
@@ -821,3 +828,51 @@ onMounted(() => {
   </n-grid>
   <!-- </n-form> -->
 </template>
+
+<style lang="scss" scoped>
+* :deep(.custom-tp-left .n-input) {
+  --n-border-disabled: none !important;
+  --n-padding-right: 0px !important;
+  --n-border: none !important;
+  --n-border-focus: none !important;
+  --n-border-hover: none !important;
+  --n-box-shadow-focus: none !important;
+  --n-color: #fff !important;
+  --n-color-disabled: #fff !important;
+  --n-color-focus: #fff !important;
+  --n-color-focus-error: #fff !important;
+  --n-border-error: none !important;
+  --n-border-focus-error: none !important;
+  --n-box-shadow-focus-error: none !important;
+  --n-border-hover-error: none !important;
+}
+
+* :deep(.custom-tp-right .n-input) {
+  --n-padding-left: 7px !important;
+  --n-padding-right: 12px !important;
+  --n-border-disabled: none !important;
+  --n-border: none !important;
+  --n-border-focus: none !important;
+  --n-border-hover: none !important;
+  --n-box-shadow-focus: none !important;
+  --n-color: #fff !important;
+  --n-color-disabled: #fff !important;
+  --n-color-focus: #fff !important;
+  --n-color-focus-error: #fff !important;
+  --n-border-error: none !important;
+  --n-border-focus-error: none !important;
+  --n-box-shadow-focus-error: none !important;
+  --n-border-hover-error: none !important;
+}
+:deep(.custom-tp-left .n-input),
+:deep(.custom-tp-right .n-input) {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+* :deep(.custom-tp-right .n-input .n-input__suffix) {
+  display: none !important;
+}
+</style>
