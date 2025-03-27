@@ -455,8 +455,8 @@ const handleSubmit = async () => {
       if (resUpdate?.value?.status) {
         message.success(
           formValue.is_live
-            ? "Tạo buổi học thành công!"
-            : "Tạo bài học thành công!",
+            ? "Chỉnh sửa buổi học thành công!"
+            : "Chỉnh sửa bài học thành công!",
         );
       } else {
         const errorCode = error.value?.data?.error;
@@ -787,21 +787,116 @@ onMounted(() => {
               <!-- buoihocmodal -->
               <n-grid cols="2" :x-gap="20" v-else>
                 <!-- Note: rules -->
-                <n-gi>
-                  <n-form-item
-                    label="Tạo buổi học hàng loạt"
-                    label-placement="left"
-                    :show-feedback="false"
-                    path="number"
-                  >
-                    <n-switch v-model:value="massadd" :rail-style="railStyle" />
-                  </n-form-item>
+                <n-gi span="2" v-if="is_addnew">
+                  <n-gi>
+                    <n-form-item
+                      label="Tạo buổi học hàng loạt"
+                      label-placement="left"
+                      :show-feedback="false"
+                      path="number"
+                    >
+                      <n-switch
+                        v-model:value="massadd"
+                        :rail-style="railStyle"
+                      />
+                    </n-form-item>
+                  </n-gi>
+                  <n-gi span="2" v-if="!massadd">
+                    <n-gi>
+                      <n-form-item label="Tiêu đề buổi học:" path="mainname">
+                        <n-input
+                          v-model:value="lessondate.name"
+                          placeholder="Nhập tiêu đề buổi học"
+                        ></n-input>
+                      </n-form-item>
+                    </n-gi>
+                    <n-gi>
+                      <n-form-item
+                        label="Cho phép học thử"
+                        label-placement="left"
+                        :show-feedback="false"
+                      >
+                        <n-checkbox
+                          v-model:checked="lessondate.free_trial"
+                        ></n-checkbox>
+                      </n-form-item>
+                    </n-gi>
+                  </n-gi>
+                  <n-gi span="2" v-else class="mb-5">
+                    <n-grid cols="2" :x-gap="20" :y-gap="10">
+                      <n-gi>
+                        <n-form-item label="Số buổi học">
+                          <n-input-number
+                            v-model:value="number"
+                            clearable
+                            :min="0"
+                            :max="Max"
+                            placeholder="Nhập số lượng"
+                          />
+                        </n-form-item>
+                      </n-gi>
+
+                      <n-gi>
+                        <n-form-item label="Tiêu đề buổi học">
+                          <n-input
+                            v-model:value="mainName"
+                            placeholder="Nhập tiêu đề buổi học"
+                          />
+                        </n-form-item>
+                      </n-gi>
+
+                      <n-gi>
+                        <h1 class="text-lg font-bold text-[#133D85]">
+                          Danh sách buổi học
+                        </h1>
+                      </n-gi>
+                      <n-gi>
+                        <n-checkbox
+                          v-model:checked="masterChecked"
+                          :indeterminate="masterChecked === null"
+                          :style="{
+                            fontSize: '18px',
+                            '--n-font-weight': 'bold',
+                            '--n-text-color': '#133D85',
+                          }"
+                        >
+                          Chọn tất cả
+                        </n-checkbox>
+                      </n-gi>
+
+                      <!-- Dynamic Fields -->
+                      <n-gi
+                        v-for="(item, index) in Addform"
+                        :key="index"
+                        span="2"
+                      >
+                        <n-grid cols="2" :x-gap="20">
+                          <n-gi>
+                            <!-- Dynamic Input Field (Readonly, absolute value) -->
+                            <n-input v-model:value="item.name" readonly />
+                          </n-gi>
+                          <n-gi class="mt-2">
+                            <!-- Child Checkbox -->
+                            <n-checkbox
+                              v-model:checked="item.is_trial"
+                              :style="{
+                                '--n-font-weight': 'bold',
+                                '--n-text-color': '#133D85',
+                              }"
+                            >
+                              Cho phép học thử
+                            </n-checkbox>
+                          </n-gi>
+                        </n-grid>
+                      </n-gi>
+                    </n-grid>
+                  </n-gi>
                 </n-gi>
-                <n-gi span="2" v-if="!massadd">
+                <n-gi span="2" v-else>
                   <n-gi>
                     <n-form-item label="Tiêu đề buổi học:" path="mainname">
                       <n-input
-                        v-model:value="lessondate.name"
+                        v-model:value="formValue.name"
                         placeholder="Nhập tiêu đề buổi học"
                       ></n-input>
                     </n-form-item>
@@ -813,79 +908,10 @@ onMounted(() => {
                       :show-feedback="false"
                     >
                       <n-checkbox
-                        v-model:checked="lessondate.free_trial"
+                        v-model:checked="formValue.free_trial"
                       ></n-checkbox>
                     </n-form-item>
                   </n-gi>
-                </n-gi>
-                <n-gi span="2" v-else class="mb-5">
-                  <n-grid cols="2" :x-gap="20" :y-gap="10">
-                    <n-gi>
-                      <n-form-item label="Số buổi học">
-                        <n-input-number
-                          v-model:value="number"
-                          clearable
-                          :min="0"
-                          :max="Max"
-                          placeholder="Nhập số lượng"
-                        />
-                      </n-form-item>
-                    </n-gi>
-
-                    <n-gi>
-                      <n-form-item label="Tiêu đề buổi học">
-                        <n-input
-                          v-model:value="mainName"
-                          placeholder="Nhập tiêu đề buổi học"
-                        />
-                      </n-form-item>
-                    </n-gi>
-
-                    <n-gi>
-                      <h1 class="text-lg font-bold text-[#133D85]">
-                        Danh sách buổi học
-                      </h1>
-                    </n-gi>
-                    <n-gi>
-                      <n-checkbox
-                        v-model:checked="masterChecked"
-                        :indeterminate="masterChecked === null"
-                        :style="{
-                          fontSize: '18px',
-                          '--n-font-weight': 'bold',
-                          '--n-text-color': '#133D85',
-                        }"
-                      >
-                        Chọn tất cả
-                      </n-checkbox>
-                    </n-gi>
-
-                    <!-- Dynamic Fields -->
-                    <n-gi
-                      v-for="(item, index) in Addform"
-                      :key="index"
-                      span="2"
-                    >
-                      <n-grid cols="2" :x-gap="20">
-                        <n-gi>
-                          <!-- Dynamic Input Field (Readonly, absolute value) -->
-                          <n-input v-model:value="item.name" readonly />
-                        </n-gi>
-                        <n-gi class="mt-2">
-                          <!-- Child Checkbox -->
-                          <n-checkbox
-                            v-model:checked="item.is_trial"
-                            :style="{
-                              '--n-font-weight': 'bold',
-                              '--n-text-color': '#133D85',
-                            }"
-                          >
-                            Cho phép học thử
-                          </n-checkbox>
-                        </n-gi>
-                      </n-grid>
-                    </n-gi>
-                  </n-grid>
                 </n-gi>
               </n-grid>
             </n-gi>

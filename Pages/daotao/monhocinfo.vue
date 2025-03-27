@@ -202,9 +202,7 @@ const toggleDropdown = (menu) => {
               </div>
               <ul v-if="dropdowns.chungchi" class="h-full w-full">
                 <li>
-                  <div class="h-full w-full" v-if="!isCollapsed">
-                    <DaotaoHocvienctClass />
-                  </div>
+                  <div class="h-full w-full" v-if="!isCollapsed"></div>
                 </li>
               </ul>
             </li>

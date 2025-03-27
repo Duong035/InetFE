@@ -1,115 +1,431 @@
-<script lang="ts">
-import { defineComponent, ref, computed, onMounted, toRaw } from "vue";
-import { message } from "ant-design-vue";
+<script setup>
+import { ref, computed, onMounted, toRaw, nextTick } from "vue";
 import VueDatePicker from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
+import { useRoute } from "vue-router";
+import dayjs from "dayjs";
 
-export default defineComponent({
-  components: { VueDatePicker },
-  setup() {
-    interface RowData {
-      id: string;
-      subjectName: string;
-      classType: string;
-      startAt: string;
-      status: string;
-      endAt: string;
-      name: string;
-      totalLessons: number;
+const message = useMessage();
+const { restAPI } = useApi();
+const data = ref([]);
+const showSchedule = ref(false);
+const currentClass = ref(null);
+const scheduleMode = ref("week");
+const dates = ref([]);
+const route = useRoute();
+const newId = route.query.id;
+const formRefs = ref(null);
+const maxLessonCount = computed(() => route.query.num);
+const currentLessonCount = computed(() => {
+  return Object.entries(formValue.value.sessions)
+    .filter(([key]) => {
+      if (scheduleMode.value === "week") {
+        return !key.includes("/"); // Exclude date-based keys
+      } else if (scheduleMode.value === "date") {
+        return key.includes("/"); // Include only date-based keys
+      }
+      return true; // Default case, include everything
+    })
+    .reduce((total, [, sessions]) => total + sessions.length, 0);
+});
+//Rules_________________________________________________________________________________________________
+const rules = computed(() => {
+  const sessionRules = {};
+  for (const day in formValue.value.sessions) {
+    formValue.value.sessions[day].forEach((_, index) => {
+      sessionRules[`sessions.${day}.${index}.session`] = {
+        required: true,
+        message: "Ca học phải được chọn",
+        trigger: ["blur", "change"],
+      };
+      sessionRules[`sessions.${day}.${index}.teacher`] = {
+        required: true,
+        message: "Giảng viên phải được chọn",
+        trigger: ["blur", "change"],
+      };
+      sessionRules[`sessions.${day}.${index}.room`] = {
+        required: true,
+        message: "Phòng học phải được chọn",
+        trigger: ["blur", "change"],
+        validator(rule, value) {
+          return value && value.length > 0
+            ? Promise.resolve()
+            : Promise.reject("Phòng học phải được chọn");
+        },
+      };
+    });
+  }
+  return sessionRules;
+});
+
+//______________________________________________________________________________________________________
+
+//Schedule______________________________________________________________________________________________
+const daysOfWeek = ref([
+  "Thứ 2",
+  "Thứ 3",
+  "Thứ 4",
+  "Thứ 5",
+  "Thứ 6",
+  "Thứ 7",
+  "Chủ Nhật",
+]);
+
+const selectedDays = ref([]);
+const selectedDates = ref([]);
+const DisplayDates = ref([]);
+const selectedDisplay = computed(() => {
+  if (scheduleMode.value === "date") {
+    return selectedDates.value;
+  } else if (scheduleMode.value === "week") {
+    return selectedDays.value;
+  }
+  return [];
+});
+
+const toggleDay = (day, checked) => {
+  const dayOrder = [
+    "Thứ 2",
+    "Thứ 3",
+    "Thứ 4",
+    "Thứ 5",
+    "Thứ 6",
+    "Thứ 7",
+    "Chủ Nhật",
+  ];
+  if (checked) {
+    if (currentLessonCount.value >= maxLessonCount.value) {
+      message.warning("Số buổi học đã đạt giới hạn!");
+      return;
     }
 
-    const { restAPI } = useApi();
-    const data = ref<RowData[]>([]);
-    const showSchedule = ref(false);
-    const currentClass = ref<RowData | null>(null);
-    const scheduleMode = ref<"date" | "week">("week");
-    const dates = ref<Date[]>([]);
-    const route = useRoute();
-    const newId = route.query.id;
+    if (!selectedDays.value.includes(day)) {
+      selectedDays.value.push(day);
+      addSession(day);
+    }
+  } else {
+    const index = selectedDays.value.indexOf(day);
+    if (index !== -1) {
+      selectedDays.value.splice(index, 1);
+      delete formValue.value.sessions[day];
+    }
+  }
 
-    // ✅ Lọc ngày hợp lệ dựa trên startAt và endAt
-    const availableDates = computed(() => {
-      if (!currentClass.value) return [];
-      return dates.value.filter(
-        (date) =>
-          new Date(date) >= new Date(currentClass.value!.startAt) &&
-          new Date(date) <= new Date(currentClass.value!.endAt),
-      );
-    });
+  selectedDays.value.sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b));
+};
 
-    const loadData = async () => {
-      try {
-        const { data: resData, error } = await restAPI.cms.getClasses({});
-        if (error?.value) {
-          message.error(error.value.data?.message || "Lỗi tải dữ liệu");
-          return;
-        }
-        const rawData = toRaw(resData.value)?.data?.classes;
-        if (Array.isArray(rawData)) {
-          data.value = rawData.map((item: any) => ({
-            id: item.id || "N/A",
-            classType: item.type ? `${item.type}` : "N/A",
-            startAt: item.start_at?.split("T")[0] || "N/A",
-            endAt: item.end_at?.split("T")[0] || "N/A",
-            status: item.status,
-            name: item.name,
-            subjectName: item.subject?.name || "N/A",
-            totalLessons: item.subject?.total_lessons || 0,
-          }));
-        }
-      } catch (err) {
-        message.error("Lỗi tải dữ liệu.");
-      }
-    };
+const formValue = ref({
+  sessions: {},
+});
 
-    // ✅ Hàm xử lý khi chọn ngày
-    const handleDateChange = (selectedDates: Date[]) => {
-      if (selectedDates.length > 0) {
-        showSchedule.value = true;
-        dates.value = selectedDates;
-      }
-    };
+//______________________________________________________________________________________________________
 
-    const handleSave = () => {
-      console.log("Lưu lịch học", {
-        mode: scheduleMode.value,
-        dates: dates.value,
-      });
-      showSchedule.value = false;
-    };
+//ScheduleDisplay_______________________________________________________________________________________
+const addSession = (day) => {
+  if (currentLessonCount.value >= maxLessonCount.value) {
+    message.warning("Số buổi học đã đạt giới hạn!");
+    return;
+  }
+  if (!formValue.value.sessions[day]) {
+    formValue.value.sessions[day] = [];
+  }
+  formValue.value.sessions[day].push({
+    session: null,
+    time: { start: null, end: null },
+    teacher: null,
+    room: null,
+  });
+};
 
-    const handleClose = () => {
-      showSchedule.value = false;
-      currentClass.value = null;
-      dates.value = [];
-      scheduleMode.value = "week";
-    };
+const removeSession = (day, index) => {
+  formValue.value.sessions[day].splice(index, 1);
+};
 
-    onMounted(async () => {
-      await loadData();
-      if (newId) {
-        const foundClass = data.value.find((cls) => cls.id === newId);
-        if (foundClass) {
-          currentClass.value = foundClass;
-          showSchedule.value = true;
-        } else {
-          message.error("Không tìm thấy lớp học");
-        }
-      }
-    });
-
-    return {
-      data,
-      showSchedule,
-      currentClass,
-      scheduleMode,
-      dates,
-      availableDates,
-      handleSave,
-      handleClose,
-      handleDateChange,
-    };
+const sessionTimeRanges = {
+  Sáng: {
+    start: new Date().setHours(6, 0, 0, 0),
+    end: new Date().setHours(12, 0, 0, 0),
   },
+  Chiều: {
+    start: new Date().setHours(12, 0, 0, 0),
+    end: new Date().setHours(18, 0, 0, 0),
+  },
+  Tối: {
+    start: new Date().setHours(18, 0, 0, 0),
+    end: new Date().setHours(22, 0, 0, 0),
+  },
+};
+
+const handleSessionChange = (day, sessionIndex, sessionValue) => {
+  if (sessionValue && sessionTimeRanges[sessionValue]) {
+    const { start, end } = sessionTimeRanges[sessionValue];
+    formValue.value.sessions[day][sessionIndex].time.start = start;
+    formValue.value.sessions[day][sessionIndex].time.end = end;
+  } else {
+    formValue.value.sessions[day][sessionIndex].time.start = null;
+    formValue.value.sessions[day][sessionIndex].time.end = null;
+  }
+};
+
+const getDisabledMinutes = (selectedHour, session, isEndPicker) => {
+  if (!session.time.start || !session.time.end || selectedHour === null) {
+    return [];
+  }
+
+  const startTime = new Date(session.time.start);
+  const endTime = new Date(session.time.end);
+  const startHour = startTime.getHours();
+  const startMinute = startTime.getMinutes();
+  const endHour = endTime.getHours();
+
+  const sessionRange = sessionTimeRanges[session.session];
+  if (!sessionRange) return [];
+
+  const lastHour = new Date(sessionRange.end).getHours();
+
+  if (isEndPicker && selectedHour === lastHour) {
+    return Array.from({ length: 59 }, (_, i) => i + 1);
+  }
+
+  if (!isEndPicker && selectedHour === lastHour - 1) {
+    return Array.from({ length: 59 }, (_, i) => i + 1);
+  }
+
+  if (isEndPicker && selectedHour === startHour + 1) {
+    return Array.from({ length: startMinute }, (_, i) => i);
+  }
+
+  return [];
+};
+
+const checkOverlap = (day) => {
+  const sessions = formValue.value.sessions[day];
+  const conflicts = new Set();
+
+  for (let i = 0; i < sessions.length; i++) {
+    for (let j = i + 1; j < sessions.length; j++) {
+      if (
+        sessions[i].time.start &&
+        sessions[i].time.end &&
+        sessions[j].time.start &&
+        sessions[j].time.end
+      ) {
+        const startA = new Date(sessions[i].time.start).getTime();
+        const endA = new Date(sessions[i].time.end).getTime();
+        const startB = new Date(sessions[j].time.start).getTime();
+        const endB = new Date(sessions[j].time.end).getTime();
+
+        if (startA < endB && startB < endA) {
+          conflicts.add(i);
+          conflicts.add(j);
+        }
+      }
+    }
+  }
+
+  return conflicts;
+};
+
+//______________________________________________________________________________________________________
+
+//Handle________________________________________________________________________________________________
+const handleDateChange = (dates) => {
+  let formattedDates = dates.map((date) => dayjs(date).format("YYYY/MM/DD"));
+
+  let sessionCount = Object.values(formValue.value.sessions).reduce(
+    (total, sessions) => total + sessions.length,
+    0,
+  );
+
+  const previousSelection = new Set(selectedDates.value);
+  const newSelections = formattedDates.filter(
+    (date) => !previousSelection.has(date),
+  );
+
+  if (newSelections.length + sessionCount > maxLessonCount.value) {
+    message.warning("Số buổi học đã đạt giới hạn!");
+    formattedDates = [...selectedDates.value];
+  }
+
+  const unselectedDates = selectedDates.value.filter(
+    (selectedDate) => !formattedDates.includes(selectedDate),
+  );
+  unselectedDates.forEach((unselectedDate) => {
+    delete formValue.value.sessions[unselectedDate];
+  });
+
+  selectedDates.value = formattedDates;
+  DisplayDates.value = formattedDates;
+
+  formattedDates.forEach((formattedDate) => {
+    if (!formValue.value.sessions[formattedDate]) {
+      addSession(formattedDate);
+    }
+  });
+};
+
+const handleClose = () => {
+  showSchedule.value = false;
+  currentClass.value = null;
+  dates.value = [];
+  scheduleMode.value = "week";
+};
+//______________________________________________________________________________________________________
+
+//Load__________________________________________________________________________________________________
+const loadData = async () => {
+  try {
+    const { data: resData, error } = await restAPI.cms.getClasses({});
+    if (error?.value) {
+      message.error(error.value.data?.message || "Lỗi tải dữ liệu");
+      return;
+    }
+    const rawData = toRaw(resData.value)?.data?.classes;
+    if (Array.isArray(rawData)) {
+      data.value = rawData.map((item) => ({
+        id: item.id || "N/A",
+        classType: item.type ? `${item.type}` : "N/A",
+        startAt: item.start_at?.split("T")[0] || "N/A",
+        endAt: item.end_at?.split("T")[0] || "N/A",
+        status: item.status,
+        name: item.name,
+        subjectName: item.subject?.name || "N/A",
+        totalLessons: item.subject?.total_lessons || 0,
+      }));
+    }
+  } catch (err) {
+    message.error("Lỗi tải dữ liệu.");
+  }
+};
+
+const Staffarray = ref([]);
+const fetchTeach = async () => {
+  try {
+    const { data: resData } = await restAPI.cms.getStaff({});
+    if (resData.value?.status) {
+      Staffarray.value = resData.value.data.data
+        .filter((staff) => staff.is_active && staff.position === 1)
+        .map(({ id, full_name }) => ({
+          id,
+          full_name,
+        }))
+        .sort((a, b) => a.full_name.localeCompare(b.full_name));
+    } else {
+      message.error("Failed to load Teachers!");
+      Staffarray.value = [];
+    }
+  } catch (err) {
+    message.error("Error fetching Teachers!");
+    console.error(err);
+    Staffarray.value = [];
+  }
+};
+
+const Roomarray = ref([]);
+const fetchRoom = async () => {
+  try {
+    const { data: resData } = await restAPI.cms.getClassrooms({});
+    if (resData.value?.status) {
+      Roomarray.value = resData.value.data.data
+        .filter((room) => room.is_active)
+        .map(({ id, name }) => ({
+          id,
+          name,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      message.error("Failed to load classroom!");
+      Roomarray.value = [];
+    }
+  } catch (err) {
+    message.error("Error fetching classroom!");
+    console.error(err);
+    Roomarray.value = [];
+  }
+};
+//______________________________________________________________________________________________________
+
+//Submit________________________________________________________________________________________________
+function filterSchedule(schedule, filterByDate = true) {
+  const rawSchedule = toRaw(schedule);
+
+  return Object.fromEntries(
+    Object.entries(rawSchedule).filter(([key]) => {
+      return filterByDate ? key.includes("/") : !key.includes("/");
+    }),
+  );
+}
+
+const handleSubmit = async () => {
+  const isValid = await Promise.all(
+    formRefs.value.map(async (form) => {
+      if (form) {
+        return form
+          .validate()
+          .then(() => true)
+          .catch(() => false);
+      }
+      return false;
+    }),
+  );
+
+  const hasConflict = Object.keys(formValue.value.sessions).some(
+    (day) => checkOverlap(day).size > 0,
+  );
+
+  if (isValid.includes(false) || hasConflict) {
+    return;
+  }
+
+  const scheduleData = formValue.value.sessions || {};
+  const dateFiltered = filterSchedule(scheduleData, true);
+  const dayFiltered = filterSchedule(scheduleData, false);
+  if (scheduleMode.value === "date") {
+    console.log("📅 Date Filtered:", dateFiltered);
+  } else if (scheduleMode.value === "week") {
+    console.log("📆 Day Filtered:", dayFiltered);
+  }
+};
+//______________________________________________________________________________________________________
+
+//Func__________________________________________________________________________________________________
+const limitSelection = (value, session, formRef, item, sessionIndex) => {
+  // Ensure at least 1 room is selected
+  session.room = value.length > 2 ? value.slice(-2) : value;
+
+  nextTick(() => {
+    if (formRef) {
+      formRef
+        .validateField(`sessions.${item}.${sessionIndex}.room`)
+        .catch(() => {});
+    }
+  });
+};
+const computedMinDate = computed(() => {
+  if (!currentClass.value) return new Date();
+
+  const startAt = currentClass.value.startAt
+    ? new Date(currentClass.value.startAt)
+    : null;
+  const today = new Date();
+
+  return startAt && startAt > today ? startAt : today;
+});
+//______________________________________________________________________________________________________
+
+onMounted(async () => {
+  await loadData();
+  fetchTeach();
+  fetchRoom();
+  if (newId) {
+    const foundClass = data.value.find((cls) => cls.id === newId);
+    if (foundClass) {
+      currentClass.value = foundClass;
+      showSchedule.value = true;
+    } else {
+      message.error("Không tìm thấy lớp học");
+    }
+  }
 });
 </script>
 
@@ -122,38 +438,364 @@ export default defineComponent({
 
       <div>
         <div class="mb-4 flex items-center gap-3">
-          <n-radio-group v-model:value="scheduleMode">
-            <n-space>
-              <n-radio value="week">Tuần</n-radio>
-              <n-radio value="date">Chọn ngày</n-radio>
-            </n-space>
-          </n-radio-group>
-          <span v-if="scheduleMode === 'date'" class="text-xs text-gray-400">
-            (Hệ thống sẽ không tự tạo buổi học theo lịch tuần)
-          </span>
+          <n-grid cols="1">
+            <n-gi>
+              <n-radio-group v-model:value="scheduleMode">
+                <n-space>
+                  <n-radio value="week">Tuần</n-radio>
+                  <n-radio value="date">
+                    Chọn ngày (Hệ thống sẽ không tự tạo buổi học theo lịch tuần)
+                  </n-radio>
+                </n-space>
+              </n-radio-group>
+            </n-gi>
+            <n-gi v-if="scheduleMode === 'date'">
+              <n-grid cols="1" class="mb-2">
+                <n-gi class="mb-2 px-10">
+                  <VueDatePicker
+                    v-if="scheduleMode === 'date'"
+                    v-model="DisplayDates"
+                    :min-date="computedMinDate"
+                    :max-date="currentClass?.endAt"
+                    multi-dates
+                    inline
+                    auto-apply
+                    :enable-time-picker="false"
+                    @update:model-value="handleDateChange"
+                  />
+                </n-gi>
+                <n-gi>
+                  <n-grid cols="2" x-gap="20">
+                    <n-gi>
+                      <span>Số buổi đã xếp: {{ currentLessonCount }} buổi</span>
+                    </n-gi>
+                    <n-gi>
+                      <span>Số buổi của lớp: {{ maxLessonCount }} buổi</span>
+                    </n-gi>
+                  </n-grid>
+                </n-gi>
+              </n-grid>
+            </n-gi>
+            <n-gi v-if="scheduleMode === 'week'" class="mt-2">
+              <n-grid cols="4" :x-gap="10">
+                <n-gi span="1">
+                  <h1 class="ml-5 text-lg">Chọn nhanh thời gian học</h1>
+                </n-gi>
+                <n-gi span="3" class="mb-3">
+                  <n-grid
+                    cols="7"
+                    :x-gap="20"
+                    style="display: flex; flex-wrap: wrap"
+                  >
+                    <n-gi v-for="(day, index) in daysOfWeek" :key="index">
+                      <n-checkbox
+                        :checked="selectedDays.includes(day)"
+                        @update:checked="toggleDay(day, $event)"
+                      >
+                        {{ day }}
+                      </n-checkbox>
+                    </n-gi>
+                  </n-grid>
+                </n-gi>
+              </n-grid>
+            </n-gi>
+            <n-gi
+              v-for="(item, index) in selectedDisplay"
+              :key="'form-' + index"
+              span="4"
+            >
+              <n-form :model="formValue" ref="formRefs" :rules="rules">
+                <n-grid :cols="21" :x-gap="20">
+                  <n-gi :span="4">
+                    <n-form-item label="Ngày học">
+                      <n-input :value="item" disabled />
+                    </n-form-item>
+                  </n-gi>
+                  <n-gi :span="17">
+                    <template
+                      v-for="(session, sessionIndex) in formValue.sessions[
+                        item
+                      ]"
+                      :key="sessionIndex"
+                    >
+                      <n-grid :cols="17" :x-gap="20">
+                        <n-gi :span="4">
+                          <n-form-item
+                            :show-label="sessionIndex === 0"
+                            :label="sessionIndex === 0 ? 'Ca học' : ''"
+                            :path="`sessions.${item}.${sessionIndex}.session`"
+                          >
+                            <n-select
+                              v-model:value="session.session"
+                              placeholder="Chọn ca học"
+                              :options="[
+                                { label: 'Sáng', value: 'Sáng' },
+                                { label: 'Chiều', value: 'Chiều' },
+                                { label: 'Tối', value: 'Tối' },
+                              ]"
+                              @update:value="
+                                handleSessionChange(item, sessionIndex, $event)
+                              "
+                            />
+                          </n-form-item>
+                        </n-gi>
+                        <n-gi :span="4" class="text-red-400">
+                          <n-form-item
+                            :show-label="sessionIndex === 0"
+                            :label="sessionIndex === 0 ? 'Thời gian' : ''"
+                            :feedback="
+                              checkOverlap(item).has(sessionIndex)
+                                ? 'Thời gian của ca học bị trùng!'
+                                : ''
+                            "
+                            feedback-status="error"
+                            :style="{ marginBottom: '8px' }"
+                          >
+                            <n-input-group
+                              class="w-fit rounded-2xl border bg-[#F5F5F5]"
+                            >
+                              <n-time-picker
+                                class="custom-tp-left"
+                                placeholder="Bắt đầu"
+                                format="HH:mm"
+                                v-model:value="session.time.start"
+                                :hours="
+                                  (() => {
+                                    if (
+                                      !session.session ||
+                                      !sessionTimeRanges[session.session]
+                                    )
+                                      return [];
+                                    const sessionRange =
+                                      sessionTimeRanges[session.session];
+
+                                    const startHour = new Date(
+                                      sessionRange.start,
+                                    ).getHours();
+                                    const endHour = new Date(
+                                      sessionRange.end,
+                                    ).getHours();
+
+                                    return startHour < endHour
+                                      ? Array.from(
+                                          { length: endHour - startHour },
+                                          (_, i) => startHour + i,
+                                        )
+                                      : [];
+                                  })()
+                                "
+                                :is-minute-disabled="
+                                  (minute, hour) =>
+                                    hour !== null &&
+                                    getDisabledMinutes(
+                                      hour,
+                                      session,
+                                      false,
+                                    ).includes(minute)
+                                "
+                              />
+
+                              <n-time-picker
+                                class="custom-tp-right"
+                                placeholder="Kết thúc"
+                                format="HH:mm"
+                                v-model:value="session.time.end"
+                                :hours="
+                                  (() => {
+                                    if (
+                                      !session.session ||
+                                      !sessionTimeRanges[session.session] ||
+                                      !session.time.start
+                                    )
+                                      return [];
+
+                                    const sessionRange =
+                                      sessionTimeRanges[session.session];
+                                    const startHour = new Date(
+                                      session.time.start,
+                                    ).getHours();
+                                    const endHour = new Date(
+                                      sessionRange.end,
+                                    ).getHours();
+
+                                    return startHour < endHour
+                                      ? Array.from(
+                                          { length: endHour - startHour },
+                                          (_, i) => startHour + i + 1,
+                                        )
+                                      : [];
+                                  })()
+                                "
+                                :is-minute-disabled="
+                                  (minute, hour) =>
+                                    hour !== null &&
+                                    getDisabledMinutes(
+                                      hour,
+                                      session,
+                                      true,
+                                    ).includes(minute)
+                                "
+                              />
+                            </n-input-group>
+                          </n-form-item>
+                        </n-gi>
+                        <n-gi :span="4">
+                          <n-form-item
+                            :show-label="sessionIndex === 0"
+                            :label="sessionIndex === 0 ? 'Giảng viên' : ''"
+                            :path="`sessions.${item}.${sessionIndex}.teacher`"
+                          >
+                            <n-select
+                              v-model:value="session.teacher"
+                              :options="Staffarray"
+                              label-field="full_name"
+                              value-field="id"
+                              placeholder="Chọn giảng viên"
+                            />
+                          </n-form-item>
+                        </n-gi>
+                        <n-gi :span="4">
+                          <n-form-item
+                            :show-label="sessionIndex === 0"
+                            :label="sessionIndex === 0 ? 'Phòng học' : ''"
+                            :path="`sessions.${item}.${sessionIndex}.room`"
+                          >
+                            <n-select
+                              multiple
+                              clearable
+                              v-model:value="session.room"
+                              :options="Roomarray"
+                              label-field="name"
+                              value-field="id"
+                              placeholder="Chọn phòng học"
+                              @update:value="
+                                (value) =>
+                                  limitSelection(
+                                    value,
+                                    session,
+                                    formRefs[item],
+                                    item,
+                                    sessionIndex,
+                                  )
+                              "
+                            />
+                          </n-form-item>
+                        </n-gi>
+                        <n-gi
+                          v-if="sessionIndex == 0"
+                          class="flex items-center justify-center"
+                        >
+                          <n-button quaternary circle @click="addSession(item)">
+                            <i
+                              class="fa-regular fa-square-plus"
+                              style="font-size: 24px; color: #008cff"
+                            ></i>
+                          </n-button>
+                        </n-gi>
+                        <n-gi
+                          v-else
+                          class="mb-8 flex items-center justify-center"
+                        >
+                          <n-button
+                            quaternary
+                            circle
+                            @click="removeSession(item, sessionIndex)"
+                          >
+                            <i
+                              class="fa-solid fa-trash-can text-lg text-red-500"
+                            ></i>
+                          </n-button>
+                        </n-gi>
+                      </n-grid>
+                    </template>
+                  </n-gi>
+                </n-grid>
+              </n-form>
+            </n-gi>
+            <n-gi class="flex justify-center">
+              <n-button type="info" class="w-1/5" @click="handleSubmit">
+                Lưu
+              </n-button>
+            </n-gi>
+          </n-grid>
         </div>
-
-        <!-- ✅ VueDatePicker với sự kiện update -->
-        <VueDatePicker
-          v-model="dates"
-          :min-date="currentClass?.startAt"
-          :max-date="currentClass?.endAt"
-          multi-dates
-          inline
-          auto-apply
-          @update:model-value="handleDateChange"
-        />
-
-        <div class="mt-4 flex items-center justify-between">
-          <span>Số buổi cuối tháng: 0 buổi</span>
-        </div>
-        <span>Số buổi của lớp: {{ currentClass?.totalLessons }}</span>
-      </div>
-
-      <div class="mt-4">
-        <n-button type="primary" @click="handleSave">Lưu</n-button>
-        <n-button class="ml-2" @click="handleClose">Đóng</n-button>
       </div>
     </div>
   </div>
 </template>
+
+<style lang="scss" scoped>
+* :deep(.custom-tp-left .n-input) {
+  --n-border-disabled: none !important;
+  --n-padding-right: 0px !important;
+  --n-border: none !important;
+  --n-border-focus: none !important;
+  --n-border-hover: none !important;
+  --n-box-shadow-focus: none !important;
+  --n-color: #fff !important;
+  --n-color-disabled: #fff !important;
+  --n-color-focus: #fff !important;
+  --n-color-focus-error: #fff !important;
+  --n-border-error: none !important;
+  --n-border-focus-error: none !important;
+  --n-box-shadow-focus-error: none !important;
+  --n-border-hover-error: none !important;
+}
+
+* :deep(.custom-tp-right .n-input) {
+  --n-padding-left: 7px !important;
+  --n-padding-right: 12px !important;
+  --n-border-disabled: none !important;
+  --n-border: none !important;
+  --n-border-focus: none !important;
+  --n-border-hover: none !important;
+  --n-box-shadow-focus: none !important;
+  --n-color: #fff !important;
+  --n-color-disabled: #fff !important;
+  --n-color-focus: #fff !important;
+  --n-color-focus-error: #fff !important;
+  --n-border-error: none !important;
+  --n-border-focus-error: none !important;
+  --n-box-shadow-focus-error: none !important;
+  --n-border-hover-error: none !important;
+}
+:deep(.custom-tp-left .n-input),
+:deep(.custom-tp-right .n-input) {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+* :deep(.custom-tp-right .n-input .n-input__suffix) {
+  display: none !important;
+}
+
+:deep(.n-form-item .n-form-item-feedback-wrapper .n-form-item-feedback) {
+  color: red;
+}
+
+:deep(.dp__theme_light) {
+  --dp-primary-color: #00a2eb; // Selected date background
+  --dp-text-color: #133d85; // Default text color
+
+  --dp-border-radius: 8px;
+  --dp-font-size: 14px;
+}
+
+:deep(.dp__month_year_select) {
+  background: white;
+  border: 1px solid #dce8ff;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-weight: bold;
+  color: #133d85;
+  display: flex;
+  gap: 80px;
+}
+:deep(.dp__menu) {
+  min-width: 350px !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+</style>
