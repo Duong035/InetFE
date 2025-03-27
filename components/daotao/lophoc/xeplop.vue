@@ -232,21 +232,18 @@ const checkOverlap = (day) => {
 const handleDateChange = (dates) => {
   let formattedDates = dates.map((date) => dayjs(date).format("YYYY/MM/DD"));
 
-  let sessionCount = Object.values(formValue.value.sessions).reduce(
-    (total, sessions) => total + sessions.length,
-    0,
-  );
-
   const previousSelection = new Set(selectedDates.value);
   const newSelections = formattedDates.filter(
     (date) => !previousSelection.has(date),
   );
 
-  if (newSelections.length + sessionCount > maxLessonCount.value) {
+  // Use computed currentLessonCount instead of manually counting sessions
+  if (newSelections.length + currentLessonCount.value > maxLessonCount.value) {
     message.warning("Số buổi học đã đạt giới hạn!");
     formattedDates = [...selectedDates.value];
   }
 
+  // Remove unselected dates from formValue
   const unselectedDates = selectedDates.value.filter(
     (selectedDate) => !formattedDates.includes(selectedDate),
   );
@@ -254,9 +251,11 @@ const handleDateChange = (dates) => {
     delete formValue.value.sessions[unselectedDate];
   });
 
+  // Update UI selection
   selectedDates.value = formattedDates;
   DisplayDates.value = formattedDates;
 
+  // Ensure only allowed dates add new sessions
   formattedDates.forEach((formattedDate) => {
     if (!formValue.value.sessions[formattedDate]) {
       addSession(formattedDate);
