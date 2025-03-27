@@ -38,8 +38,6 @@ const API_ENDPOINTS = {
     classroom: "/api/admin/classroom",
     shift: "/api/admin/work-session",
     shifts: "/api/admin/work-sessions",
-    classrooms: "/api/admin/classrooms",
-    classroom: "/api/admin/classroom",
     center: "/api/admin/center",
     calendar: "/api/admin/teach-schedule",
     schedule_class_student: "/api/admin/schedule-class/by-student",

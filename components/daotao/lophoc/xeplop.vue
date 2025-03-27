@@ -1,11 +1,11 @@
 <script setup>
-import { ref, computed, onMounted, toRaw } from "vue";
-import { message } from "ant-design-vue";
+import { ref, computed, onMounted, toRaw, nextTick } from "vue";
 import VueDatePicker from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
 import { useRoute } from "vue-router";
 import dayjs from "dayjs";
 
+const message = useMessage();
 const { restAPI } = useApi();
 const data = ref([]);
 const showSchedule = ref(false);
@@ -14,20 +14,49 @@ const scheduleMode = ref("week");
 const dates = ref([]);
 const route = useRoute();
 const newId = route.query.id;
-const formRef = ref(null);
-
+const formRefs = ref(null);
+const maxLessonCount = computed(() => route.query.num);
+const currentLessonCount = computed(() => {
+  return Object.entries(formValue.value.sessions)
+    .filter(([key]) => {
+      if (scheduleMode.value === "week") {
+        return !key.includes("/"); // Exclude date-based keys
+      } else if (scheduleMode.value === "date") {
+        return key.includes("/"); // Include only date-based keys
+      }
+      return true; // Default case, include everything
+    })
+    .reduce((total, [, sessions]) => total + sessions.length, 0);
+});
 //Rules_________________________________________________________________________________________________
-const rules = {
-  [`sessions`]: {
-    type: "object",
-    required: true,
-  },
-  [`sessions.*.sessions.*.session`]: {
-    required: true,
-    message: "Ca học phải được chọn",
-    trigger: "change",
-  },
-};
+const rules = computed(() => {
+  const sessionRules = {};
+  for (const day in formValue.value.sessions) {
+    formValue.value.sessions[day].forEach((_, index) => {
+      sessionRules[`sessions.${day}.${index}.session`] = {
+        required: true,
+        message: "Ca học phải được chọn",
+        trigger: ["blur", "change"],
+      };
+      sessionRules[`sessions.${day}.${index}.teacher`] = {
+        required: true,
+        message: "Giảng viên phải được chọn",
+        trigger: ["blur", "change"],
+      };
+      sessionRules[`sessions.${day}.${index}.room`] = {
+        required: true,
+        message: "Phòng học phải được chọn",
+        trigger: ["blur", "change"],
+        validator(rule, value) {
+          return value && value.length > 0
+            ? Promise.resolve()
+            : Promise.reject("Phòng học phải được chọn");
+        },
+      };
+    });
+  }
+  return sessionRules;
+});
 
 //______________________________________________________________________________________________________
 
@@ -44,6 +73,7 @@ const daysOfWeek = ref([
 
 const selectedDays = ref([]);
 const selectedDates = ref([]);
+const DisplayDates = ref([]);
 const selectedDisplay = computed(() => {
   if (scheduleMode.value === "date") {
     return selectedDates.value;
@@ -63,8 +93,12 @@ const toggleDay = (day, checked) => {
     "Thứ 7",
     "Chủ Nhật",
   ];
-
   if (checked) {
+    if (currentLessonCount.value >= maxLessonCount.value) {
+      message.warning("Số buổi học đã đạt giới hạn!");
+      return;
+    }
+
     if (!selectedDays.value.includes(day)) {
       selectedDays.value.push(day);
       addSession(day);
@@ -83,10 +117,15 @@ const toggleDay = (day, checked) => {
 const formValue = ref({
   sessions: {},
 });
+
 //______________________________________________________________________________________________________
 
 //ScheduleDisplay_______________________________________________________________________________________
 const addSession = (day) => {
+  if (currentLessonCount.value >= maxLessonCount.value) {
+    message.warning("Số buổi học đã đạt giới hạn!");
+    return;
+  }
   if (!formValue.value.sessions[day]) {
     formValue.value.sessions[day] = [];
   }
@@ -190,40 +229,34 @@ const checkOverlap = (day) => {
 //______________________________________________________________________________________________________
 
 //Handle________________________________________________________________________________________________
-const availableDates = computed(() => {
-  if (!currentClass.value) return [];
-  return dates.value.filter(
-    (date) =>
-      new Date(date) >= new Date(currentClass.value.startAt) &&
-      new Date(date) <= new Date(currentClass.value.endAt),
-  );
-});
-
 const handleDateChange = (dates) => {
-  //Create a proxy that update at the end
+  let formattedDates = dates.map((date) => dayjs(date).format("YYYY/MM/DD"));
 
-  // Convert the selected dates to a formatted array
-  const formattedDates = dates.map((date) => dayjs(date).format("YYYY/MM/DD"));
+  let sessionCount = Object.values(formValue.value.sessions).reduce(
+    (total, sessions) => total + sessions.length,
+    0,
+  );
 
-  // Track unselected dates for deletion logic
+  const previousSelection = new Set(selectedDates.value);
+  const newSelections = formattedDates.filter(
+    (date) => !previousSelection.has(date),
+  );
+
+  if (newSelections.length + sessionCount > maxLessonCount.value) {
+    message.warning("Số buổi học đã đạt giới hạn!");
+    formattedDates = [...selectedDates.value];
+  }
+
   const unselectedDates = selectedDates.value.filter(
     (selectedDate) => !formattedDates.includes(selectedDate),
   );
-
-  // Remove sessions for unselected dates
   unselectedDates.forEach((unselectedDate) => {
-    if (formValue.value.sessions[unselectedDate]) {
-      delete formValue.value.sessions[unselectedDate];
-    }
+    delete formValue.value.sessions[unselectedDate];
   });
 
-  // Sort the selected dates
-  formattedDates.sort((a, b) => (dayjs(a).isAfter(dayjs(b)) ? 1 : -1));
-
-  // Update selectedDates to reflect the current selection
   selectedDates.value = formattedDates;
+  DisplayDates.value = formattedDates;
 
-  // Add sessions for newly selected dates
   formattedDates.forEach((formattedDate) => {
     if (!formValue.value.sessions[formattedDate]) {
       addSession(formattedDate);
@@ -264,18 +297,126 @@ const loadData = async () => {
     message.error("Lỗi tải dữ liệu.");
   }
 };
+
+const Staffarray = ref([]);
+const fetchTeach = async () => {
+  try {
+    const { data: resData } = await restAPI.cms.getStaff({});
+    if (resData.value?.status) {
+      Staffarray.value = resData.value.data.data
+        .filter((staff) => staff.is_active && staff.position === 1)
+        .map(({ id, full_name }) => ({
+          id,
+          full_name,
+        }))
+        .sort((a, b) => a.full_name.localeCompare(b.full_name));
+    } else {
+      message.error("Failed to load Teachers!");
+      Staffarray.value = [];
+    }
+  } catch (err) {
+    message.error("Error fetching Teachers!");
+    console.error(err);
+    Staffarray.value = [];
+  }
+};
+
+const Roomarray = ref([]);
+const fetchRoom = async () => {
+  try {
+    const { data: resData } = await restAPI.cms.getClassrooms({});
+    if (resData.value?.status) {
+      Roomarray.value = resData.value.data.data
+        .filter((room) => room.is_active)
+        .map(({ id, name }) => ({
+          id,
+          name,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      message.error("Failed to load classroom!");
+      Roomarray.value = [];
+    }
+  } catch (err) {
+    message.error("Error fetching classroom!");
+    console.error(err);
+    Roomarray.value = [];
+  }
+};
 //______________________________________________________________________________________________________
 
 //Submit________________________________________________________________________________________________
+function filterSchedule(schedule, filterByDate = true) {
+  const rawSchedule = toRaw(schedule);
+
+  return Object.fromEntries(
+    Object.entries(rawSchedule).filter(([key]) => {
+      return filterByDate ? key.includes("/") : !key.includes("/");
+    }),
+  );
+}
+
 const handleSubmit = async () => {
-  // if (!formRef.value) return;
-  // await formRef.value.validate();
-  console.log(formValue.value);
+  const isValid = await Promise.all(
+    formRefs.value.map(async (form) => {
+      if (form) {
+        return form
+          .validate()
+          .then(() => true)
+          .catch(() => false);
+      }
+      return false;
+    }),
+  );
+
+  const hasConflict = Object.keys(formValue.value.sessions).some(
+    (day) => checkOverlap(day).size > 0,
+  );
+
+  if (isValid.includes(false) || hasConflict) {
+    return;
+  }
+
+  const scheduleData = formValue.value.sessions || {};
+  const dateFiltered = filterSchedule(scheduleData, true);
+  const dayFiltered = filterSchedule(scheduleData, false);
+  if (scheduleMode.value === "date") {
+    console.log("📅 Date Filtered:", dateFiltered);
+  } else if (scheduleMode.value === "week") {
+    console.log("📆 Day Filtered:", dayFiltered);
+  }
 };
+//______________________________________________________________________________________________________
+
+//Func__________________________________________________________________________________________________
+const limitSelection = (value, session, formRef, item, sessionIndex) => {
+  // Ensure at least 1 room is selected
+  session.room = value.length > 2 ? value.slice(-2) : value;
+
+  nextTick(() => {
+    if (formRef) {
+      formRef
+        .validateField(`sessions.${item}.${sessionIndex}.room`)
+        .catch(() => {});
+    }
+  });
+};
+const computedMinDate = computed(() => {
+  if (!currentClass.value) return new Date();
+
+  const startAt = currentClass.value.startAt
+    ? new Date(currentClass.value.startAt)
+    : null;
+  const today = new Date();
+
+  return startAt && startAt > today ? startAt : today;
+});
 //______________________________________________________________________________________________________
 
 onMounted(async () => {
   await loadData();
+  fetchTeach();
+  fetchRoom();
   if (newId) {
     const foundClass = data.value.find((cls) => cls.id === newId);
     if (foundClass) {
@@ -309,26 +450,27 @@ onMounted(async () => {
               </n-radio-group>
             </n-gi>
             <n-gi v-if="scheduleMode === 'date'">
-              <n-grid cols="1">
-                <n-gi>
+              <n-grid cols="1" class="mb-2">
+                <n-gi class="mb-2 px-10">
                   <VueDatePicker
                     v-if="scheduleMode === 'date'"
-                    v-model="selectedDates"
-                    :min-date="currentClass?.startAt"
+                    v-model="DisplayDates"
+                    :min-date="computedMinDate"
                     :max-date="currentClass?.endAt"
                     multi-dates
                     inline
                     auto-apply
+                    :enable-time-picker="false"
                     @update:model-value="handleDateChange"
                   />
                 </n-gi>
                 <n-gi>
                   <n-grid cols="2" x-gap="20">
                     <n-gi>
-                      <span>Số buổi cuối tháng: 0 buổi</span>
+                      <span>Số buổi đã xếp: {{ currentLessonCount }} buổi</span>
                     </n-gi>
                     <n-gi>
-                      <span>Số buổi của lớp: 0</span>
+                      <span>Số buổi của lớp: {{ maxLessonCount }} buổi</span>
                     </n-gi>
                   </n-grid>
                 </n-gi>
@@ -362,7 +504,7 @@ onMounted(async () => {
               :key="'form-' + index"
               span="4"
             >
-              <n-form :model="formValue" ref="formRef" :rules="rules">
+              <n-form :model="formValue" ref="formRefs" :rules="rules">
                 <n-grid :cols="21" :x-gap="20">
                   <n-gi :span="4">
                     <n-form-item label="Ngày học">
@@ -403,7 +545,7 @@ onMounted(async () => {
                             :label="sessionIndex === 0 ? 'Thời gian' : ''"
                             :feedback="
                               checkOverlap(item).has(sessionIndex)
-                                ? 'Thời gian bị trùng lặp!'
+                                ? 'Thời gian của ca học bị trùng!'
                                 : ''
                             "
                             feedback-status="error"
@@ -501,9 +643,13 @@ onMounted(async () => {
                           <n-form-item
                             :show-label="sessionIndex === 0"
                             :label="sessionIndex === 0 ? 'Giảng viên' : ''"
+                            :path="`sessions.${item}.${sessionIndex}.teacher`"
                           >
                             <n-select
                               v-model:value="session.teacher"
+                              :options="Staffarray"
+                              label-field="full_name"
+                              value-field="id"
                               placeholder="Chọn giảng viên"
                             />
                           </n-form-item>
@@ -512,10 +658,26 @@ onMounted(async () => {
                           <n-form-item
                             :show-label="sessionIndex === 0"
                             :label="sessionIndex === 0 ? 'Phòng học' : ''"
+                            :path="`sessions.${item}.${sessionIndex}.room`"
                           >
                             <n-select
+                              multiple
+                              clearable
                               v-model:value="session.room"
+                              :options="Roomarray"
+                              label-field="name"
+                              value-field="id"
                               placeholder="Chọn phòng học"
+                              @update:value="
+                                (value) =>
+                                  limitSelection(
+                                    value,
+                                    session,
+                                    formRefs[item],
+                                    item,
+                                    sessionIndex,
+                                  )
+                              "
                             />
                           </n-form-item>
                         </n-gi>
@@ -611,5 +773,29 @@ onMounted(async () => {
 
 :deep(.n-form-item .n-form-item-feedback-wrapper .n-form-item-feedback) {
   color: red;
+}
+
+:deep(.dp__theme_light) {
+  --dp-primary-color: #00a2eb; // Selected date background
+  --dp-text-color: #133d85; // Default text color
+
+  --dp-border-radius: 8px;
+  --dp-font-size: 14px;
+}
+
+:deep(.dp__month_year_select) {
+  background: white;
+  border: 1px solid #dce8ff;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-weight: bold;
+  color: #133d85;
+  display: flex;
+  gap: 80px;
+}
+:deep(.dp__menu) {
+  min-width: 350px !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 </style>
