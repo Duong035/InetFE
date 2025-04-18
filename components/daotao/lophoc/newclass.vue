@@ -112,7 +112,7 @@ const fetchBranches = async () => {
 
     branches.value =
       resData.value?.data?.map((branch: any) => ({
-        label: branch.address,
+        label: `${branch.Name} - ${branch.address}`,
         value: branch.id,
       })) || [];
   } catch (err) {

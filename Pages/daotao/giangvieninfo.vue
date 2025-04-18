@@ -37,7 +37,7 @@ const formValue = reactive({
   introduction: null,
   permission_grp_id: null,
   is_active: true,
-  avatar: "https://i.postimg.cc/Pxxp3vpy/cover.png",
+  avatar: "https://i.postimg.cc/SRMS5kn5/cover.png",
   salary_type: 1,
   salary: null,
   role_id: 4,
