@@ -38,13 +38,9 @@ const API_ENDPOINTS = {
     shift: "/api/admin/work-session",
     shifts: "/api/admin/work-sessions",
     center: "/api/admin/center",
-<<<<<<< Updated upstream
-    schedule_class_student: "/api/admin/schedule-class/student",
-=======
     calendar: "/api/admin/teach-schedule",
     schedule_class_student: "/api/admin/schedule-class/by-student",
     schedule_class: "/api/admin/schedule-class",
->>>>>>> Stashed changes
   },
 };
 
@@ -401,11 +397,7 @@ class CMSManager {
   async addStudentsToClass(data) {
     return this.request.post(API_ENDPOINTS.cms.stoclass, data);
   }
-<<<<<<< Updated upstream
-  //____
-=======
   //__________________________________________________________________________________________
->>>>>>> Stashed changes
 
   //classroom_________________________________________________________________________________
   async getClassrooms(data) {
@@ -513,12 +505,6 @@ class CMSManager {
   async updateCenter(data) {
     return this.request.put(API_ENDPOINTS.cms.center, data);
   }
-<<<<<<< Updated upstream
-  //schedule____________________________________________________________________________________
-  async getScheduleClassStudent(data) {
-    return this.request.get(API_ENDPOINTS.cms.schedule_class_student, data);
-  }
-=======
   //__________________________________________________________________________________________
  
   //schedule__________________________________________________________________________________
@@ -533,7 +519,6 @@ class CMSManager {
     return this.request.post(API_ENDPOINTS.cms.schedules_class, data)
   }
   //__________________________________________________________________________________________
->>>>>>> Stashed changes
 }
 
 class RestAPI {
