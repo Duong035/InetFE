@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { message } from "ant-design-vue";
-import { useRoute } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
+
 import dayjs from "dayjs";
 
 // API
@@ -22,12 +23,14 @@ interface ClassData {
 }
 
 // Dữ liệu reactive
+const router = useRouter();
 const route = useRoute();
 const isSubmitting = ref(false);
-const subjects = ref<{ label: string; value: string }[]>([]);
+const lessonsCount = ref(0);
+const subjects = ref<{ label: string; value: string; count: number }[]>([]);
 const branches = ref<{ label: string; value: string }[]>([]);
-const newId = route.query.id;
-
+const newId = computed(() => route.query.id || null);
+const emit = defineEmits(["update-value"]);
 // Giá trị form
 const formValue = ref<ClassData>({
   id: null,
@@ -46,11 +49,10 @@ const formValue = ref<ClassData>({
 const fetchClassData = async () => {
   try {
     const { data: resData } = await restAPI.cms.getClassById({
-      id: newId,
+      id: newId.value,
     });
 
     if (resData.value?.status) {
-      console.log("Dữ liệu lớp học:", resData);
       const data = resData.value?.data;
 
       formValue.value.id = data?.id || null;
@@ -67,6 +69,7 @@ const fetchClassData = async () => {
         ? dayjs(data?.end_at).valueOf()
         : null;
       formValue.value.description = data?.description || "";
+      emit("update-value", formValue.value.subjects);
     } else {
       message.warning("Không tìm thấy thông tin lớp học.");
     }
@@ -89,6 +92,7 @@ const fetchSubjects = async () => {
       resData.value?.data?.subjects?.map((subject: any) => ({
         label: subject.name,
         value: subject.id,
+        count: subject.total_lessons,
       })) || [];
   } catch (err) {
     console.error("Lỗi khi tải danh sách môn học:", err);
@@ -108,7 +112,7 @@ const fetchBranches = async () => {
 
     branches.value =
       resData.value?.data?.map((branch: any) => ({
-        label: branch.address,
+        label: `${branch.Name} - ${branch.address}`,
         value: branch.id,
       })) || [];
   } catch (err) {
@@ -122,11 +126,6 @@ const handleSubmit = async () => {
   isSubmitting.value = true;
 
   try {
-    console.log(
-      "Giá trị form trước khi gửi:",
-      JSON.stringify(formValue.value, null, 2),
-    );
-
     const isUpdating = !!formValue.value.id; // Nếu có ID thì là cập nhật
     const payload = {
       id: formValue.value.id,
@@ -145,11 +144,6 @@ const handleSubmit = async () => {
       group_url: "",
     };
 
-    console.log(
-      `${isUpdating ? "Cập nhật" : "Tạo mới"} lớp học với payload:`,
-      JSON.stringify(payload, null, 2),
-    );
-
     let resData, error;
     if (isUpdating) {
       // Cập nhật lớp học (PATCH)
@@ -161,16 +155,28 @@ const handleSubmit = async () => {
       ({ data: resData, error } = await restAPI.cms.createClass({
         body: JSON.stringify(payload),
       }));
+      const classId = resData.value.data.id;
+      await router.push({
+        path: window.location.pathname,
+        query: { id: classId, num: lessonsCount.value },
+      });
     }
 
     if (error?.value) {
-      throw new Error(
-        error.value.data?.message ||
-          `Lỗi khi ${isUpdating ? "cập nhật" : "tạo"} lớp học`,
-      );
-    }
+      // throw new Error(
+      //   error.value.data?.message ||
+      //     `Lỗi khi ${isUpdating ? "cập nhật" : "tạo"} lớp học`,
+      // );
+      const errorCode: keyof typeof ERROR_CODES = error.value?.data?.error;
+      const errorMessage =
+        ERROR_CODES[errorCode] ||
+        resData?.value?.message ||
+        "Đã xảy ra lỗi, vui lòng thử lại!";
 
-    message.success(`${isUpdating ? "Cập nhật" : "Tạo"} lớp học thành công!`);
+      message.warning(errorMessage);
+    } else {
+      message.success(`${isUpdating ? "Cập nhật" : "Tạo"} lớp học thành công!`);
+    }
 
     // Reset form sau khi hoàn thành
     formValue.value = {
@@ -195,16 +201,22 @@ const handleSubmit = async () => {
     message.error(errorMessage);
   } finally {
     isSubmitting.value = false;
+    await fetchClassData();
   }
+};
+
+const updateSelectedCount = (id: string) => {
+  const subject = subjects.value.find((s) => s.value === id);
+  lessonsCount.value = subject ? subject.count : 0;
 };
 
 // CHẠY CÁC HÀM KHI COMPONENT ĐƯỢC MOUNTED
 onMounted(() => {
   fetchSubjects();
   fetchBranches();
-  console.log("ID lớp học0:", newId);
-
-  fetchClassData();
+  if (newId.value) {
+    fetchClassData();
+  }
 });
 </script>
 
@@ -238,8 +250,8 @@ onMounted(() => {
         <!-- Hình thức học -->
         <n-form-item label="Hình thức học *" class="flex-1">
           <n-radio-group v-model:value="formValue.studyMode">
-            <n-radio :value="1">Học offline</n-radio>
-            <n-radio :value="2">Học online</n-radio>
+            <n-radio :value="1">Học online</n-radio>
+            <n-radio :value="2">Học offline</n-radio>
             <n-radio :value="3">Học hybrid</n-radio>
           </n-radio-group>
         </n-form-item>
@@ -293,6 +305,7 @@ onMounted(() => {
             v-model:value="formValue.subjects"
             :options="subjects"
             placeholder="Chọn môn học"
+            @update:value="updateSelectedCount"
           />
         </n-form-item>
         <n-form-item label="Chi nhánh *">
@@ -314,12 +327,7 @@ onMounted(() => {
     </div>
     <!-- Nút Lưu -->
     <div class="m-4 ml-60 mr-60">
-      <n-button
-        type="primary"
-        block
-        :loading="isSubmitting"
-        @click="handleSubmit"
-      >
+      <n-button type="info" block :loading="isSubmitting" @click="handleSubmit">
         Lưu
       </n-button>
     </div>

@@ -31,9 +31,10 @@ export default defineComponent({
 
     const paginationReactive = reactive({
       page: 1,
-      pageSize: 7,
+      pageSize: 10,
       showSizePicker: true,
-      pageSizes: [3, 5, 7],
+
+      pageSizes: [5, 10, 15],
       itemCount: computed(() => filteredData.value.length),
       onUpdatePage: (page: number) => {
         paginationReactive.page = page;
@@ -100,7 +101,7 @@ export default defineComponent({
             status: item.status,
             name: item.name,
             subjectName: item.subject?.name || "N/A",
-            totalLessons: item.subject?.total_lessons,
+            totalLessons: item.total_lessons,
           }));
 
           // Lấy danh sách môn học từ dữ liệu
@@ -143,14 +144,13 @@ export default defineComponent({
 
       return statusMap[status] || "Không xác định";
     }
-    function handleSave() {
-      // Xử lý logic lưu lịch học ở đây
+    const handleSave = () => {
       console.log("Lưu lịch học", {
         mode: scheduleMode.value,
-        selectedValue: selectedValue.value,
+        dates: dates.value,
       });
-      // Ví dụ: gọi API, hoặc emit event
-    }
+      showSchedule.value = false;
+    };
 
     const handleClose = () => {
       showSchedule.value = false;
@@ -193,6 +193,11 @@ export default defineComponent({
               dayjs(row.endAt).format("DD/MM/YYYY")
             );
           },
+        },
+        {
+          title: "Số buổi học",
+          key: "totalLessons",
+          align: "center",
         },
         {
           title: "Trạng thái",
@@ -295,18 +300,7 @@ export default defineComponent({
         >
           Lịch học
         </button>
-        <button
-          class="text-4xl font-bold"
-          @click="activeTab = 'xeplop'"
-          :class="[
-            'px-6 py-2 font-medium',
-            activeTab === 'xeplop'
-              ? 'border-b-2 border-blue-500 text-blue-500'
-              : 'text-gray-600',
-          ]"
-        >
-          Xếp lớp
-        </button>
+
         <n-button
           type="info"
           class="ml-auto h-12 w-40 text-xl"
@@ -318,74 +312,9 @@ export default defineComponent({
       </div>
       <main
         class="mb-10 mr-5 mt-10 box-border flex"
-        v-if="activeTab === 'xeplop'"
+        v-if="activeTab === 'lichhoc'"
       >
-        <div class="h-full w-full overflow-auto rounded-2xl bg-white">
-          <n-data-table
-            :columns="columns"
-            :data="data"
-            :bordered="false"
-            :single-line="false"
-            :pagination="pagination"
-          />
-          <div v-show="showSchedule" class="mt-4 rounded-md border p-4">
-            <h2 class="mb-2 text-xl font-bold">
-              Xếp lịch học cho lớp: {{ currentClass?.name }}
-            </h2>
-
-            <div>
-              <!-- Chọn chế độ: Tuần / Chọn ngày -->
-              <div class="mb-4 flex items-center gap-3">
-                <n-radio-group v-model:value="scheduleMode">
-                  <n-space>
-                    <n-radio value="week">Tuần</n-radio>
-                    <n-radio value="date"> Chọn ngày </n-radio>
-                  </n-space>
-                </n-radio-group>
-                <!-- Ghi chú hiển thị khi chọn 'date' -->
-                <span
-                  v-if="scheduleMode === 'date'"
-                  class="text-xs text-gray-400"
-                >
-                  (Hệ thống sẽ không tự tạo buổi học theo lịch tuần)
-                </span>
-              </div>
-
-              <!-- Lịch -->
-
-              <VueDatePicker
-                v-if="scheduleMode === 'date' && currentClass"
-                v-model="dates"
-                :min-date="currentClass?.startAt"
-                :max-date="currentClass?.endAt"
-                multi-dates
-                inline
-                auto-apply
-              />
-
-              <!-- Thông tin số buổi -->
-              <div class="mt-4 flex items-center justify-between">
-                <span>Số buổi cuối tháng: 0 buổi</span>
-                <span>Số buổi của lớp: {{ currentClass?.totalLessons }}</span>
-              </div>
-            </div>
-
-            <div class="mt-4">
-              <n-button
-                type="primary"
-                @click="
-                  () => {
-                    handleSave();
-                    showSchedule = false;
-                  }
-                "
-              >
-                Lưu
-              </n-button>
-              <n-button class="ml-2" @click="handleClose"> Đóng </n-button>
-            </div>
-          </div>
-        </div>
+        <DaotaoLophocLich />
       </main>
     </div>
   </div>

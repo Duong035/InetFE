@@ -23,7 +23,6 @@ const API_ENDPOINTS = {
     categories: "/api/admin/categories",
     subject: "/api/admin/subject",
     subjects: "/api/admin/subjects",
-    subject: "/api/admin/subject",
     all_subject: "/api/admin/subject/all",
     classes: "/api/admin/classes",
     class: "/api/admin/class",
@@ -35,23 +34,19 @@ const API_ENDPOINTS = {
     lesson_data: "/api/admin/lesson-data",
     lesson_datas: "/api/admin/lesson-datas",
     classrooms: "/api/admin/classrooms",
+    classroom: "/api/admin/classroom",
     shift: "/api/admin/work-session",
     shifts: "/api/admin/work-sessions",
     center: "/api/admin/center",
-<<<<<<< Updated upstream
     schedule_class_student: "/api/admin/schedule-class/student",
-=======
-    calendar: "/api/admin/teach-schedule",
-    schedule_class_student: "/api/admin/schedule-class/by-student",
-    schedule_class: "/api/admin/schedule-class",
->>>>>>> Stashed changes
   },
 };
 
 class Request {
   constructor() {
     const route = useRoute();
-    this.baseURL = useRuntimeConfig().public.baseUrl
+    // this.baseURL = "http://localhost:3000";
+    this.baseURL = "http://10.50.20.169:3000";
     this.accessToken = `Bearer ${useUserStore()?.userInfo?.token}`;
     this.headers = {};
     this.handleFetch = {
@@ -97,21 +92,15 @@ class Request {
   }
 
   fetch(url, method, options) {
-    if (this.accessToken) {
-      this.headers = {
-        "Content-type": "application/json",
-        Authorization: this.accessToken,
-      }
-    } else {
-      this.headers = {
-        "Content-type": "application/json",
-      }
-    }
+    const headers = {
+      "Content-type": "application/json",
+      Authorization: this.accessToken,
+    };
 
     return useFetch(url, {
       baseURL: this.baseURL,
-      method: method,
-      headers: this.headers,
+      method,
+      headers,
       ...options,
       ...this.handleFetch,
     });
@@ -380,32 +369,19 @@ class CMSManager {
   async deleteClass(data) {
     return this.request.delete(`${API_ENDPOINTS.cms.class}/${data.id}`, data);
   }
-  async cancel_Class(data) {
-    return this.request.path(
-      `${API_ENDPOINTS.cms.cancel_class}/${data.id}`,
-      data,
-    );
-  }
+  //__________________________________________________________________________________________
+
+  //Test
   async getClassStudent(data) {
     return this.request.get(
       `${API_ENDPOINTS.cms.class}/${data.id}/student`,
       data,
     );
   }
-  async deleteClassStudent(data) {
-    return this.request.delete(
-      `${API_ENDPOINTS.cms.class}/remove-student`,
-      data,
-    );
-  }
   async addStudentsToClass(data) {
     return this.request.post(API_ENDPOINTS.cms.stoclass, data);
   }
-<<<<<<< Updated upstream
   //____
-=======
-  //__________________________________________________________________________________________
->>>>>>> Stashed changes
 
   //classroom_________________________________________________________________________________
   async getClassrooms(data) {
@@ -415,14 +391,14 @@ class CMSManager {
     return this.request.post(API_ENDPOINTS.cms.classrooms, data);
   }
   async getDetailClassroom(data) {
-    return this.request.get(`${API_ENDPOINTS.cms.classrooms}/${data.id}`, data);
+    return this.request.get(`${API_ENDPOINTS.cms.classroom}/:${data.id}`, data);
   }
   async updateClassroom(data) {
-    return this.request.put(`${API_ENDPOINTS.cms.classrooms}/${data.id}`, data);
+    return this.request.put(`${API_ENDPOINTS.cms.classroom}/:${data.id}`, data);
   }
   async deleteClassroom(data) {
     return this.request.delete(
-      `${API_ENDPOINTS.cms.classrooms}/${data.id}`,
+      `${API_ENDPOINTS.cms.classroom}/:${data.id}`,
       data,
     );
   }
@@ -513,27 +489,10 @@ class CMSManager {
   async updateCenter(data) {
     return this.request.put(API_ENDPOINTS.cms.center, data);
   }
-<<<<<<< Updated upstream
   //schedule____________________________________________________________________________________
   async getScheduleClassStudent(data) {
     return this.request.get(API_ENDPOINTS.cms.schedule_class_student, data);
   }
-=======
-  //__________________________________________________________________________________________
- 
-  //schedule__________________________________________________________________________________
-  async getScheduleClassStudent(data) {
-    return this.request.get(API_ENDPOINTS.cms.schedule_class_student, data);
-  }
-
-  async getScheduleClass(data) {
-    return this.request.get(API_ENDPOINTS.cms.schedule_class, data);
-  }
-  async createClassSchedule(data) {
-    return this.request.post(API_ENDPOINTS.cms.schedules_class, data)
-  }
-  //__________________________________________________________________________________________
->>>>>>> Stashed changes
 }
 
 class RestAPI {

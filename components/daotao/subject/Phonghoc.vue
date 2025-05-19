@@ -15,6 +15,7 @@ export default defineComponent({
       center_id: string;
       branches: string;
       center: string;
+      address: string;
     }
 
     const { restAPI } = useApi();
@@ -24,7 +25,8 @@ export default defineComponent({
 
     const paginationReactive = reactive({
       page: 1,
-      pageSize: 5,
+
+      pageSize: 10,
       showSizePicker: true,
       pageSizes: [5, 10, 15],
       itemCount: computed(() => classrooms.value.length),
@@ -38,7 +40,9 @@ export default defineComponent({
     });
 
     const classrooms = ref<Classrooms[]>([]);
-    const branches = ref<{ label: string; value: string }[]>([]);
+    const branches = ref<{ label: string; value: string; address: string }[]>(
+      [],
+    );
     const center = ref<{ label: string; value: string }[]>([]);
     const data = ref<Classrooms[]>([]);
     const isLoading = ref(false);
@@ -73,6 +77,7 @@ export default defineComponent({
             center_id: classroom.center_id,
             branches: classroom.branches,
             center: classroom.center,
+            address: classroom.address,
           };
         });
       } catch (err) {
@@ -93,8 +98,9 @@ export default defineComponent({
         }
         branches.value =
           resData.value?.data?.map((branch: any) => ({
-            label: branch.Name,
+            label: `${branch.Name} - ${branch.address}`,
             value: branch.id,
+            address: branch.address,
           })) || [];
       } catch (err) {
         console.error("Lỗi khi tải danh sách chi nhánh:", err);
@@ -142,8 +148,8 @@ export default defineComponent({
       { label: "Zoom", value: "Zoom" },
       { label: "Live class", value: "Live class" },
       { label: "Google Meet", value: "Google Meet" },
-      { label: "practicing", value: "practicing" },
-      { label: "theory", value: "theory" },
+      { label: "Practicing", value: "Practicing" },
+      { label: "Theory", value: "Theory" },
     ];
 
     // Lọc dữ liệu dựa vào trạng thái và loại phòng
@@ -261,6 +267,12 @@ export default defineComponent({
         message.error((error as any).message || "Lỗi khi xóa phòng học");
       }
     };
+    const selectedBranchAddress = computed(() => {
+      const branch = branches.value.find(
+        (b) => b.value === newClassroom.value.branch_id,
+      );
+      return branch ? branch.address : "Không có địa chỉ";
+    });
 
     function createColumns(): DataTableColumns<Classrooms> {
       return [
@@ -297,12 +309,12 @@ export default defineComponent({
           titleAlign: "center",
           render(row) {
             const onlineTypes = ["Zoom", "Live class", "Google Meet"];
-            const offlineTypes = ["practicing", "theory"];
+            const offlineTypes = ["Practicing", "Theory"];
 
             if (onlineTypes.includes(row.room_type)) {
-              return `Online (${row.room_type})`;
+              return `${row.room_type} (Online)`;
             } else if (offlineTypes.includes(row.room_type)) {
-              return `Offline (${row.room_type})`;
+              return `${row.room_type} (Offline)`;
             } else {
               return "Không xác định";
             }
@@ -392,6 +404,7 @@ export default defineComponent({
       branches,
       resetForm,
       isEditing,
+      selectedBranchAddress,
     };
   },
 });
@@ -411,7 +424,7 @@ export default defineComponent({
         placeholder="Lọc theo loại phòng"
       />
       <n-button type="info" @click="showAddClassroomModal = true">
-        Thêm lớp học <i class="fa-solid fa-plus ml-1 px-2"></i>
+        Thêm phòng học <i class="fa-solid fa-plus ml-1 px-2"></i>
       </n-button>
     </div>
 

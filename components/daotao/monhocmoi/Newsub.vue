@@ -1,13 +1,15 @@
 <script setup>
 import { NModal } from "naive-ui";
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, watch } from "vue";
 import { useRoute } from "vue-router";
 
 const props = defineProps({
   lessonId: String,
+  correctSubjectId: String,
+  creatednumber: Number,
 });
-
 //1: youtube video, 2: s3 video, 3: text, 4: test, 5: document
+const emit = defineEmits(["childFunctionExecuted"]);
 
 const route = useRoute();
 const message = useMessage();
@@ -26,6 +28,8 @@ const lessonData = ref([]);
 const childLesson = ref([]);
 let lessonDataID = null;
 
+// const pageName = computed(() => route.path.split("/")[2]);
+
 const formValue = reactive({
   id: null,
   name: null,
@@ -34,6 +38,89 @@ const formValue = reactive({
   free_trial: false,
   is_live: false,
 });
+
+//massadd____________________________________________________________________________
+const exist = computed(() => props.creatednumber);
+const massadd = ref(false);
+const number = ref(0);
+const mainName = ref("");
+const Addform = ref([]);
+const Max = computed(() => route.query.num - exist.value);
+
+const updateAddform = () => {
+  Addform.value = Array.from({ length: number.value }, (_, index) => ({
+    name: mainName.value
+      ? `${mainName.value} ${exist.value + index + 1}`
+      : `${exist.value + index + 1}`,
+    is_trial: false,
+    is_live: true,
+  }));
+};
+
+watch(number, (newVal, oldVal) => {
+  if (newVal > oldVal) {
+    for (let i = oldVal; i < newVal; i++) {
+      Addform.value.push({
+        name: mainName.value
+          ? `${mainName.value} ${exist.value + i + 1}`
+          : `${exist.value + i + 1}`,
+        is_trial: false,
+        is_live: true,
+      });
+    }
+  } else {
+    Addform.value.length = newVal;
+  }
+});
+
+watch(mainName, (newVal) => {
+  Addform.value.forEach((item, index) => {
+    item.name = newVal
+      ? `${newVal} ${exist.value + index + 1}`
+      : `${exist.value + index + 1}`;
+  });
+});
+
+const masterChecked = computed({
+  get: () => {
+    const checkedCount = Addform.value.filter((item) => item.is_trial).length;
+    if (checkedCount === 0) return false;
+    if (checkedCount === Addform.value.length) return true;
+    return null;
+  },
+  set: (value) => {
+    Addform.value.forEach((item) => {
+      item.is_trial = value;
+    });
+  },
+});
+
+const handleSave = () => {
+  if (massadd.value) {
+    saveMassLessons();
+  } else {
+    saveSingleLesson();
+  }
+};
+
+const saveSingleLesson = () => {
+  addchildLesson({
+    name: lessondate.name,
+    free_trial: lessondate.free_trial,
+    is_live: true,
+  });
+};
+
+const saveMassLessons = () => {
+  Addform.value.forEach((lesson) => {
+    addchildLesson({
+      name: lesson.name,
+      free_trial: lesson.is_trial,
+      is_live: true,
+    });
+  });
+};
+//___________________________________________________________________________________
 
 //Dropdown___________________________________________________________________________
 const activeDropdown = ref(null);
@@ -55,6 +142,7 @@ function toggleDropdown(id) {
 const delref = ref(null);
 const deleteAction = ref(null);
 const itemId = ref(null);
+const islive_true = ref(false);
 
 const showDeleteModal = (action, title, id) => {
   deleteAction.value = action;
@@ -78,7 +166,11 @@ async function deleteCLesson(value) {
     body,
   });
   if (delData?.value?.status) {
-    message.success("Xóa bài học thành công!");
+    if (islive_true.value) {
+      message.success("Xóa buổi học thành công!");
+    } else {
+      message.success("Xóa bài học thành công!");
+    }
   } else {
     const errorCode = error.value?.data?.error;
     const errorMessage =
@@ -88,7 +180,9 @@ async function deleteCLesson(value) {
 
     message.warning(errorMessage);
   }
+  islive_true.value = false;
   getLesson();
+  emit("childFunctionExecuted");
 }
 
 async function deleteContent(value) {
@@ -238,13 +332,14 @@ const lessondate = reactive({
 const addchildLesson = (customLesson = {}) => {
   child_lessons.value.push({
     name: customLesson.name ?? null,
-    position: childLesson.value.length + 1,
+    position: child_lessons.value.length + 1,
     parent_id: props.lessonId,
-    subject_id: route.query.id || null,
+    subject_id: props.correctSubjectId || null,
     free_trial: customLesson.free_trial ?? false,
     is_live: customLesson.is_live ?? false,
   });
 };
+
 const removeLesson = (value) => {
   if (child_lessons.value.length > 0) {
     child_lessons.value.splice(value, 1);
@@ -267,6 +362,10 @@ watch(isModalVisible, (newValue, oldValue) => {
       name: null,
       free_trial: false,
     });
+    massadd.value = false;
+    Addform.value = [];
+    number.value = 0;
+    mainName.value = 0;
   }
 });
 //___________________________________________________________________________________
@@ -275,14 +374,14 @@ watch(isModalVisible, (newValue, oldValue) => {
 const handleFormSubmit = async (body) => {
   body.lesson_id = lessonDataID;
   if (body.id) {
-    await updateLesson(body);
+    await updateLessondata(body);
   } else {
-    await createLesson(body);
+    await createLessondata(body);
   }
   getLessonData();
 };
 
-const createLesson = async (body) => {
+const createLessondata = async (body) => {
   const { data: resCreate, error } = await restAPI.cms.createLessonData({
     body,
   });
@@ -299,7 +398,7 @@ const createLesson = async (body) => {
   }
 };
 
-const updateLesson = async (body) => {
+const updateLessondata = async (body) => {
   let finalBody = [body];
   const { data: resUpdate, error } = await restAPI.cms.updateLessonData({
     body: finalBody,
@@ -319,42 +418,63 @@ const updateLesson = async (body) => {
 
 const handleSubmit = async () => {
   if (isLoading.value) return;
+  isLoading.value = true;
   if (isModal.value == "buoihoc") {
-    addchildLesson({
-      name: lessondate.name,
-      free_trial: lessondate.free_trial,
-      is_live: true,
-    });
+    if (massadd.value) {
+      saveMassLessons();
+    } else {
+      saveSingleLesson();
+    }
   }
-  if (is_addnew.value) {
-    for (const lesson of child_lessons.value) {
-      try {
-        const { data: resCreate } = await restAPI.cms.createLesson({
+  try {
+    if (is_addnew.value) {
+      for (const lesson of child_lessons.value) {
+        const { data: resCreate, error } = await restAPI.cms.createLesson({
           body: lesson,
         });
-      } catch (err) {
-        console.error(`Error creating lesson ${lesson.name}:`, err);
+        if (resCreate.value?.status) {
+          if (lesson.is_live) {
+            message.success("Tạo buổi học thành công!!");
+          } else {
+            message.success("Tạo bài học thành công!!");
+          }
+        } else {
+          const errorCode = error.value?.data?.error;
+          const errorMessage =
+            ERROR_CODES[errorCode] ||
+            resCreate?.value?.message ||
+            "Đã xảy ra lỗi, vui lòng thử lại!!";
+          message.error(errorMessage);
+        }
       }
-      message.success("Tạo bài học thành công!");
-    }
-  } else {
-    const body = [{ ...formValue }];
-    const { data: resUpdate, error } = await restAPI.cms.updateLesson({ body });
-    console.log("status", resUpdate);
-    if (resUpdate?.value?.status) {
-      message.success("Cập nhật bài học thành công!");
     } else {
-      const errorCode = error.value?.data?.error;
-      console.log("error", errorCode);
-      const errorMessage =
-        ERROR_CODES[errorCode] ||
-        resUpdate?.value?.message ||
-        "Đã xảy ra lỗi, vui lòng thử lại!";
-      message.warning(errorMessage);
+      const body = [{ ...formValue }];
+      const { data: resUpdate, error } = await restAPI.cms.updateLesson({
+        body,
+      });
+      if (resUpdate?.value?.status) {
+        message.success(
+          formValue.is_live
+            ? "Chỉnh sửa buổi học thành công!"
+            : "Chỉnh sửa bài học thành công!",
+        );
+      } else {
+        const errorCode = error.value?.data?.error;
+        const errorMessage =
+          ERROR_CODES[errorCode] ||
+          resUpdate?.value?.message ||
+          "Đã xảy ra lỗi, vui lòng thử lại!!";
+        message.error(errorMessage);
+      }
     }
+  } catch {
+  } finally {
+    isModalVisible.value = false;
+    getLesson();
+    isLoading.value = false;
+    islive_true.value = false;
+    emit("childFunctionExecuted");
   }
-  isModalVisible.value = false;
-  getLesson();
 };
 //___________________________________________________________________________________
 
@@ -362,9 +482,13 @@ const handleSubmit = async () => {
 const sortedChildLesson = computed(() => {
   if (!childLesson.value || childLesson.value.length === 0) return [];
 
-  return childLesson.value
-    .slice()
-    .sort((a, b) => (b.is_live ? 1 : -1) - (a.is_live ? 1 : -1));
+  return childLesson.value.slice().sort((a, b) => {
+    // First, prioritize `is_live` (true first)
+    if (a.is_live !== b.is_live) return b.is_live - a.is_live;
+
+    // Then, sort alphabetically by `name`
+    return a.name.localeCompare(b.name);
+  });
 });
 
 const caseDisplay = computed(() => {
@@ -419,7 +543,7 @@ onMounted(() => {
             <div
               class="my-2 flex h-full w-full items-center justify-between px-5"
             >
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2 text-[#133D85]">
                 <i
                   v-if="item.is_live"
                   class="fa-solid fa-person-chalkboard text-sm"
@@ -436,11 +560,12 @@ onMounted(() => {
                 </button>
                 <button
                   @click.stop="
+                    islive_true = item.is_live;
                     showDeleteModal(
                       deleteCLesson,
                       item.is_live ? 'Xóa buổi học' : 'Xóa bài học ',
                       item.id,
-                    )
+                    );
                   "
                   class="text-red-500 hover:text-red-700"
                 >
@@ -661,24 +786,132 @@ onMounted(() => {
               </n-grid>
               <!-- buoihocmodal -->
               <n-grid cols="2" :x-gap="20" v-else>
-                <n-gi span="2">
-                  <n-form-item label="Tiêu đề buổi học:">
-                    <n-input
-                      v-model:value="currentLesson.name"
-                      placeholder="Nhập tiêu đề buổi học"
-                    ></n-input>
-                  </n-form-item>
+                <!-- Note: rules -->
+                <n-gi span="2" v-if="is_addnew">
+                  <n-gi>
+                    <n-form-item
+                      label="Tạo buổi học hàng loạt"
+                      label-placement="left"
+                      :show-feedback="false"
+                      path="number"
+                    >
+                      <n-switch
+                        v-model:value="massadd"
+                        :rail-style="railStyle"
+                      />
+                    </n-form-item>
+                  </n-gi>
+                  <n-gi span="2" v-if="!massadd">
+                    <n-gi>
+                      <n-form-item label="Tiêu đề buổi học:" path="mainname">
+                        <n-input
+                          v-model:value="lessondate.name"
+                          placeholder="Nhập tiêu đề buổi học"
+                        ></n-input>
+                      </n-form-item>
+                    </n-gi>
+                    <n-gi>
+                      <n-form-item
+                        label="Cho phép học thử"
+                        label-placement="left"
+                        :show-feedback="false"
+                      >
+                        <n-checkbox
+                          v-model:checked="lessondate.free_trial"
+                        ></n-checkbox>
+                      </n-form-item>
+                    </n-gi>
+                  </n-gi>
+                  <n-gi span="2" v-else class="mb-5">
+                    <n-grid cols="2" :x-gap="20" :y-gap="10">
+                      <n-gi>
+                        <n-form-item label="Số buổi học">
+                          <n-input-number
+                            v-model:value="number"
+                            clearable
+                            :min="0"
+                            :max="Max"
+                            placeholder="Nhập số lượng"
+                          />
+                        </n-form-item>
+                      </n-gi>
+
+                      <n-gi>
+                        <n-form-item label="Tiêu đề buổi học">
+                          <n-input
+                            v-model:value="mainName"
+                            placeholder="Nhập tiêu đề buổi học"
+                          />
+                        </n-form-item>
+                      </n-gi>
+
+                      <n-gi>
+                        <h1 class="text-lg font-bold text-[#133D85]">
+                          Danh sách buổi học
+                        </h1>
+                      </n-gi>
+                      <n-gi>
+                        <n-checkbox
+                          v-model:checked="masterChecked"
+                          :indeterminate="masterChecked === null"
+                          :style="{
+                            fontSize: '18px',
+                            '--n-font-weight': 'bold',
+                            '--n-text-color': '#133D85',
+                          }"
+                        >
+                          Chọn tất cả
+                        </n-checkbox>
+                      </n-gi>
+
+                      <!-- Dynamic Fields -->
+                      <n-gi
+                        v-for="(item, index) in Addform"
+                        :key="index"
+                        span="2"
+                      >
+                        <n-grid cols="2" :x-gap="20">
+                          <n-gi>
+                            <!-- Dynamic Input Field (Readonly, absolute value) -->
+                            <n-input v-model:value="item.name" readonly />
+                          </n-gi>
+                          <n-gi class="mt-2">
+                            <!-- Child Checkbox -->
+                            <n-checkbox
+                              v-model:checked="item.is_trial"
+                              :style="{
+                                '--n-font-weight': 'bold',
+                                '--n-text-color': '#133D85',
+                              }"
+                            >
+                              Cho phép học thử
+                            </n-checkbox>
+                          </n-gi>
+                        </n-grid>
+                      </n-gi>
+                    </n-grid>
+                  </n-gi>
                 </n-gi>
-                <n-gi span="2">
-                  <n-form-item
-                    label="Cho phép học thử"
-                    label-placement="left"
-                    :show-feedback="false"
-                  >
-                    <n-checkbox
-                      v-model:checked="currentLesson.free_trial"
-                    ></n-checkbox>
-                  </n-form-item>
+                <n-gi span="2" v-else>
+                  <n-gi>
+                    <n-form-item label="Tiêu đề buổi học:" path="mainname">
+                      <n-input
+                        v-model:value="formValue.name"
+                        placeholder="Nhập tiêu đề buổi học"
+                      ></n-input>
+                    </n-form-item>
+                  </n-gi>
+                  <n-gi>
+                    <n-form-item
+                      label="Cho phép học thử"
+                      label-placement="left"
+                      :show-feedback="false"
+                    >
+                      <n-checkbox
+                        v-model:checked="formValue.free_trial"
+                      ></n-checkbox>
+                    </n-form-item>
+                  </n-gi>
                 </n-gi>
               </n-grid>
             </n-gi>

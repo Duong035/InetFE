@@ -28,9 +28,11 @@ export default defineComponent({
 
     const paginationReactive = reactive({
       page: 1,
-      pageSize: 5,
+
+      pageSize: 10,
       showSizePicker: true,
-      pageSizes: [3, 5, 7],
+
+      pageSizes: [5, 10, 15],
       itemCount: computed(() => filteredData.value.length),
       onUpdatePage: (page: number) => {
         paginationReactive.page = page;
@@ -90,7 +92,7 @@ export default defineComponent({
             endAt: item.end_at ? item.end_at.split("T")[0] : "N/A",
             status: item.status,
             name: item.name,
-            totalLessons: item.subject?.total_lessons,
+            totalLessons: item.total_lessons,
           }))
           .filter((row: any) => row.status === 1);
 

@@ -17,7 +17,7 @@ const doLogout = () => {
     onPositiveClick: () => {
       userStore.logOut();
       message.success("Đăng xuất thành công");
-      return navigateTo(`/auth/login`);
+      return navigateTo(`/`);
     },
     onNegativeClick: () => {},
   });

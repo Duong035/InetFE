@@ -108,6 +108,16 @@ const getThemeOverrides = computed(() => {
     Upload: {
       itemTextColorSuccess: "#00A2EBFF",
     },
+    Select: {
+      peers: {
+        InternalSelectMenu: {
+          optionColorHover: "#E6F7FFFF", // Hovered item background
+          optionTextColor: "#133D85FF", // Option text color
+          optionTextColorHover: "#00A2EBFF",
+          optionTextColorActive: "#00A2EBFF",
+        },
+      },
+    },
   };
 });
 </script>

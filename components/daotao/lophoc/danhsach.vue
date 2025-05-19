@@ -1,5 +1,5 @@
 <script lang="ts">
-import type { DataTableColumns, DataTableRowKey } from "naive-ui";
+import type { DataTableColumns } from "naive-ui";
 import {
   defineComponent,
   ref,
@@ -9,17 +9,42 @@ import {
   onMounted,
   toRaw,
 } from "vue";
-import { NButton, NDataTable, NDropdown } from "naive-ui";
-import { useRouter } from "vue-router";
+import { NButton } from "naive-ui";
+import { useRoute } from "vue-router";
 
 export default defineComponent({
   setup() {
+    interface RowData {
+      id: string;
+      stt: number;
+      tthv: string;
+      email: string;
+      accstatus: string;
+      phone: number;
+    }
     const message = useMessage();
+
+    const route = useRoute();
+    const classId = ref(route.params.id);
+    const { restAPI } = useApi();
+    const data = ref<RowData[]>([]);
+    const router = useRouter();
+
+    // Modal state
+    const showModal = ref(false);
+    const selectedStudents = ref<string[]>([]);
+    const studentsList = ref<any[]>([]);
+
+    // Modal state cho xóa học viên
+    const showDeleteModal = ref(false);
+    const deleteReason = ref("");
+    const studentToDelete = ref<RowData | null>(null);
+
     const paginationReactive = reactive({
       page: 1,
-      pageSize: 9,
+      pageSize: 10,
       showSizePicker: true,
-      pageSizes: [3, 5, 7, 9, 12],
+      pageSizes: [5, 10, 15],
       itemCount: computed(() => data.value.length),
       onUpdatePage: (page: number) => {
         paginationReactive.page = page;
@@ -29,166 +54,19 @@ export default defineComponent({
         paginationReactive.page = 1;
       },
     });
-    const dayjs = useDayjs();
-    const { restAPI } = useApi();
-    const router = useRouter();
-    const checkedRowKeysRef = ref<DataTableRowKey[]>([]);
-    const dataTableInstRef = ref<InstanceType<typeof NDataTable> | null>(null);
-    const activeItem = ref("Tất cả trạng thái");
-    const accountStatus = ref("");
 
-    const delModal = ref(false);
-    const deleteTarget = ref<{ id: string } | null>(null);
-    function filterStatus() {
-      if (dataTableInstRef.value) {
-        return dataTableInstRef.value.filter(null);
-      }
-    }
+    const dayjs = useDayjs();
+    const newId = route.query.id;
+
     onMounted(() => {
       loadData();
-      filterStatus();
     });
-
-    function edit(value: RowData) {
-      router.push({
-        path: "hocvieninfo",
-        query: { id: value.id },
-      });
-    }
-
-    function createColumns(): DataTableColumns<RowData> {
-      return [
-        {
-          type: "selection",
-        },
-
-        {
-          title: "STT",
-          key: "stt",
-          defaultSortOrder: "ascend",
-          sorter: "default",
-          titleAlign: "center",
-        },
-        {
-          title: "Thông tin học viên",
-          key: "tthv",
-          defaultSortOrder: "ascend",
-          sorter: "default",
-        },
-
-        {
-          title: "Ngày cập nhật",
-          key: "ncn",
-          defaultSortOrder: "ascend",
-          sorter: "default",
-          render(row) {
-            return dayjs(row.ncn).format("DD-MM-YYYY");
-          },
-        },
-
-        {
-          title: "Trạng thái tài khoản",
-          key: "accstatus",
-          render(row) {
-            let color = "";
-            let background = "";
-            switch (row.accstatus) {
-              case "Hoạt động":
-                color = "#00974F";
-                background = "#F0FFF8";
-                break;
-              case "Dừng hoạt động":
-                color = "#4D6FA8";
-                background = "#ECF1F9";
-                break;
-              default:
-                color = "gray";
-            }
-            return h(
-              "span",
-              {
-                style: {
-                  padding: "5px 10px",
-                  borderRadius: "10px",
-                  color,
-                  background,
-                },
-              },
-              row.accstatus,
-            );
-          },
-          defaultFilterOptionValues: ["Hoạt động", "Dừng hoạt động"],
-          filter(value, row) {
-            return row.accstatus.includes(value as string);
-          },
-        },
-        {
-          title: "Action",
-          key: "actions",
-          titleAlign: "center",
-          render(row) {
-            return h(
-              "div",
-              { style: { display: "flex", alignItems: "center" } },
-              [
-                h(
-                  NButton,
-                  {
-                    size: "small",
-                    quaternary: true,
-                    style: { backgroundColor: "transparent", color: "green" },
-                    onClick: () => edit(row),
-                  },
-                  {
-                    default: () =>
-                      h("i", {
-                        class: "fa-regular fa-pen-to-square",
-                      }),
-                  },
-                ),
-                h(
-                  NButton,
-                  {
-                    size: "small",
-                    quaternary: true,
-                    style: { backgroundColor: "transparent", color: "red" },
-                    onClick: () => openDeleteModal("single", row.id),
-                  },
-                  { default: () => h("i", { class: "fa-solid fa-trash" }) },
-                ),
-                h(
-                  NDropdown,
-                  {
-                    size: "large",
-                    trigger: "hover",
-                    options: actionMenu,
-                    quaternary: true,
-                    style: { color: "gray", backgroundColor: "trasparent" },
-                    onSelect(key) {
-                      if (key === "Xếp lớp") {
-                        edit(row);
-                      } else if (key === "Dừng hoạt động") {
-                        // Xử lý khi chọn "Dừng hoạt động"
-                      }
-                    },
-                  },
-                  {
-                    default: () => h("i", { class: "fa-solid fa-ellipsis-v" }),
-                  },
-                ),
-              ],
-            );
-          },
-        },
-      ];
-    }
-    const data = ref<RowData[]>([]);
-
+    // gọi danh sách học viên
     const loadData = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
       try {
-        const { data: resData, error } = await restAPI.cms.getStudents();
+        const { data: resData, error } = await restAPI.cms.getClassStudent({
+          id: newId,
+        });
 
         if (error?.value) {
           message.error(error?.value?.data?.message || "Lỗi tải dữ liệu");
@@ -196,416 +74,357 @@ export default defineComponent({
         }
 
         const rawData = toRaw(resData.value)?.data;
-        const Studentsdata = rawData.data;
-        if (Array.isArray(Studentsdata)) {
-          data.value = Studentsdata.map((item: any, index) => ({
-            id: item.id || "N/A",
-            stt: index + 1,
-            tthv: item.full_name || "N/A",
-            mhht: item.mhht || "N/A",
-            mdxl: item.mdxl || "N/A",
-            ncn: item.updated_at ? item.updated_at.split("T")[0] : "N/A",
+        const studentsData = rawData?.data || [];
 
-            accstatus:
-              item.status === 2
-                ? "Hoạt động"
-                : item.status === 1
-                  ? "Dừng hoạt động"
-                  : "N/A",
-          }));
-        } else {
-          console.error("Unexpected API response:", rawData);
-          message.error("Dữ liệu không hợp lệ từ API.");
-        }
+        data.value = studentsData.map((item: any, index: any) => ({
+          id: item.id || "N/A",
+          stt: index + 1,
+          tthv: item.full_name || "N/A",
+          email: item.email || "N/A",
+          phone: item.phone || "Null",
+          accstatus:
+            item.status != null && Number(item.status) === 2
+              ? "Hoạt động"
+              : item.status != null && Number(item.status) === 1
+                ? "Dừng hoạt động"
+                : "N/A",
+        }));
       } catch (err) {
-        console.error("Error loading data:", err);
         message.error("Lỗi tải dữ liệu.");
       }
     };
+    // Fetch danh sách học viên chưa thêm vào lớp
+    const fetchStudents = async () => {
+      try {
+        const { data: resData, error } = await restAPI.cms.getStudents({});
 
-    const selectedRows = ref<RowData[]>([]);
-    const selectedId = computed(() => selectedRows.value.map((row) => row.id));
-
-    const massEdit = async (value: number) => {
-      let successCount = 0;
-      let errorCount = 0;
-      const status = value;
-
-      const updatePromises = selectedId.value.map(async (id) => {
-        const row = data.value.find((row) => row.id === id);
-        if (!row) return;
-
-        try {
-          const body = { status };
-          const { data: resUpdate, error } = await restAPI.cms.updateStudent({
-            id,
-            body,
-          });
-
-          if (resUpdate?.value?.status) {
-            successCount++;
-          } else {
-            errorCount++;
-            message.error(
-              error?.value?.data?.message || `Lỗi cập nhật học viên ${id}`,
-            );
-          }
-        } catch (err) {
-          errorCount++;
+        if (error?.value) {
           message.error(
-            `Lỗi cập nhật học viên ${id}: ${(err as Error).message}`,
+            error?.value?.data?.message || "Lỗi tải danh sách học viên",
           );
+          return;
         }
-        loadData();
-      });
 
-      await Promise.all(updatePromises);
+        const rawData = resData.value?.data;
+        const allStudents = Array.isArray(rawData?.data) ? rawData.data : [];
 
-      if (successCount > 0) {
-        message.success(`Cập nhật thành công ${successCount} học viên!`);
+        // Lấy danh sách ID của học viên đã có trong lớp
+        const existingStudentIds = new Set(
+          data.value.map((student) => student.id),
+        );
+
+        studentsList.value = allStudents
+          .filter((student: any) => !existingStudentIds.has(student.id))
+          .map((student: any) => ({
+            ...student,
+            accstatus:
+              student.status != null && Number(student.status) === 2
+                ? "Hoạt động"
+                : student.status != null && Number(student.status) === 1
+                  ? "Không hoạt động"
+                  : "N/A",
+          }));
+
+        // Lọc ra các học viên chưa có trong lớp
+        studentsList.value = allStudents.filter(
+          (student: any) => !existingStudentIds.has(student.id),
+        );
+
+        showModal.value = true;
+      } catch (err) {
+        message.error("Lỗi tải danh sách học viên.");
       }
-
-      if (errorCount > 0) {
-        message.error(`Có ${errorCount} học viên cập nhật thất bại.`);
-      }
-
-      return selectedId.value;
     };
 
-    const showDeleteModal = ref(false);
-    const deleteType = ref("single"); // 'single' or 'mass'
-    const isDeleting = ref(false);
-    const deleteId = ref("");
+    // Gửi danh sách học viên đã chọn lên API
+    const handleSubmit = async () => {
+      try {
+        const classIdFromPath = newId || route.params.id;
+        if (!classIdFromPath) {
+          message.error("Không tìm thấy ID lớp học!");
+          return;
+        }
 
-    const openDeleteModal = (type: string, id = "") => {
-      deleteType.value = type;
-      deleteId.value = id;
+        if (!selectedStudents.value || selectedStudents.value.length === 0) {
+          message.error("Vui lòng chọn ít nhất một học viên!");
+          return;
+        }
+
+        const requestData = {
+          class_id: classIdFromPath,
+          student_id: selectedStudents.value,
+        };
+
+        const { error } = await restAPI.cms.addStudentsToClass({
+          body: requestData,
+        });
+
+        if (error?.value) {
+          message.error(error?.value?.data?.message || "Lỗi thêm học viên");
+          return;
+        }
+
+        message.success("Thêm học viên thành công!");
+        showModal.value = false;
+        await loadData();
+      } catch (err) {
+        console.error("Lỗi khi gửi dữ liệu:", err);
+        message.error("Lỗi khi gửi dữ liệu.");
+      }
+    };
+    //action
+    function edit(value: RowData) {
+      router.push({
+        path: "hocvieninfo",
+        query: { id: value.id },
+      });
+    }
+
+    // Hàm hiển thị modal xóa
+    const confirmDelete = (student: RowData) => {
+      studentToDelete.value = student;
       showDeleteModal.value = true;
     };
-
-    const confirmDelete = async () => {
-      isDeleting.value = true;
-      if (deleteType.value === "single") {
-        await deleteSingleItem(deleteId.value);
-      } else {
-        await deleteMultipleItems();
+    // Hàm xóa học viên khỏi lớp
+    const removeStudentFromClass = async () => {
+      if (!studentToDelete.value || !deleteReason.value.trim()) {
+        message.error("Vui lòng nhập lý do xóa.");
+        return;
       }
-      isDeleting.value = false;
-      showDeleteModal.value = false;
-    };
-
-    const deleteSingleItem = async (id: string) => {
-      try {
-        const body = { ids: [id] };
-        const { data: resdel, error } = await restAPI.cms.deleteStudents({
-          body,
-        });
-
-        if (resdel?.value?.status) {
-          message.success("Xóa học viên thành công!");
-          await loadData(); // Refresh the data
-        } else {
-          const errorCode = error.value?.data?.error;
-          const errorMessage =
-            ERROR_CODES[errorCode as keyof typeof ERROR_CODES] ||
-            resdel?.value?.message ||
-            "Đã xảy ra lỗi, vui lòng thử lại!";
-
-          message.warning(errorMessage);
-        }
-      } catch (err) {
-        message.error("Lỗi khi xóa học viên.");
-      } finally {
-        isDeleting.value = false;
-        delModal.value = false;
-        deleteTarget.value = null;
-      }
-    };
-
-    const deleteMultipleItems = async () => {
-      let successCount = 0;
-      let errorCount = 0;
-      let body = { ids: selectedId.value };
 
       try {
-        const { data: resdel, error } = await restAPI.cms.deleteStudents({
-          body,
+        const requestBody = {
+          class_id: newId,
+          student_id: [studentToDelete.value.id], // Đảm bảo là mảng
+        };
+
+        console.log("🚀 Gửi yêu cầu xóa:", requestBody); // Kiểm tra dữ liệu gửi đi
+
+        const { data: resData, error } = await restAPI.cms.deleteClassStudent({
+          body: requestBody,
         });
 
-        if (resdel?.value?.status) {
-          successCount = body.ids.length;
-          message.success(`Xóa thành công ${successCount} học viên!`);
-        } else {
-          errorCount = body.ids.length;
-          const errorCode = error?.value?.data?.error;
-          const errorMessage =
-            ERROR_CODES[errorCode as keyof typeof ERROR_CODES] ||
-            resdel?.value?.message ||
-            "Đã xảy ra lỗi, vui lòng thử lại!";
-          message.warning(errorMessage);
+        if (error?.value) {
+          console.error("❌ Lỗi từ API:", error.value);
+          message.error(error?.value?.data?.message || "Lỗi khi xóa học viên.");
+          return;
         }
-      } catch (err) {
-        errorCount = body.ids.length;
-        message.error(
-          `Lỗi xóa ${errorCount} học viên: ${(err as Error).message}`,
+
+        console.log("✅ Kết quả trả về:", resData);
+
+        message.success("Xóa học viên thành công!");
+        data.value = data.value.filter(
+          (student) => student.id !== studentToDelete.value?.id,
         );
+      } catch (err) {
+        console.error("❌ Lỗi trong quá trình xóa:", err);
+        message.error("Lỗi khi xóa học viên. Vui lòng thử lại.");
+      } finally {
+        showDeleteModal.value = false;
+        deleteReason.value = "";
+        studentToDelete.value = null;
       }
-
-      loadData();
     };
+
+    // Cấu hình cột cho bảng học viên
+    const studentColumns: DataTableColumns<any> = [
+      { type: "selection" },
+      { title: "Tên học viên", key: "full_name" },
+      { title: "Số điện thoại", key: "phone" },
+      { title: "Email", key: "email" },
+      {
+        title: "Trạng thái",
+        key: "accstatus",
+        render(row) {
+          let color = row.status === "Hoạt động" ? "#00974F" : "gray";
+          return h("span", { style: { color } }, row.status);
+        },
+      },
+    ];
+
+    function createColumns(): DataTableColumns<RowData> {
+      return [
+        { type: "selection" },
+        {
+          title: "STT",
+          key: "stt",
+        },
+        {
+          title: "Thông tin học viên",
+          key: "tthv",
+        },
+        {
+          title: "Email",
+          key: "email",
+        },
+        {
+          title: "Số Điện Thoại",
+          key: "phone",
+        },
+        {
+          title: "Trạng thái tài khoản",
+          key: "accstatus",
+          align: "center",
+          render(row) {
+            let color = row.accstatus === "Hoạt động" ? "#00974F" : "gray";
+            return h("span", { style: { color } }, row.accstatus);
+          },
+        },
+        {
+          title: "Hành động",
+          key: "actions",
+          align: "center",
+          render(row) {
+            return h("div", { class: "flex gap-2 justify-center" }, [
+              h(
+                NButton,
+                {
+                  size: "small",
+                  type: "primary",
+                  quaternary: true,
+                  onClick: () => edit(row),
+                },
+                {
+                  default: () =>
+                    h("i", {
+                      class: "fa-regular fa-pen-to-square",
+                      style: "color: green;",
+                    }),
+                },
+              ),
+              h(
+                NButton,
+                {
+                  size: "small",
+                  type: "error",
+                  quaternary: true,
+                  onClick: () => confirmDelete(row),
+                },
+                {
+                  default: () =>
+                    h("i", {
+                      class: "fa-solid fa-trash",
+                      style: "color: red;",
+                    }),
+                },
+              ),
+              h(
+                NButton,
+                {
+                  size: "small",
+                  type: "warning",
+                  quaternary: true,
+                },
+                {
+                  default: () =>
+                    h("i", {
+                      class: "fa-solid fa-ellipsis-vertical",
+                      style: "color: orange;",
+                    }),
+                },
+              ),
+            ]);
+          },
+        },
+      ];
+    }
 
     return {
-      isDeleting,
-      deleteTarget,
-      showDeleteModal,
-      deleteType,
-      confirmDelete,
-      openDeleteModal,
-      edit,
-      delModal,
-      activeItem,
-      accountStatus,
+      classId,
       data,
       columns: createColumns(),
-      dataTableInst: dataTableInstRef,
-      checkedRowKeys: checkedRowKeysRef,
-      massEdit,
       pagination: paginationReactive,
-      // filterStatus() {
-      //   if (dataTableInstRef.value) {
-      //     if (activeItem.value === "Tất cả trạng thái") {
-      //       if (accountStatus.value == "All") {
-      //         dataTableInstRef.value.filter(null);
-      //       } else {
-      //         dataTableInstRef.value.filter({
-      //           accstatus: [accountStatus.value || ""],
-      //         });
-      //       }
-      //     } else {
-      //       if (accountStatus.value == "All") {
-      //         dataTableInstRef.value.filter({
-      //           status: [activeItem.value || ""],
-      //         });
-      //       } else {
-      //         dataTableInstRef.value.filter({
-      //           status: [activeItem.value || ""],
-      //           accstatus: [accountStatus.value || ""],
-      //         });
-      //       }
-      //     }
-      //   }
-      // },
-
-      filterStatus() {
-        if (dataTableInstRef.value) {
-          if (accountStatus.value == "All") {
-            dataTableInstRef.value.filter(null);
-          } else {
-            dataTableInstRef.value.filter({
-              accstatus: [accountStatus.value || ""],
-            });
-          }
-        }
-      },
-      rowKey: (row: RowData) => row.id,
-      handleCheck(rowKeys: DataTableRowKey[]) {
-        checkedRowKeysRef.value = rowKeys;
-        selectedRows.value = data.value.filter((row) =>
-          rowKeys.includes(row.id),
-        );
-      },
-      options: [
-        {
-          label: "Select",
-          value: "song0",
-          disabled: true,
-        },
-        {
-          label: "A",
-          value: "A",
-        },
-        {
-          label: "B",
-          value: "B",
-        },
-        {
-          label: "C",
-          value: "C",
-        },
-      ],
-      statusoptions: [
-        {
-          label: "All",
-          value: "All",
-        },
-        {
-          label: "Hoạt động",
-          value: "Hoạt động",
-        },
-        {
-          label: "Dừng hoạt động",
-          value: "Dừng hoạt động",
-        },
-      ],
+      showModal,
+      studentsList,
+      selectedStudents,
+      handleSubmit,
+      fetchStudents,
+      studentColumns,
+      showDeleteModal,
+      studentToDelete,
+      deleteReason,
+      removeStudentFromClass,
     };
   },
 });
-interface RowData {
-  id: string;
-  stt: number;
-  tthv: string;
-  mhht: string;
-  mdxl: string;
-  ncn: string;
-
-  accstatus: string;
-}
-const actionMenu = [
-  {
-    title: "Xếp lớp",
-    key: "Xep",
-  },
-  {
-    title: "Dừng hoạt động",
-    key: "Stop",
-  },
-];
 </script>
 
 <template>
   <div class="flex h-full w-full overflow-auto rounded-2xl bg-gray-50">
-    <!-- Main Content -->
     <div class="flex-1">
-      <!-- Content Area -->
       <div class="h-full text-black">
         <n-card class="h-full bg-gray-50">
           <div class="flex items-center justify-between text-[#133D85]">
-            <h1 class="text-4xl font-bold">Danh sách học viên chính thức</h1>
+            <h1 class="text-4xl font-bold">
+              Danh sách học viên của lớp {{ classId }}
+            </h1>
             <n-button
               type="info"
               class="h-15 flex w-52 items-center justify-center text-center text-xl"
-              @click="$router.push('hocvieninfo')"
+              @click="fetchStudents"
             >
               Thêm học viên
               <i class="fa-solid fa-plus ml-1 px-2"></i>
             </n-button>
           </div>
-
-          <n-grid
-            class="min-h-fit w-full"
-            :x-gap="70"
-            cols="1 m:3"
-            responsive="screen"
-          >
-            <n-gi span="1">
-              <n-form-item>
-                <n-input
-                  type="text"
-                  placeholder="Tìm kiếm tên, số điện thoại, email học viên"
-                />
-              </n-form-item>
-            </n-gi>
-
-            <n-gi span="1">
-              <n-form-item>
-                <n-select
-                  v-model="accountStatus"
-                  :options="statusoptions"
-                  @change="
-                    (() => {
-                      accountStatus = $event;
-                      filterStatus();
-                    })()
-                  "
-                  placeholder="Trạng thái tài khoản"
-                />
-              </n-form-item>
-            </n-gi>
-            <n-gi span="1 m:3">
-              <n-grid
-                class="-mt-8 w-full"
-                :x-gap="30"
-                cols="1 m:3"
-                responsive="screen"
-              >
-                <n-gi span="1 m:2" class="flex-cols-3 flex gap-x-10">
-                  <n-form-item>
-                    <n-button type="info" @click="massEdit(1)">
-                      Dừng hoạt động
-                    </n-button>
-                  </n-form-item>
-                  <n-form-item>
-                    <n-button type="info" @click="massEdit(2)">
-                      Hoạt động
-                    </n-button>
-                  </n-form-item>
-                  <n-form-item>
-                    <n-button
-                      type="error"
-                      ghost
-                      @click="openDeleteModal('multiple')"
-                    >
-                      <i class="fa-solid fa-trash mr-1"></i>
-                      Xóa lựa chọn
-                    </n-button>
-                  </n-form-item>
-                </n-gi>
-                <n-gi
-                  span="1"
-                  class="flex-cols-3 flex gap-x-10 justify-self-end"
-                >
-                  <n-form-item>
-                    <n-button type="info">
-                      Import học viên
-                      <i class="fa-solid fa-cloud-arrow-up ml-1"></i>
-                    </n-button>
-                  </n-form-item>
-                  <n-form-item>
-                    <n-button type="info">
-                      Xuất file
-                      <i class="fa-solid fa-file-export ml-1"></i>
-                    </n-button>
-                  </n-form-item>
-                </n-gi>
-              </n-grid>
-            </n-gi>
-            <n-gi span="1 m:3">
+          <n-data-table
+            style="margin-top: 50px"
+            :columns="columns"
+            :data="data"
+            :pagination="pagination"
+          />
+          <n-modal v-model:show="showModal">
+            <n-card
+              style="width: 800px"
+              title="Chọn học viên"
+              closable
+              @close="showModal = false"
+            >
               <n-data-table
-                ref="dataTableInst"
-                :bordered="false"
-                :single-line="false"
-                :columns="columns"
-                :data="data"
-                :scroll-x="1000"
-                :pagination="pagination"
-                :row-key="rowKey"
-                @update:checked-row-keys="handleCheck"
+                :columns="studentColumns"
+                :data="studentsList"
+                :row-key="(row) => row.id"
+                v-model:checked-row-keys="selectedStudents"
               />
-            </n-gi>
-          </n-grid>
+
+              <template #footer>
+                <div class="flex justify-end space-x-2">
+                  <n-button @click="showModal = false">Hủy</n-button>
+                  <n-button type="primary" @click="handleSubmit"
+                    >Xác nhận</n-button
+                  >
+                </div>
+              </template>
+            </n-card>
+          </n-modal>
+          <n-modal v-model:show="showDeleteModal">
+            <n-card
+              title="Xác nhận xóa học viên"
+              style="width: 400px"
+              closable
+              @close="showDeleteModal = false"
+            >
+              <p>
+                Bạn có chắc chắn muốn xóa học viên
+                <strong>{{ studentToDelete?.tthv }}</strong> khỏi lớp không?
+              </p>
+              <n-input
+                v-model:value="deleteReason"
+                placeholder="Nhập lý do xóa..."
+                type="textarea"
+              />
+              <template #footer>
+                <div class="flex justify-end space-x-2">
+                  <n-button @click="showDeleteModal = false">Hủy</n-button>
+                  <n-button type="error" @click="removeStudentFromClass"
+                    >Xác nhận</n-button
+                  >
+                </div>
+              </template>
+            </n-card>
+          </n-modal>
         </n-card>
       </div>
     </div>
-    <n-modal v-model:show="showDeleteModal">
-      <n-card
-        title="Xác nhận xóa"
-        closable
-        @close="showDeleteModal = false"
-        style="width: 400px"
-      >
-        <p v-if="deleteType === 'single'">
-          Bạn có chắc chắn muốn xóa học viên này không?
-        </p>
-        <p v-else>Bạn có chắc chắn muốn xóa các học viên đã chọn không?</p>
-        <template #footer>
-          <n-space justify="end">
-            <n-button @click="showDeleteModal = false">Hủy</n-button>
-            <n-button type="error" @click="confirmDelete" :loading="isDeleting">
-              Xóa
-            </n-button>
-          </n-space>
-        </template>
-      </n-card>
-    </n-modal>
   </div>
 </template>

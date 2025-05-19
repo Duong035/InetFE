@@ -178,7 +178,7 @@ export default defineComponent({
       showModal_2,
       editUserData,
       pagination: {
-        pageSize: 5,
+        pageSize: 10,
       },
       options: [
         { label: "Option 1", value: "option1" },

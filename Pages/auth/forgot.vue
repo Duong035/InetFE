@@ -17,11 +17,7 @@ async function goToForgot() {
   isLoading.value = true;
   const emailValue = email.value;
 
-  const {
-    data: resendResp,
-    pending,
-    error,
-  } = await restAPI.cms.resendOtp({
+  const { data: resendResp, error } = await restAPI.cms.resendOtp({
     body: { email: emailValue },
   });
   if (resendResp.value?.status) {

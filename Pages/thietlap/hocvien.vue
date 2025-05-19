@@ -1,92 +1,168 @@
 <script setup>
-const showParentModal = ref(false);
-const showChildModal = ref(false);
+import { ref, watch, computed } from "vue";
+
+const exist = ref(4);
+const massadd = ref(false);
+const number = ref(0); // Number starts at 0
+const mainName = ref(""); // Separate name input (not part of Addform)
+const Addform = ref([]);
+const errors = ref({ number: "", mainName: "" });
+
+// Function to update Addform based on number input
+const updateAddform = () => {
+  Addform.value = Array.from({ length: number.value }, (_, index) => ({
+    name: mainName.value
+      ? `${mainName.value} ${exist.value + index + 1}`
+      : `${exist.value + index + 1}`,
+    is_trial: false,
+  }));
+};
+
+// Watch number changes and update Addform accordingly
+watch(number, (newVal, oldVal) => {
+  if (newVal < 1) {
+    errors.value.number = "Số lượng phải lớn hơn 0"; // Number must be > 0
+  } else {
+    errors.value.number = "";
+  }
+
+  if (newVal > oldVal) {
+    for (let i = oldVal; i < newVal; i++) {
+      Addform.value.push({
+        name: mainName.value
+          ? `${mainName.value} ${exist.value + i + 1}`
+          : `${exist.value + i + 1}`,
+        is_trial: false,
+        is_live: true, // Always set to true
+      });
+    }
+  } else {
+    Addform.value.length = newVal;
+  }
+});
+
+// Watch mainName changes and update names
+watch(mainName, (newVal) => {
+  if (!newVal) {
+    errors.value.mainName = "Tên chính không được để trống"; // Main name is required
+  } else {
+    errors.value.mainName = "";
+  }
+
+  Addform.value.forEach((item, index) => {
+    item.name = newVal
+      ? `${newVal} ${exist.value + index + 1}`
+      : `${exist.value + index + 1}`;
+  });
+});
+
+// Master checkbox logic
+const masterChecked = computed({
+  get: () => {
+    const checkedCount = Addform.value.filter((item) => item.is_trial).length;
+    if (checkedCount === 0) return false;
+    if (checkedCount === Addform.value.length) return true;
+    return null;
+  },
+  set: (value) => {
+    Addform.value.forEach((item) => {
+      item.is_trial = value;
+    });
+  },
+});
+
+// Validate inputs before submitting
+const validateForm = () => {
+  let valid = true;
+
+  if (number.value < 1) {
+    errors.value.number = "Số lượng phải lớn hơn 0";
+    valid = false;
+  }
+
+  if (!mainName.value) {
+    errors.value.mainName = "Tên chính không được để trống";
+    valid = false;
+  }
+
+  return valid;
+};
+
+// Submit function
+const handleSubmit = () => {
+  if (!validateForm()) return; // Stop if validation fails
+
+  const submittedData = Addform.value.map(({ name, is_trial, is_live }) => ({
+    name,
+    is_trial,
+    is_live, // Always included in submission
+  }));
+
+  console.log("Form Submitted:", submittedData);
+  alert(JSON.stringify(submittedData, null, 2));
+};
 </script>
+
 <template>
-  <div class="flex h-full w-full overflow-auto rounded-2xl bg-gray-50">
-    <!-- Main Content -->
-    <div class="flex-1">
-      <!-- Content Area -->
-      <div class="h-full">
-        <n-card class="h-full bg-gray-50">
-          <div class="mx-5 my-5 flex items-center gap-4">
-            <n-button @click="showParentModal = true"
-              >Open Parent Modal</n-button
-            >
+  <div>
+    <!-- Toggle Switch -->
+    <n-switch v-model:value="massadd" />
 
-            <n-modal v-model:show="showParentModal">
-              <n-form>
-                <n-grid cols="2" :x-gap="20">
-                  <n-gi span="2">
-                    <h1 class="text-2xl font-bold text-[#133D85]">
-                      Thêm chương mới
-                    </h1>
+    <!-- Conditional Display -->
+    <div v-if="!massadd">A</div>
+    <div v-else>
+      <n-grid cols="2" :x-gap="20" :y-gap="10">
+        <!-- Number Input (Required) -->
+        <n-gi>
+          <n-input-number
+            v-model:value="number"
+            clearable
+            :min="0"
+            :max="10"
+            placeholder="Nhập số lượng"
+          />
+          <n-text v-if="errors.number" type="error">{{ errors.number }}</n-text>
+        </n-gi>
 
-                    <div class="mt-5"></div>
-                  </n-gi>
+        <!-- Separate Name Input (Required) -->
+        <n-gi>
+          <n-input v-model:value="mainName" placeholder="Nhập tên chính" />
+          <n-text v-if="errors.mainName" type="error">{{
+            errors.mainName
+          }}</n-text>
+        </n-gi>
 
-                  <n-gi span="2">
-                    <n-form-item label="Tên chương mới:">
-                      <n-input placeholder="Nhập tên chương"></n-input>
-                    </n-form-item>
-                  </n-gi>
-                  <n-gi span="2">
-                    <n-gi span="2">
-                      <n-form-item
-                        label="Thêm các bài học nằm trong chương này"
-                      >
-                        <p class="-mt-6 text-[#4D6FA8]">
-                          Nhập tên bài học trước và thêm nội dung chi tiết từng
-                          bài học ở bước sau
-                        </p>
-                      </n-form-item>
-                    </n-gi>
-                    <n-gi span="2" class="mb-2">
-                      <span class="cursor-pointer text-sm text-[#00A2EB]">
-                        + Thêm bài học mới
-                      </span>
-                    </n-gi>
-                    <n-gi span="2" class="mb-5">
-                      <span
-                        class="cursor-pointer text-sm text-[#00A2EB]"
-                        @click="showChildModal = true"
-                      >
-                        + Thêm buổi học mới
-                      </span>
-                    </n-gi>
-                  </n-gi>
-                  <n-gi>
-                    <n-button ghost class="h-12 w-full rounded-2xl text-lg">
-                      Hủy
-                    </n-button>
-                  </n-gi>
-                  <n-gi>
-                    <n-button
-                      round
-                      type="info"
-                      class="h-12 w-full rounded-2xl text-lg"
-                    >
-                      Lưu
-                    </n-button>
-                  </n-gi>
-                </n-grid>
-                <n-modal v-model:show="showChildModal">
-                  <n-card
-                    style="width: 300px"
-                    title="Child Modal"
-                    closable
-                    @close="showChildModal = false"
-                  >
-                    <p>This is the child modal inside the parent modal.</p>
-                    <n-button @click="showChildModal = false"
-                      >Close Child Modal</n-button
-                    >
-                  </n-card>
-                </n-modal>
-              </n-form>
-            </n-modal>
-          </div>
-        </n-card>
+        <!-- Master Checkbox Section -->
+        <n-gi>
+          <h1>Danh sách buổi học</h1>
+        </n-gi>
+        <n-gi>
+          <n-checkbox
+            v-model:checked="masterChecked"
+            :indeterminate="masterChecked === null"
+          >
+            Chọn tất cả
+          </n-checkbox>
+        </n-gi>
+
+        <!-- Dynamic Fields -->
+        <n-gi v-for="(item, index) in Addform" :key="index" span="2">
+          <n-grid cols="3" :x-gap="20">
+            <n-gi>
+              <!-- Dynamic Input Field (Readonly, absolute value) -->
+              <n-input v-model:value="item.name" readonly />
+            </n-gi>
+            <n-gi>
+              <!-- Child Checkbox -->
+              <n-checkbox v-model:checked="item.is_trial" />
+            </n-gi>
+          </n-grid>
+        </n-gi>
+      </n-grid>
+
+      <!-- Submit Button -->
+      <div style="margin-top: 20px">
+        <n-button type="primary" @click="handleSubmit">Submit</n-button>
       </div>
     </div>
   </div>
