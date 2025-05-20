@@ -52,4 +52,13 @@ export default defineNuxtConfig({
       weekStart: 1
     }]
   },
+  runtimeConfig: {
+    public: {
+      baseUrl: process.env.NUXT_PUBLIC_BASE_URL || "",
+    },
+  },
+  sourcemap: {
+    server: true,
+    client: false,
+  },
 })
