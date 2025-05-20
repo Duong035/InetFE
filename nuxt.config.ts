@@ -62,6 +62,9 @@ export default defineNuxtConfig({
         resolvers: [NaiveUiResolver()]
       })
     ],
+    build: {
+      sourcemap: true
+    }
   },
   dayjs: {
     defaultLocale: ['en', {
