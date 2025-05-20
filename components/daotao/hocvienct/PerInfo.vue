@@ -196,7 +196,6 @@ const handleSubmit = async (e) => {
       if (resCreate?.value?.status) {
         message.success("Tạo học viên thành công!");
         const newId = resCreate.value.data;
-        console.log("perinfo =", route?.path);
         router.push({ path: window.location.pathname, query: { id: newId } });
       } else {
         message.error(error.value.data.message);

@@ -40,9 +40,7 @@ export default defineComponent({
     });
 
     const classrooms = ref<Classrooms[]>([]);
-    const branches = ref<{ label: string; value: string; address: string }[]>(
-      [],
-    );
+    const branches = ref<{ label: string; value: string }[]>([]);
     const center = ref<{ label: string; value: string }[]>([]);
     const data = ref<Classrooms[]>([]);
     const isLoading = ref(false);
@@ -98,9 +96,8 @@ export default defineComponent({
         }
         branches.value =
           resData.value?.data?.map((branch: any) => ({
-            label: `${branch.Name} - ${branch.address}`,
+            label: branch.Name,
             value: branch.id,
-            address: branch.address,
           })) || [];
       } catch (err) {
         console.error("Lỗi khi tải danh sách chi nhánh:", err);
@@ -148,8 +145,8 @@ export default defineComponent({
       { label: "Zoom", value: "Zoom" },
       { label: "Live class", value: "Live class" },
       { label: "Google Meet", value: "Google Meet" },
-      { label: "Practicing", value: "Practicing" },
-      { label: "Theory", value: "Theory" },
+      { label: "practicing", value: "practicing" },
+      { label: "theory", value: "theory" },
     ];
 
     // Lọc dữ liệu dựa vào trạng thái và loại phòng
@@ -267,12 +264,6 @@ export default defineComponent({
         message.error((error as any).message || "Lỗi khi xóa phòng học");
       }
     };
-    const selectedBranchAddress = computed(() => {
-      const branch = branches.value.find(
-        (b) => b.value === newClassroom.value.branch_id,
-      );
-      return branch ? branch.address : "Không có địa chỉ";
-    });
 
     function createColumns(): DataTableColumns<Classrooms> {
       return [
@@ -309,12 +300,12 @@ export default defineComponent({
           titleAlign: "center",
           render(row) {
             const onlineTypes = ["Zoom", "Live class", "Google Meet"];
-            const offlineTypes = ["Practicing", "Theory"];
+            const offlineTypes = ["practicing", "theory"];
 
             if (onlineTypes.includes(row.room_type)) {
-              return `${row.room_type} (Online)`;
+              return `Online (${row.room_type})`;
             } else if (offlineTypes.includes(row.room_type)) {
-              return `${row.room_type} (Offline)`;
+              return `Offline (${row.room_type})`;
             } else {
               return "Không xác định";
             }
@@ -404,7 +395,6 @@ export default defineComponent({
       branches,
       resetForm,
       isEditing,
-      selectedBranchAddress,
     };
   },
 });

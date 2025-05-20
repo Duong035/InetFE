@@ -126,7 +126,6 @@ const saveMassLessons = () => {
 const refreshComponent = () => {
   componentKey.value += 1;
 };
-console.log("lesson =", route?.path);
 
 const pageName = computed(() => route.path.split("/")[2]);
 const props = defineProps({

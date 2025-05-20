@@ -300,7 +300,18 @@ export default defineComponent({
         >
           Lịch học
         </button>
-
+        <button
+          class="text-4xl font-bold"
+          @click="activeTab = 'xeplop'"
+          :class="[
+            'px-6 py-2 font-medium',
+            activeTab === 'xeplop'
+              ? 'border-b-2 border-blue-500 text-blue-500'
+              : 'text-gray-600',
+          ]"
+        >
+          Xếp lớp
+        </button>
         <n-button
           type="info"
           class="ml-auto h-12 w-40 text-xl"
@@ -315,6 +326,78 @@ export default defineComponent({
         v-if="activeTab === 'lichhoc'"
       >
         <DaotaoLophocLich />
+      </main>
+      <main
+        class="mb-10 mr-5 mt-10 box-border flex"
+        v-if="activeTab === 'xeplop'"
+      >
+        <div class="h-full w-full overflow-auto rounded-2xl bg-white">
+          <n-data-table
+            :columns="columns"
+            :data="data"
+            :bordered="false"
+            :single-line="false"
+            :pagination="pagination"
+          />
+          <div v-show="showSchedule" class="mt-4 rounded-md border p-4">
+            <h2 class="mb-2 text-xl font-bold">
+              Xếp lịch học cho lớp: {{ currentClass?.name }}
+            </h2>
+
+            <div>
+              <!-- Chọn chế độ: Tuần / Chọn ngày -->
+              <div class="mb-4 flex items-center gap-3">
+                <n-radio-group v-model:value="scheduleMode">
+                  <n-space>
+                    <n-radio value="week">Tuần</n-radio>
+                    <n-radio value="date"> Chọn ngày </n-radio>
+                  </n-space>
+                </n-radio-group>
+                <!-- Ghi chú hiển thị khi chọn 'date' -->
+                <span
+                  v-if="scheduleMode === 'date'"
+                  class="text-xs text-gray-400"
+                >
+                  (Hệ thống sẽ không tự tạo buổi học theo lịch tuần)
+                </span>
+              </div>
+
+              <!-- Lịch -->
+
+              <VueDatePicker
+                v-if="scheduleMode === 'date' && currentClass"
+                v-model="dates"
+                :min-date="currentClass?.startAt"
+                :max-date="currentClass?.endAt"
+                multi-dates
+                inline
+                auto-apply
+                time-picker-inline
+              />
+
+              <!-- Thông tin số buổi -->
+              <div class="jusstìy-between mt-4 flex items-center">
+                <span>Số buổi cuối tháng: 0 buổi</span>
+              </div>
+              <span>Số buổi của lớp: {{ currentClass?.totalLessons }}</span>
+            </div>
+
+            <div class="mt-4">
+              <n-button
+                type="primary"
+                @click="
+                  () => {
+                    handleSave();
+                    showSchedule = false;
+                  }
+                "
+              >
+                Lưu
+              </n-button>
+              <n-button class="ml-2" @click="handleClose"> Đóng </n-button>
+            </div>
+          </div>
+        </div>
       </main>
     </div>
   </div>

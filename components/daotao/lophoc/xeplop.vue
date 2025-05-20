@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, toRaw, nextTick, watch } from "vue";
+import { ref, computed, onMounted, toRaw, nextTick } from "vue";
 import VueDatePicker from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
 import { useRoute } from "vue-router";
@@ -27,9 +27,6 @@ const currentLessonCount = computed(() => {
       return true; // Default case, include everything
     })
     .reduce((total, [, sessions]) => total + sessions.length, 0);
-});
-const props = defineProps({
-  correctSubjectId: String,
 });
 //Rules_________________________________________________________________________________________________
 const rules = computed(() => {
@@ -137,7 +134,6 @@ const addSession = (day) => {
     time: { start: null, end: null },
     teacher: null,
     room: null,
-    session_id: formValue.value.sessions[day].length,
   });
 };
 
@@ -160,15 +156,14 @@ const sessionTimeRanges = {
   },
 };
 
-const handleSessionChange = (item, sessionIndex, sessionValue, session) => {
+const handleSessionChange = (day, sessionIndex, sessionValue) => {
   if (sessionValue && sessionTimeRanges[sessionValue]) {
     const { start, end } = sessionTimeRanges[sessionValue];
-    formValue.value.sessions[item][sessionIndex].time.start = start;
-    formValue.value.sessions[item][sessionIndex].time.end = end;
-    fetchTeach(session, item, start, end);
+    formValue.value.sessions[day][sessionIndex].time.start = start;
+    formValue.value.sessions[day][sessionIndex].time.end = end;
   } else {
-    formValue.value.sessions[item][sessionIndex].time.start = null;
-    formValue.value.sessions[item][sessionIndex].time.end = null;
+    formValue.value.sessions[day][sessionIndex].time.start = null;
+    formValue.value.sessions[day][sessionIndex].time.end = null;
   }
 };
 
@@ -267,6 +262,13 @@ const handleDateChange = (dates) => {
     }
   });
 };
+
+const handleClose = () => {
+  showSchedule.value = false;
+  currentClass.value = null;
+  dates.value = [];
+  scheduleMode.value = "week";
+};
 //______________________________________________________________________________________________________
 
 //Load__________________________________________________________________________________________________
@@ -277,23 +279,18 @@ const loadData = async () => {
       message.error(error.value.data?.message || "Lỗi tải dữ liệu");
       return;
     }
-
     const rawData = toRaw(resData.value)?.data?.classes;
-
     if (Array.isArray(rawData)) {
       data.value = rawData.map((item) => ({
         id: item.id || "N/A",
-        classType: item.type || "N/A",
+        classType: item.type ? `${item.type}` : "N/A",
         startAt: item.start_at?.split("T")[0] || "N/A",
         endAt: item.end_at?.split("T")[0] || "N/A",
         status: item.status,
         name: item.name,
         subjectName: item.subject?.name || "N/A",
-        subjectId: item.subject_id || "N/A",
         totalLessons: item.subject?.total_lessons || 0,
-        branchId: item.branch?.id || "N/A",
       }));
-      branchId.value = rawData[0]?.branch?.id || null;
     }
   } catch (err) {
     message.error("Lỗi tải dữ liệu.");
@@ -301,224 +298,48 @@ const loadData = async () => {
 };
 
 const Staffarray = ref([]);
-const Staffdate = ref([]);
-const Staffday = ref([]);
-const StaffTemparray = ref([]);
-const scheduleIds = ref(null);
-let Slot = [];
-const dayMapping = {
-  "Thứ 2": 1,
-  "Thứ 3": 2,
-  "Thứ 4": 3,
-  "Thứ 5": 4,
-  "Thứ 6": 5,
-  "Thứ 7": 6,
-  "Chủ Nhật": 0,
-};
-
-const fetch1 = async () => {
-  const { data: resData } = await restAPI.cms.getSubjectDetail({
-    id: props.correctSubjectId,
-  });
-  if (resData.value?.status) {
-    const sortedTeachers = resData.value.data.teachers
-      .map(({ id, full_name }) => ({
-        id,
-        full_name,
-      }))
-      .sort((a, b) => a.full_name.localeCompare(b.full_name));
-
-    StaffTemparray.value = sortedTeachers;
-    Staffday.value = sortedTeachers;
-    Staffdate.value = sortedTeachers;
-  } else {
-    message.error("Failed to load Teachers!");
-    StaffTemparray.value = [];
-  }
-};
-
-const fetch2 = async () => {
-  const { data: resData } = await restAPI.cms.listCalendars({});
-  if (resData.value?.status) {
-    const users = Array.isArray(resData.value.data) ? resData.value.data : [];
-
-    scheduleIds.value = users
-      .filter((user) =>
-        StaffTemparray.value.some((staff) => staff.id === user.user_id),
-      )
-      .map((user) => user.id);
-  } else {
-    message.error("Failed to load schedule!");
-  }
-};
-
-const fetchTeach = async (session, item, start, end) => {
-  let dateitem = "";
-  if (scheduleMode.value == "date") {
-    const formattedDate = item.replace(/\//g, "-");
-    const date = new Date(formattedDate);
-    const daysOfWeekVn = [
-      "Chủ Nhật",
-      "Thứ 2",
-      "Thứ 3",
-      "Thứ 4",
-      "Thứ 5",
-      "Thứ 6",
-      "Thứ 7",
-    ];
-    dateitem = daysOfWeekVn[date.getDay()];
-  }
-  Slot = [];
-  const slotRequests = scheduleIds.value.map(async (userId) => {
-    const { data: resData } = await restAPI.cms.getCalendarDetails({
-      id: userId,
-    });
-
-    const validShifts = resData.value.data.user_shifts.filter((shift) => {
-      const dayKey =
-        scheduleMode.value === "date" ? dayMapping[dateitem] : dayMapping[item];
-      return shift.day_of_week === dayKey;
-    });
-    const validTimeSlots = resData.value.data.time_slots.filter((slot) => {
-      const slotStart = dayjs(slot.start_time);
-      const slotEnd = dayjs(slot.end_time);
-      const selectedStart = dayjs(start);
-      const selectedEnd = dayjs(end);
-
-      const selectedStartTime =
-        selectedStart.hour() * 60 + selectedStart.minute();
-      const selectedEndTime = selectedEnd.hour() * 60 + selectedEnd.minute();
-      const slotStartTime = slotStart.hour() * 60 + slotStart.minute();
-      const slotEndTime = slotEnd.hour() * 60 + slotEnd.minute();
-
-      return (
-        selectedStartTime >= slotStartTime && selectedEndTime <= slotEndTime
-      );
-    });
-    const matchingTimeSlots = validTimeSlots.filter((slot) =>
-      validShifts.some(
-        (shift) => shift.work_session_id === slot.work_session_id,
-      ),
-    );
-
-    if (validShifts.length > 0 && matchingTimeSlots.length > 0) {
-      Slot.push(resData.value.data);
+const fetchTeach = async () => {
+  try {
+    const { data: resData } = await restAPI.cms.getStaff({});
+    if (resData.value?.status) {
+      Staffarray.value = resData.value.data.data
+        .filter((staff) => staff.is_active && staff.position === 1)
+        .map(({ id, full_name }) => ({
+          id,
+          full_name,
+        }))
+        .sort((a, b) => a.full_name.localeCompare(b.full_name));
+    } else {
+      message.error("Failed to load Teachers!");
+      Staffarray.value = [];
     }
-  });
-  await Promise.all(slotRequests);
-  const slotUserIds = Slot.map((slot) => slot.user_id);
-
-  if (!Staffarray.value[item]) {
-    Staffarray.value[item] = {};
-  }
-
-  if (!Staffarray.value[item][session.session]) {
-    Staffarray.value[item][session.session] = {};
-  }
-
-  if (!Staffarray.value[item][session.session][session.session_id]) {
-    Staffarray.value[item][session.session][session.session_id] = [];
-  }
-  Staffarray.value[item][session.session][session.session_id] =
-    StaffTemparray.value.filter((staff) => slotUserIds.includes(staff.id));
-
-  const teacherList =
-    Staffarray.value?.[item]?.[session.session]?.[session.session_id] || [];
-
-  if (!teacherList.some((staff) => staff.id === session.teacher)) {
-    session.teacher = null;
+  } catch (err) {
+    message.error("Error fetching Teachers!");
+    console.error(err);
+    Staffarray.value = [];
   }
 };
 
 const Roomarray = ref([]);
-const branchId = ref(null);
-const fetchFilteredRooms = async () => {
+const fetchRoom = async () => {
   try {
     const { data: resData } = await restAPI.cms.getClassrooms({});
-
-    if (!resData.value?.status || !Array.isArray(resData.value.data?.data)) {
-      message.error("Lỗi tải danh sách phòng học!");
-      return;
-    }
-
-    if (!newId) {
-      message.error("Không có ID lớp học!");
-      return;
-    }
-
-    const foundClass = data.value.find((cls) => cls.id === newId);
-    if (!foundClass) {
-      message.error("Không tìm thấy lớp học!");
-      return;
-    }
-
-    const { classType, branchId: classBranchId } = foundClass;
-
-    Roomarray.value = resData.value.data.data
-      .filter((room) => {
-        const typeMatch =
-          classType === 1
-            ? room.is_online === true
-            : classType === 2
-              ? room.is_online === false
-              : true;
-
-        return typeMatch && room.branch?.id === classBranchId;
-      })
-      .map(({ id, name }) => ({ id, name }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-
-    if (Roomarray.value.length === 0) {
-      message.warning("Không có phòng học phù hợp!");
+    if (resData.value?.status) {
+      Roomarray.value = resData.value.data.data
+        .filter((room) => room.is_active)
+        .map(({ id, name }) => ({
+          id,
+          name,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      message.error("Failed to load classroom!");
+      Roomarray.value = [];
     }
   } catch (err) {
-    message.error("Lỗi khi tải phòng học!");
+    message.error("Error fetching classroom!");
     console.error(err);
-  }
-};
-
-//______________________________________________________________________________________________________
-
-//Session_______________________________________________________________________________________________
-const session_id = ref(null);
-const createSession = async () => {
-  let body = {
-    title: route.query.id,
-    start_time: dayjs().startOf("day").toISOString(),
-    end_time: dayjs().endOf("day").toISOString(),
-    branch_id: branchId.value,
-    is_active: true,
-  };
-
-  const { data: resData } = await restAPI.cms.createShift({ body });
-  if (resData?.value?.data?.id) {
-    session_id.value = resData.value.data.id;
-  } else {
-    await getSession();
-  }
-};
-
-const getSession = async () => {
-  try {
-    const { data } = await restAPI.cms.getShift({});
-
-    if (!data?.value?.data?.data || !Array.isArray(data.value.data.data)) {
-      console.error("Invalid response structure:", data);
-      return;
-    }
-
-    const session = data.value.data.data.find((session) =>
-      session.title.includes(route.query.id),
-    );
-
-    if (session) {
-      session_id.value = session.id;
-      console.log(session_id.value);
-    } else {
-      console.warn("No matching session found.");
-    }
-  } catch (error) {
-    console.error("Error fetching session:", error);
+    Roomarray.value = [];
   }
 };
 //______________________________________________________________________________________________________
@@ -535,11 +356,6 @@ function filterSchedule(schedule, filterByDate = true) {
 }
 
 const handleSubmit = async () => {
-  await createSession();
-  if (!formRefs.value || formRefs.value.length === 0) {
-    return;
-  }
-
   const isValid = await Promise.all(
     formRefs.value.map(async (form) => {
       if (form) {
@@ -556,74 +372,19 @@ const handleSubmit = async () => {
     (day) => checkOverlap(day).size > 0,
   );
 
-  if (isValid.includes(false)) {
-    message.error("Vui lòng kiểm tra lại các biểu mẫu!");
-    return;
-  }
-
-  if (hasConflict) {
-    message.error("Có xung đột trong lịch, vui lòng kiểm tra lại!");
+  if (isValid.includes(false) || hasConflict) {
     return;
   }
 
   const scheduleData = formValue.value.sessions || {};
   const dateFiltered = filterSchedule(scheduleData, true);
   const dayFiltered = filterSchedule(scheduleData, false);
-
-  let scheduleDetails = [];
-  let dates = [];
-  let weeks = [];
-
   if (scheduleMode.value === "date") {
-    Object.entries(dateFiltered).forEach(([date, sessions]) => {
-      sessions.forEach((session) => {
-        scheduleDetails.push({
-          start_date: new Date(date).toISOString(),
-          name: session.session,
-          start_time: dayjs(session.time.start).format("HH:mm"),
-          end_time: dayjs(session.time.end).format("HH:mm"),
-          teacher_id: session.teacher,
-          asistant_id: session.assistant || null,
-          classroom_ids: session.room || [],
-          session_id: session_id.value,
-          is_sub: session.is_sub || false,
-          childrens: [],
-        });
-      });
-      dates.push(new Date(date).toISOString());
-    });
+    console.log("📅 Date Filtered:", dateFiltered);
   } else if (scheduleMode.value === "week") {
-    Object.entries(dayFiltered).forEach(([day, sessions]) => {
-      sessions.forEach((session) => {
-        scheduleDetails.push({
-          start_date: new Date().toISOString(),
-          name: day,
-          start_time: dayjs(session.time.start).format("HH:mm"),
-          end_time: dayjs(session.time.end).format("HH:mm"),
-          teacher_id: session.teacher,
-          asistant_id: session.assistant || null,
-          classroom_ids: session.room || [],
-          session_id: session_id.value,
-          is_sub: session.is_sub || false,
-          childrens: [],
-        });
-      });
-      weeks.push(parseInt(day)); // Assuming "day" is a numeric index for weeks
-    });
+    console.log("📆 Day Filtered:", dayFiltered);
   }
-
-  let body = {
-    class_id: route.query.id,
-    type: scheduleMode.value === "date" ? 1 : 2, // 1 for date mode, 2 for week mode
-    schedule_details: scheduleDetails,
-    dates: scheduleMode.value === "date" ? dates : [],
-    weeks: scheduleMode.value === "week" ? weeks : [],
-  };
-
-  console.log(JSON.stringify(body, null, 2));
-  // const { data: createData } = await restAPI.cms.createClassSchedule({ body });
 };
-
 //______________________________________________________________________________________________________
 
 //Func__________________________________________________________________________________________________
@@ -653,13 +414,8 @@ const computedMinDate = computed(() => {
 
 onMounted(async () => {
   await loadData();
-  await fetch1();
-  await fetch2();
-  // await fetchTeach();
-  // await fetchTeachers();
-  // await fetchSchedule();
-  // await fetchslot();
-  fetchFilteredRooms();
+  fetchTeach();
+  fetchRoom();
   if (newId) {
     const foundClass = data.value.find((cls) => cls.id === newId);
     if (foundClass) {
@@ -696,6 +452,7 @@ onMounted(async () => {
               <n-grid cols="1" class="mb-2">
                 <n-gi class="mb-2 px-10">
                   <VueDatePicker
+                    v-if="scheduleMode === 'date'"
                     v-model="DisplayDates"
                     :min-date="computedMinDate"
                     :max-date="currentClass?.endAt"
@@ -776,12 +533,7 @@ onMounted(async () => {
                                 { label: 'Tối', value: 'Tối' },
                               ]"
                               @update:value="
-                                handleSessionChange(
-                                  item,
-                                  sessionIndex,
-                                  $event,
-                                  session,
-                                )
+                                handleSessionChange(item, sessionIndex, $event)
                               "
                             />
                           </n-form-item>
@@ -840,15 +592,6 @@ onMounted(async () => {
                                       false,
                                     ).includes(minute)
                                 "
-                                @update:value="
-                                  () =>
-                                    fetchTeach(
-                                      session,
-                                      item,
-                                      session.time.start,
-                                      session.time.end,
-                                    )
-                                "
                               />
 
                               <n-time-picker
@@ -891,15 +634,6 @@ onMounted(async () => {
                                       true,
                                     ).includes(minute)
                                 "
-                                @update:value="
-                                  () =>
-                                    fetchTeach(
-                                      session,
-                                      item,
-                                      session.time.start,
-                                      session.time.end,
-                                    )
-                                "
                               />
                             </n-input-group>
                           </n-form-item>
@@ -912,14 +646,7 @@ onMounted(async () => {
                           >
                             <n-select
                               v-model:value="session.teacher"
-                              :options="
-                                (Staffarray[item] &&
-                                  Staffarray[item][session.session] &&
-                                  Staffarray[item][session.session][
-                                    session.session_id
-                                  ]) ||
-                                []
-                              "
+                              :options="Staffarray"
                               label-field="full_name"
                               value-field="id"
                               placeholder="Chọn giảng viên"
