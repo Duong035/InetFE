@@ -212,7 +212,7 @@ const toggleDropdown = (menu: string) => {
               <ul v-if="dropdowns.xeplich" class="w-ful h-full">
                 <li>
                   <div class="w-ful h-full" v-if="!isCollapsed">
-                    <DaotaoLophocXeplop />
+                    <DaotaoLophocXeplop :correctSubjectId="subjectID" />
                   </div>
                 </li>
               </ul>

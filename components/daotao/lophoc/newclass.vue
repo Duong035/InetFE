@@ -112,7 +112,7 @@ const fetchBranches = async () => {
 
     branches.value =
       resData.value?.data?.map((branch: any) => ({
-        label: branch.address,
+        label: `${branch.Name} - ${branch.address}`,
         value: branch.id,
       })) || [];
   } catch (err) {
@@ -156,6 +156,7 @@ const handleSubmit = async () => {
         body: JSON.stringify(payload),
       }));
       const classId = resData.value.data.id;
+      console.log("new class =", route?.path);
       await router.push({
         path: window.location.pathname,
         query: { id: classId, num: lessonsCount.value },

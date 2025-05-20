@@ -119,7 +119,9 @@ if (formValue.id) {
     formValue.total_lessons = String(data?.total_lessons ?? "");
     formValue.name = data?.name;
     formValue.category_id = data?.category?.id;
-    formValue.teacher_ids = data.teachers.map((teacher) => teacher.id);
+    formValue.teacher_ids = Array.isArray(data.teachers)
+      ? data.teachers.map((teacher) => teacher.id)
+      : [];
     formValue.fee_type = String(data?.fee_type);
     formValue.origin_fee = data?.origin_fee;
     formValue.discount_fee = data?.discount_fee;
@@ -197,6 +199,7 @@ const handleSubmit = async (e) => {
       if (resCreate?.value?.status) {
         message.success("Tạo môn học thành công!");
         const newId = resCreate.value.data.id;
+        console.log("classinfo =", route?.path);
         router.push({
           path: window.location.pathname,
           query: { id: newId, num: body.total_lessons },

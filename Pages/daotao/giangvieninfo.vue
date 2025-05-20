@@ -37,7 +37,7 @@ const formValue = reactive({
   introduction: null,
   permission_grp_id: null,
   is_active: true,
-  avatar: "https://i.postimg.cc/Pxxp3vpy/cover.png",
+  avatar: "https://i.postimg.cc/SRMS5kn5/cover.png",
   salary_type: 1,
   salary: null,
   role_id: 4,
@@ -273,6 +273,8 @@ const handleSubmit = async (e) => {
       if (resCreate?.value?.status) {
         message.success("Tạo nhân viên thành công!");
         const newId = resCreate.value.data;
+        console.log("giang vien =", route?.path);
+
         router.push({ path: window.location.pathname, query: { id: newId } });
       } else {
         const errorCode = error.value?.data?.error;

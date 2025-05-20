@@ -1,15 +1,11 @@
 <template>
   <NMenu
-    :style="isMobile && '--n-item-height: 40px'"
     v-model:value="selectedKeys"
     :icon-size="22"
     :options="menus"
-    :inverted="inverted"
     :mode="mode"
     :collapsed="collapsed"
-    :collapsed-width="isMobile ? 40 : 64"
-    :width="300"
-    :collapsed-icon-size="isMobile ? 16 : 20"
+    :width="500"
     :indent="0"
     :root-indent="16"
     :accordion="true"
@@ -20,7 +16,6 @@
     class="menu_custom"
   />
 </template>
-
 <script>
 import {
   defineComponent,
@@ -32,7 +27,6 @@ import {
   toRefs,
   unref,
 } from "vue";
-import { useProjectSettingStore } from "@/stores/projectSetting";
 
 export default defineComponent({
   name: "Menu",
@@ -52,18 +46,32 @@ export default defineComponent({
     menus: {
       type: Array,
     },
+    helps: {
+      type: Number,
+      default: 0,
+    },
   },
   emits: ["update:collapsed", "clickMenuItem"],
   setup(props, { emit }) {
-    const { locale } = useI18n();
-    const currentLocale = locale?.value;
     const currentRoute = useRoute();
     const router = useRouter();
     const key_menu = ref(0);
-    const settingStore = useProjectSettingStore();
-    const projectStore = useProjectSettingStore();
+    const menuInstRef = ref(null);
 
     function renderMenuLabel(option) {
+      if (option.key == "help-center") {
+        return h("div", { class: "flex items-center" }, [
+          h(
+            "span",
+            {
+              class:
+                "transition-all-300 font-400 text-14px 2xl:font-500 2xl:text-15px ml-1",
+            },
+            [option.label],
+          ),
+          h(NBadge, { value: props.helps, max: 99, class: "ml-auto" }),
+        ]);
+      }
       return h(
         "div",
         {
@@ -73,17 +81,15 @@ export default defineComponent({
         [option.label],
       );
     }
-
-    const state_breadcrumb = useBreadCrumb();
-    const menuInstRef = ref(null);
-
     const computedKey = computed(() => {
       const noSubMenus = [
         "class/process/",
         "result/testlist",
         "result/attendance",
         "tuition-fee",
+        "exam",
       ];
+      console.log("layout =", currentRoute?.path);
 
       const routePathArr = currentRoute.path.split("/");
 
@@ -104,7 +110,6 @@ export default defineComponent({
 
       return !parts || parts === "callback" ? "dashboard" : parts;
     });
-
     const selectedKeys = ref(computedKey.value);
     const headerMenuSelectKey = ref("");
     const defaultValue = ref("");
@@ -121,7 +126,6 @@ export default defineComponent({
       const result = parts.join("/");
       defaultValue.value = result;
     }
-
     watch(
       () => computedKey.value,
       (newValue) => selectAndExpand(newValue),
@@ -133,7 +137,10 @@ export default defineComponent({
     };
 
     watch(currentRoute, () => {
-      const getKey = currentRoute?.matched?.[0]?.path;
+      const getKey = currentRoute?.matched?.length
+        ? currentRoute.matched[0].path
+        : null;
+
       if (!getKey) return;
 
       let parts = getKey.substring(1).split("/");
@@ -150,21 +157,12 @@ export default defineComponent({
       key_menu.value++;
     });
 
-    const getNavMode = computed(() => projectStore.navMode);
-    const isMobile = computed(() => projectStore.isMobile);
-    const navMode = getNavMode;
     const matched = currentRoute.matched;
     const getOpenKeys =
       matched && matched.length ? matched.map((item) => item.name) : [];
-
     const state = reactive({
       openKeys: getOpenKeys,
     });
-
-    const inverted = computed(() =>
-      ["dark", "header-dark"].includes(settingStore.navTheme),
-    );
-
     const getSelectedKeys = computed(() => {
       let location = props.location;
       return location === "left" ||
@@ -172,17 +170,6 @@ export default defineComponent({
         ? unref(selectedKeys)
         : unref(headerMenuSelectKey);
     });
-
-    watch(
-      () => settingStore.menuSetting.mixMenu,
-      () => {
-        updateMenu();
-
-        if (!props.collapsed) return;
-
-        emit("update:collapsed", !props.collapsed);
-      },
-    );
 
     watch(() => currentRoute.fullPath, updateMenu);
 
@@ -202,11 +189,14 @@ export default defineComponent({
     }
 
     function updateMenu() {
-      const firstRouteName = currentRoute.matched[0].path || "";
+      const firstRouteName = currentRoute?.matched?.length
+        ? currentRoute.matched[0].path
+        : null;
+
       const path = findPathByKey(props.menus, firstRouteName);
-      if (path) {
-        state_breadcrumb.value = path;
-      }
+      //   if (path) {
+      //     state_breadcrumb.value = path;
+      //   }
     }
 
     function clickMenuItem(key) {
@@ -247,7 +237,6 @@ export default defineComponent({
 
     return {
       ...toRefs(state),
-      inverted,
       defaultValue,
       selectedKeys,
       headerMenuSelectKey,
@@ -257,12 +246,10 @@ export default defineComponent({
       key_menu,
       renderMenuLabel,
       menuInstRef,
-      isMobile,
     };
   },
 });
 </script>
-
 <style scoped>
 .n-menu.n-menu--vertical.menu_custom {
   background-color: #fff;

@@ -9,6 +9,10 @@ export default defineNuxtConfig({
   devServer: {
     port: 4000
   },
+  build: {
+    analyze: true,
+    sourcemap: true
+  },
   modules: [
     '@nuxtjs/tailwindcss',
     'nuxtjs-naive-ui',
@@ -26,7 +30,23 @@ export default defineNuxtConfig({
     ],
     '@pinia/nuxt',
   ],
-  
+  runtimeConfig: {
+    public: {
+      baseUrl: "",
+      wsUrl: "",
+      OauthServerUrl: "",
+      OauthClientId: "",
+      OauthOrganizationName: "",
+      OauthAppName: "",
+      DomainExam: "",
+      DomainName: "",
+      VideoProvider: "",
+      streamingAdaptiveUrl: "",
+      streamingMp4Url: "",
+      streamingProvider: "",
+      TimeoutVideo: "",
+    },
+  },
   css: ["@/assets/index.css"],
   vite: {
     plugins: [

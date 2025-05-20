@@ -35,21 +35,23 @@ const API_ENDPOINTS = {
     lesson_data: "/api/admin/lesson-data",
     lesson_datas: "/api/admin/lesson-datas",
     classrooms: "/api/admin/classrooms",
-    classroom: "/api/admin/classroom",
     shift: "/api/admin/work-session",
     shifts: "/api/admin/work-sessions",
     center: "/api/admin/center",
     calendar: "/api/admin/teach-schedule",
     schedule_class_student: "/api/admin/schedule-class/by-student",
+    schedule_class: "/api/admin/schedule-class",
   },
 };
 
 class Request {
   constructor() {
     const route = useRoute();
+
     this.baseURL = "http://localhost:3000";
     // this.baseURL = "http://10.50.20.169:3000";
     // this.baseURL = useRuntimeConfig().public.baseUrl
+    this.baseURL = useRuntimeConfig().public.baseUrl
     this.accessToken = `Bearer ${useUserStore()?.userInfo?.token}`;
     this.headers = {};
     this.handleFetch = {
@@ -58,52 +60,58 @@ class Request {
         console.error("Request error: ", error.message);
       },
       onResponse() {},
-      onResponseError({ _, __, response }) {
-        // if (response._data?.error === 6039) {
-        //   const numberOfLectures = Number(response._data?.message);
+      onResponseError({ _, response }) {
+        if (response._data?.error === 6039) {
+          const numberOfLectures = Number(response._data?.message);
 
-        //   if (isNaN(numberOfLectures))
-        //     return window["$message"].error("Unknown error");
+          if (isNaN(numberOfLectures))
+            return window["$message"].error("Unknown error");
 
-        //   if (numberOfLectures > 0)
-        //     return window["$message"].error(
-        //       t(response._data?.error, {
-        //         numberOfLectures: response._data?.message,
-        //       }),
-        //     );
+          if (numberOfLectures > 0)
+            return window["$message"].error(
+              t(response._data?.error, {
+                numberOfLectures: response._data?.message,
+              }),
+            );
 
-        //   if (numberOfLectures < 0)
-        //     return window["$message"].error(
-        //       t("lectures.exceeded", {
-        //         numberOfLectures: response._data?.message * -1,
-        //       }),
-        //     );
-        // }
-        // if (route.path.includes("profile")) return;
-        // if (response._data?.error === 2008) return;
-        // else
-        //   window["$message"].error(
-        //     ERROR_CODES[response._data?.error] || response._data?.message,
-        //   );
+          if (numberOfLectures < 0)
+            return window["$message"].error(
+              t("lectures.exceeded", {
+                numberOfLectures: response._data?.message * -1,
+              }),
+            );
+        }
+        if (route.path.includes("profile")) return;
+        if (response._data?.error === 2008) return;
+        else
+          window["$message"].error(
+            ERROR_CODES[response._data?.error] || response._data?.message,
+          );
 
-        // console.error("Response error: ", response._data?.message);
+        console.error("Response error: ", response._data?.message);
 
-        // if (response.status == 401 || response._data?.error === 6101)
-        //   return navigateTo(window["$loginUrl"], { external: true });
+        if (response.status == 401 || response._data?.error === 6101)
+          return navigateTo(window["$loginUrl"], { external: true });
       },
     };
   }
 
   fetch(url, method, options) {
-    const headers = {
-      "Content-type": "application/json",
-      Authorization: this.accessToken,
-    };
+    if (this.accessToken) {
+      this.headers = {
+        "Content-type": "application/json",
+        Authorization: this.accessToken,
+      }
+    } else {
+      this.headers = {
+        "Content-type": "application/json",
+      }
+    }
 
     return useFetch(url, {
       baseURL: this.baseURL,
-      method,
-      headers,
+      method: method,
+      headers: this.headers,
       ...options,
       ...this.handleFetch,
     });
@@ -164,19 +172,18 @@ class CMSManager {
     return this.request.get(API_ENDPOINTS.cms.staff, data);
   }
   async getStaffDetails(data) {
-      return this.request.get(`${API_ENDPOINTS.cms.staff}/${data.id}`, data)
+    return this.request.get(`${API_ENDPOINTS.cms.staff}/${data.id}`, data);
   }
   async createStaff(data) {
-    return this.request.post(API_ENDPOINTS.cms.staff, data)
+    return this.request.post(API_ENDPOINTS.cms.staff, data);
   }
   async updateStaff(data) {
-    return this.request.put(`${API_ENDPOINTS.cms.staff}/${data.id}`, data)
+    return this.request.put(`${API_ENDPOINTS.cms.staff}/${data.id}`, data);
   }
   async deleteStaff(data) {
-    return this.request.delete(`${API_ENDPOINTS.cms.staff}`, data)
+    return this.request.delete(`${API_ENDPOINTS.cms.staff}`, data);
   }
   //__________________________________________________________________________________________
-
 
   //Unit______________________________________________________________________________________
   async getUnitInformation(data) {
@@ -264,16 +271,16 @@ class CMSManager {
     return this.request.get(API_ENDPOINTS.cms.subjects, data);
   }
   async getAllSubject(data) {
-    return this.request.get(API_ENDPOINTS.cms.all_subject, data)
+    return this.request.get(API_ENDPOINTS.cms.all_subject, data);
   }
   async getSubjectDetail(data) {
-    return this.request.get(`${API_ENDPOINTS.cms.subject}?id=${data.id}`, data)
+    return this.request.get(`${API_ENDPOINTS.cms.subject}?id=${data.id}`, data);
   }
   async createSubject(data) {
-    return this.request.post(API_ENDPOINTS.cms.subject, data)
+    return this.request.post(API_ENDPOINTS.cms.subject, data);
   }
   async updateSubject(data) {
-    return this.request.patch(API_ENDPOINTS.cms.subject, data)
+    return this.request.patch(API_ENDPOINTS.cms.subject, data);
   }
 
   async deleteSubject(data) {
@@ -283,43 +290,49 @@ class CMSManager {
 
   //lesson____________________________________________________________________________________
   async createLesson(data) {
-    return this.request.post(API_ENDPOINTS.cms.lesson, data)
+    return this.request.post(API_ENDPOINTS.cms.lesson, data);
   }
   async getListLesson(data) {
-    return this.request.get(`${API_ENDPOINTS.cms.lessons}?relation=${data.id}&children=true`, data)
+    return this.request.get(
+      `${API_ENDPOINTS.cms.lessons}?relation=${data.id}`,
+      data,
+    );
   }
   async getLessonDetail(data) {
-    return this.request.get(`${API_ENDPOINTS.cms.lesson}?id=${data.id}`, data)
+    return this.request.get(`${API_ENDPOINTS.cms.lesson}?id=${data.id}`, data);
   }
   async updateLesson(data) {
-    return this.request.patch(API_ENDPOINTS.cms.lesson, data)
+    return this.request.patch(API_ENDPOINTS.cms.lesson, data);
   }
   async deleteLesson(data) {
-    return this.request.delete(API_ENDPOINTS.cms.lesson, data)
+    return this.request.delete(API_ENDPOINTS.cms.lesson, data);
   }
   //__________________________________________________________________________________________
 
   //lesson data_______________________________________________________________________________
   async createLessonData(data) {
-    return this.request.post(API_ENDPOINTS.cms.lesson_data, data)
+    return this.request.post(API_ENDPOINTS.cms.lesson_data, data);
   }
   async deleteLessonData(data) {
-    return this.request.delete(API_ENDPOINTS.cms.lesson_data, data)
+    return this.request.delete(API_ENDPOINTS.cms.lesson_data, data);
   }
   async getListLessonData(data) {
-    return this.request.get(API_ENDPOINTS.cms.lesson_datas, data)
+    return this.request.get(API_ENDPOINTS.cms.lesson_datas, data);
   }
   async getLessonData(data) {
-    return this.request.get(`${API_ENDPOINTS.cms.lesson_data}?id=${data.id}`, data)
+    return this.request.get(
+      `${API_ENDPOINTS.cms.lesson_data}?id=${data.id}`,
+      data,
+    );
   }
   async updateLessonData(data) {
-    return this.request.patch(API_ENDPOINTS.cms.lesson_data, data)
+    return this.request.patch(API_ENDPOINTS.cms.lesson_data, data);
   }
   //__________________________________________________________________________________________
 
   //Shift_____________________________________________________________________________________
   async getShift(data) {
-    return this.request.get(API_ENDPOINTS.cms.shifts, data)
+    return this.request.get(API_ENDPOINTS.cms.shifts, data);
   }
   async getShiftDetail(data) {
     return this.request.get(API_ENDPOINTS.cms.shift, data);
@@ -331,7 +344,7 @@ class CMSManager {
     return this.request.patch(API_ENDPOINTS.cms.shift, data);
   }
   async deleteShift(data) {
-    return this.request.delete(`${API_ENDPOINTS.cms.shift}/${data.id}`, data)
+    return this.request.delete(`${API_ENDPOINTS.cms.shift}/${data.id}`, data);
   }
   //__________________________________________________________________________________________
 
@@ -341,6 +354,21 @@ class CMSManager {
   }
   async getClasses(data) {
     return this.request.get(API_ENDPOINTS.cms.classes, data);
+  }
+  async getClassStudent(data) {
+    return this.request.get(
+      `${API_ENDPOINTS.cms.class}/${data.id}/student`,
+      data,
+    );
+  }
+  async deleteClassStudent(data) {
+    return this.request.delete(
+      `${API_ENDPOINTS.cms.class}/remove-student`,
+      data,
+    );
+  }
+  async addStudentsToClass(data) {
+    return this.request.post(`${API_ENDPOINTS.cms.class}/add-student`, data);
   }
 
   async getClassById(data) {
@@ -352,25 +380,28 @@ class CMSManager {
   async deleteClass(data) {
     return this.request.delete(`${API_ENDPOINTS.cms.class}/${data.id}`, data);
   }
-  async cancelClass(data) {
-    return this.request.patch(`${API_ENDPOINTS.cms.cancel_class}/${data.id}`, data);
+  async cancel_Class(data) {
+    return this.request.path(
+      `${API_ENDPOINTS.cms.cancel_class}/${data.id}`,
+      data,
+    );
   }
-  //__________________________________________________________________________________________
-
-  //Test
   async getClassStudent(data) {
     return this.request.get(
       `${API_ENDPOINTS.cms.class}/${data.id}/student`,
       data,
     );
   }
+  async deleteClassStudent(data) {
+    return this.request.delete(
+      `${API_ENDPOINTS.cms.class}/remove-student`,
+      data,
+    );
+  }
   async addStudentsToClass(data) {
     return this.request.post(API_ENDPOINTS.cms.stoclass, data);
   }
-  //____
-
-
-
+  //__________________________________________________________________________________________
 
   //classroom_________________________________________________________________________________
   async getClassrooms(data) {
@@ -380,14 +411,14 @@ class CMSManager {
     return this.request.post(API_ENDPOINTS.cms.classrooms, data);
   }
   async getDetailClassroom(data) {
-    return this.request.get(`${API_ENDPOINTS.cms.classroom}/:${data.id}`, data);
+    return this.request.get(`${API_ENDPOINTS.cms.classrooms}/${data.id}`, data);
   }
   async updateClassroom(data) {
-    return this.request.put(`${API_ENDPOINTS.cms.classroom}/:${data.id}`, data);
+    return this.request.put(`${API_ENDPOINTS.cms.classrooms}/${data.id}`, data);
   }
   async deleteClassroom(data) {
     return this.request.delete(
-      `${API_ENDPOINTS.cms.classroom}/:${data.id}`,
+      `${API_ENDPOINTS.cms.classrooms}/${data.id}`,
       data,
     );
   }
@@ -398,16 +429,22 @@ class CMSManager {
     return this.request.get(API_ENDPOINTS.cms.permissionGroup, data);
   }
   async getPermissionGroupsDetails(data) {
-    return this.request.get(`${API_ENDPOINTS.cms.permissionGroup}/${data.id}`, data)
+    return this.request.get(
+      `${API_ENDPOINTS.cms.permissionGroup}/${data.id}`,
+      data,
+    );
   }
   async getPermissionGroupsExport(data) {
-    return this.request.get(API_ENDPOINTS.cms.permissionGroupExport, data)
+    return this.request.get(API_ENDPOINTS.cms.permissionGroupExport, data);
   }
   async createPermissionGroups(data) {
-    return this.request.post(API_ENDPOINTS.cms.permissionGroup, data)
+    return this.request.post(API_ENDPOINTS.cms.permissionGroup, data);
   }
   async updatePermissionGroups(data) {
-    return this.request.put(`${API_ENDPOINTS.cms.permissionGroup}/${data.id}`, data)
+    return this.request.put(
+      `${API_ENDPOINTS.cms.permissionGroup}/${data.id}`,
+      data,
+    );
   }
   async deletePermissionGroups(data) {
     return this.request.delete(`${API_ENDPOINTS.cms.permissionGroup}`, data);
@@ -419,16 +456,22 @@ class CMSManager {
     return this.request.get(API_ENDPOINTS.cms.permissionTag, data);
   }
   async getPermissionTagDetails(data) {
-    return this.request.get(`${API_ENDPOINTS.cms.permissionTag}/${data.id}`, data)
+    return this.request.get(
+      `${API_ENDPOINTS.cms.permissionTag}/${data.id}`,
+      data,
+    );
   }
   async createPermissionTag(data) {
-    return this.request.post(API_ENDPOINTS.cms.permissionTag, data)
+    return this.request.post(API_ENDPOINTS.cms.permissionTag, data);
   }
   async updatePermissionTag(data) {
-    return this.request.put(`${API_ENDPOINTS.cms.permissionTag}/${data.id}`, data)
+    return this.request.put(
+      `${API_ENDPOINTS.cms.permissionTag}/${data.id}`,
+      data,
+    );
   }
   async deletePermissionTag(data) {
-    return this.request.delete(`${API_ENDPOINTS.cms.permissionTag}`, data)
+    return this.request.delete(`${API_ENDPOINTS.cms.permissionTag}`, data);
   }
   //__________________________________________________________________________________________
 
@@ -443,19 +486,19 @@ class CMSManager {
 
   //Teach_schedule____________________________________________________________________________
   async getCalendarDetails(data) {
-    return this.request.get(`${API_ENDPOINTS.cms.calendar}/${data.id}`, data)
+    return this.request.get(`${API_ENDPOINTS.cms.calendar}/${data.id}`, data);
   }
   async listCalendars(data) {
-    return this.request.get(API_ENDPOINTS.cms.calendar, data)
+    return this.request.get(API_ENDPOINTS.cms.calendar, data);
   }
   async createCalendar(data) {
-    return this.request.post(API_ENDPOINTS.cms.calendar, data)
+    return this.request.post(API_ENDPOINTS.cms.calendar, data);
   }
   async updateCalendar(data) {
-    return this.request.put(`${API_ENDPOINTS.cms.calendar}/${data.id}`, data)
+    return this.request.put(`${API_ENDPOINTS.cms.calendar}/${data.id}`, data);
   }
   async deleteCalendar(data) {
-    return this.request.delete(`${API_ENDPOINTS.cms.calendar}`, data)
+    return this.request.delete(`${API_ENDPOINTS.cms.calendar}`, data);
   }
   //__________________________________________________________________________________________
 
@@ -465,6 +508,19 @@ class CMSManager {
   }
   async updateCenter(data) {
     return this.request.put(API_ENDPOINTS.cms.center, data);
+  }
+  //__________________________________________________________________________________________
+ 
+  //schedule__________________________________________________________________________________
+  async getScheduleClassStudent(data) {
+    return this.request.get(API_ENDPOINTS.cms.schedule_class_student, data);
+  }
+
+  async getScheduleClass(data) {
+    return this.request.get(API_ENDPOINTS.cms.schedule_class, data);
+  }
+  async createClassSchedule(data) {
+    return this.request.post(API_ENDPOINTS.cms.schedules_class, data)
   }
   //__________________________________________________________________________________________
 }
