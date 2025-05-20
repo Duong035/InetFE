@@ -137,7 +137,10 @@ export default defineComponent({
     };
 
     watch(currentRoute, () => {
-      const getKey = currentRoute?.matched?.[0]?.path;
+      const getKey = currentRoute?.matched?.length
+        ? currentRoute.matched[0].path
+        : null;
+
       if (!getKey) return;
 
       let parts = getKey.substring(1).split("/");
@@ -186,7 +189,10 @@ export default defineComponent({
     }
 
     function updateMenu() {
-      const firstRouteName = currentRoute.matched[0].path || "";
+      const firstRouteName = currentRoute?.matched?.length
+        ? currentRoute.matched[0].path
+        : null;
+
       const path = findPathByKey(props.menus, firstRouteName);
       //   if (path) {
       //     state_breadcrumb.value = path;
