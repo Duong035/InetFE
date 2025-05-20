@@ -8,7 +8,7 @@
     :mode="mode"
     :collapsed="collapsed"
     :collapsed-width="isMobile ? 40 : 64"
-    :width="300"
+    :width="3000"
     :collapsed-icon-size="isMobile ? 16 : 20"
     :indent="0"
     :root-indent="16"
@@ -55,7 +55,6 @@ export default defineComponent({
   },
   emits: ["update:collapsed", "clickMenuItem"],
   setup(props, { emit }) {
-    console.log(".layout");
     const { locale } = useI18n();
     const currentLocale = locale?.value;
     const currentRoute = useRoute();
@@ -270,7 +269,7 @@ export default defineComponent({
 }
 
 * :deep(.n-menu-item-content--child-active::before) {
-  background-color: #e6f7ff !important;
+  background-color: #e6f7aa !important;
 }
 </style>
 
