@@ -199,6 +199,7 @@ const handleSubmit = async (e) => {
       if (resCreate?.value?.status) {
         message.success("Tạo môn học thành công!");
         const newId = resCreate.value.data.id;
+        console.log("classinfo =", route?.path);
         router.push({
           path: window.location.pathname,
           query: { id: newId, num: body.total_lessons },
