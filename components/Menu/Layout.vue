@@ -89,6 +89,7 @@ export default defineComponent({
         "tuition-fee",
         "exam",
       ];
+      console.log("layout =", route?.path);
 
       const routePathArr = currentRoute.path.split("/");
 

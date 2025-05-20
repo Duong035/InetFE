@@ -273,6 +273,8 @@ const handleSubmit = async (e) => {
       if (resCreate?.value?.status) {
         message.success("Tạo nhân viên thành công!");
         const newId = resCreate.value.data;
+        console.log("giang vien =", route?.path);
+
         router.push({ path: window.location.pathname, query: { id: newId } });
       } else {
         const errorCode = error.value?.data?.error;

@@ -9,6 +9,10 @@ export default defineNuxtConfig({
   devServer: {
     port: 4000
   },
+  build: {
+    analyze: true,
+    sourcemap: true
+  },
   modules: [
     '@nuxtjs/tailwindcss',
     'nuxtjs-naive-ui',
@@ -62,9 +66,6 @@ export default defineNuxtConfig({
         resolvers: [NaiveUiResolver()]
       })
     ],
-    build: {
-      sourcemap: true
-    }
   },
   dayjs: {
     defaultLocale: ['en', {
