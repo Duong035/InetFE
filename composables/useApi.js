@@ -47,10 +47,7 @@ const API_ENDPOINTS = {
 class Request {
   constructor() {
     const route = useRoute();
-    // this.baseURL = "http://localhost:3000";
-    // this.baseURL = "http://10.50.20.169:3000";
     this.baseURL = useRuntimeConfig().public.baseUrl
-    console.log("baseURL",baseURL)
     this.accessToken = `Bearer ${useUserStore()?.userInfo?.token}`;
     this.headers = {};
     this.handleFetch = {
