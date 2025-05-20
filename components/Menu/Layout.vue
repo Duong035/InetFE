@@ -55,6 +55,7 @@ export default defineComponent({
   },
   emits: ["update:collapsed", "clickMenuItem"],
   setup(props, { emit }) {
+    console.log(".layout");
     const { locale } = useI18n();
     const currentLocale = locale?.value;
     const currentRoute = useRoute();
