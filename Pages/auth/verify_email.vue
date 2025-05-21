@@ -215,10 +215,8 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div
-    class="relative mx-auto flex min-h-screen w-1/4 items-center justify-center"
-  >
-    <div class="mx-auto rounded-3xl bg-white bg-opacity-60 shadow">
+  <div class="flex h-screen w-full items-center justify-center">
+    <div class="mx-3 max-w-[450px] rounded-3xl bg-white bg-opacity-60 shadow">
       <n-form
         :label-width="200"
         class="p-6"

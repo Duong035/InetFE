@@ -1,8 +1,6 @@
 <template>
-  <div class="h-full w-full">
-    <main class="hero font-customFont flex h-screen w-full bg-cover">
-      <slot />
-    </main>
+  <div class="hero font-customFont h-screen w-full">
+    <slot />
   </div>
 </template>
 
@@ -10,6 +8,13 @@
 
 <style scoped>
 .hero {
-  background: url("../public/images/bg.png") center center/cover no-repeat;
+  background: url("../public/images/bg.png");
+  -ms-flex-align: center;
+  background-attachment: fixed;
+  background-color: white;
+  background-size: cover;
+  background-position: center;
+  -ms-flex: auto;
+  flex: auto;
 }
 </style>

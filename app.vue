@@ -66,6 +66,7 @@ const getThemeOverrides = computed(() => {
       borderDisabled: "1px solid #E7EDFFFF",
       placeholderColor: "#8ba3cb",
       placeholderColorDisabled: "#8ba3cb",
+      borderHover: "#00A2EBFF",
     },
     Checkbox: {
       colorChecked: "#00A2EBFF",
