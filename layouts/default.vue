@@ -7,7 +7,7 @@
       <!-- overflow-auto -->
       <Sidebar />
       <!-- <Test /> -->
-      <main class="mx-5 mb-5 mt-5 w-full rounded-2xl">
+      <main class="mx-5 my-5 w-full rounded-2xl">
         <slot />
         <!-- <content /> -->
       </main>
