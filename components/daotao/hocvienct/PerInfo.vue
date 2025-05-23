@@ -62,6 +62,9 @@ const optionsDistricts = reactive({
   data: [],
   default: {},
 });
+const nameError = ref("");
+const emailError = ref("");
+const phoneError = ref("");
 
 const rules = reactive({
   name: {
@@ -71,29 +74,42 @@ const rules = reactive({
       const newValue = value?.trim();
       return new Promise((resolve, reject) => {
         const nameRegex = /[!@#$%^&*(),.?":{}|<>]/;
-        if (!newValue) reject(Error("Tên không được để trống!"));
-        else if (newValue.length > 50)
-          reject(Error("Tên không được quá 50 ký tự!"));
-        else if (nameRegex.test(newValue))
-          reject(Error("Tên không được chứa ký tự đặc biệt!"));
-        else resolve();
+        if (!newValue) {
+          nameError.value = "Tên không được để trống!";
+          reject(Error(nameError.value));
+        } else if (newValue.length > 50) {
+          nameError.value = "Tên không được quá 50 ký tự!";
+          reject(Error(nameError.value));
+        } else if (nameRegex.test(newValue)) {
+          nameError.value = "Tên không được chứa ký tự đặc biệt!";
+          reject(Error(nameError.value));
+        } else {
+          nameError.value = "";
+          resolve();
+        }
       });
     },
   },
-
   email: {
     required: true,
     trigger: ["input", "blur"],
     validator: (_, value) => {
-      const emailRegex =
-        /^[a-zA-Z0-9]+(?:[._-]?[a-zA-Z0-9]+)*@[a-zA-Z0-9.]+\.[a-zA-Z]{2,}$/;
       return new Promise((resolve, reject) => {
-        if (!value) reject(Error("Email không được để trống!"));
-        else if (value && !emailRegex.test(value))
-          reject(Error("Email không hợp lệ!"));
-        else if (value && value.length > 100)
-          reject(Error("Email không được quá 100 ký tự!"));
-        else resolve();
+        const emailRegex =
+          /^[a-zA-Z0-9]+(?:[._-]?[a-zA-Z0-9]+)*@[a-zA-Z0-9.]+\.[a-zA-Z]{2,}$/;
+        if (!value) {
+          emailError.value = "Email không được để trống!";
+          reject(Error(emailError.value));
+        } else if (!emailRegex.test(value)) {
+          emailError.value = "Email không hợp lệ!";
+          reject(Error(emailError.value));
+        } else if (value.length > 100) {
+          emailError.value = "Email không được quá 100 ký tự!";
+          reject(Error(emailError.value));
+        } else {
+          emailError.value = "";
+          resolve();
+        }
       });
     },
   },
@@ -101,19 +117,19 @@ const rules = reactive({
     trigger: ["input", "blur"],
     validator: (_, value) => {
       return new Promise((resolve, reject) => {
-        const phoneRegex =
-          /^((84|(\+84))(3|5|7|8|9)([0-9]{8})\b|(0[3|5|7|8|9])([0-9]{8}))$/;
-        if (!value) reject(Error("Số điện thoại không được để trống!"));
-        else if (value && !phoneRegex.test(value))
-          reject(Error("Số điện thoại không hợp lệ!"));
-        else resolve();
+        const phoneRegex = /^((84|\+84)(3|5|7|8|9)\d{8}|0[3|5|7|8|9]\d{8})$/;
+        if (!value) {
+          phoneError.value = "Số điện thoại không được để trống!";
+          reject(Error(phoneError.value));
+        } else if (!phoneRegex.test(value)) {
+          phoneError.value = "Số điện thoại không hợp lệ!";
+          reject(Error(phoneError.value));
+        } else {
+          phoneError.value = "";
+          resolve();
+        }
       });
     },
-  },
-  customer_source_id: {
-    required: true,
-    trigger: ["input", "blur"],
-    message: "Nguồn khách hàng không được để trống!",
   },
 });
 
@@ -325,21 +341,28 @@ onMounted(async () => {
 <template>
   <n-spin :show="showSpin" class="px-5">
     <n-form :model="formValue" :rules="rules" ref="formRef">
-      <n-grid :x-gap="30" cols="1 m:2" responsive="screen" class="my-5">
-        <n-gi>
-          <n-form-item label="Họ và tên học viên" path="name">
+      <div class="my-5 grid grid-cols-1 gap-3 gap-x-[30px] md:grid-cols-2">
+        <div>
+          <n-form-item
+            label="Họ và tên học viên"
+            path="name"
+            :show-feedback="false"
+          >
             <n-input
               v-model:value="formValue.name"
               placeholder="Điền tên nhóm học viên"
             />
           </n-form-item>
-        </n-gi>
-        <n-gi>
+          <div v-if="nameError" class="mt-1 text-sm text-red-500">
+            {{ nameError }}
+          </div>
+        </div>
+        <div class="md:flex md:items-center">
           <n-form-item
-            class="mt-7"
             label="Trạng thái tài khoản"
             label-placement="left"
             path="switchValue"
+            :show-feedback="false"
           >
             <n-switch
               :unchecked-value="1"
@@ -348,19 +371,18 @@ onMounted(async () => {
               :rail-style="railStyle"
             />
           </n-form-item>
-        </n-gi>
-
-        <n-gi>
-          <n-form-item label="Giới tính">
+        </div>
+        <div>
+          <n-form-item label="Giới tính" :show-feedback="false">
             <n-select
               v-model:value="formValue.gender"
               :options="options"
               placeholder="Chọn giới tính"
             />
           </n-form-item>
-        </n-gi>
-        <n-gi>
-          <n-form-item label="Ngày sinh">
+        </div>
+        <div>
+          <n-form-item label="Ngày sinh" :show-feedback="false">
             <n-date-picker
               class="w-full"
               v-model:value="formValue.dob"
@@ -368,29 +390,39 @@ onMounted(async () => {
               placeholder="Chọn ngày"
             />
           </n-form-item>
-        </n-gi>
-        <n-gi>
-          <n-form-item label="Email" path="email">
+        </div>
+        <div>
+          <n-form-item label="Email" path="email" :show-feedback="false">
             <n-input
               type="email"
               v-model:value="formValue.email"
               placeholder="Nhập email"
             />
           </n-form-item>
-        </n-gi>
-        <n-gi>
-          <n-form-item label="Số điện thoại" path="phone">
+          <div v-if="emailError" class="mt-1 text-sm text-red-500">
+            {{ emailError }}
+          </div>
+        </div>
+        <div>
+          <n-form-item
+            label="Số điện thoại"
+            path="phone"
+            :show-feedback="false"
+          >
             <n-input
               type="tel"
               v-model:value="formValue.phone"
               placeholder="Nhập số điện thoại"
             />
           </n-form-item>
-        </n-gi>
-        <n-gi span="1 m:2">
-          <n-form-item label="Địa chỉ" path="address">
-            <n-grid :x-gap="30" cols="1 m:2" responsive="screen">
-              <n-gi>
+          <div v-if="phoneError" class="mt-1 text-sm text-red-500">
+            {{ phoneError }}
+          </div>
+        </div>
+        <div class="md:col-span-2">
+          <n-form-item label="Địa chỉ" path="address" :show-feedback="false">
+            <div class="grid w-full grid-cols-1 gap-x-[30px] md:grid-cols-2">
+              <div>
                 <n-select
                   v-model:value="formValue.address.province"
                   :loading="optionsProvinces.loading"
@@ -398,39 +430,41 @@ onMounted(async () => {
                   @update:value="handleUpdateProvince"
                   :options="optionsProvinces.data"
                   placeholder="Tỉnh/Thành phố"
-                  class="custom-select-no-bg"
+                  class="custom-select-no-bg w-full"
                 />
-              </n-gi>
-              <n-gi>
+              </div>
+              <div class="mt-2 md:mt-0">
                 <n-select
                   v-model:value="formValue.address.district"
                   :loading="optionsDistricts.loading"
                   @scroll="handleScrollDistricts"
                   :options="optionsDistricts.data"
                   placeholder="Quận/Huyện"
+                  class="w-full"
                 />
-              </n-gi>
-              <n-gi span="1 m:2" class="mt-2">
+              </div>
+              <div class="mt-2 md:col-span-2">
                 <n-input
                   v-model:value="formValue.address.address"
                   placeholder="Nhập địa chỉ"
+                  class="w-full"
                 />
-              </n-gi>
-            </n-grid>
+              </div>
+            </div>
           </n-form-item>
-        </n-gi>
-        <n-gi>
+        </div>
+        <div class="md:col-span-2 md:flex md:justify-center">
           <n-button
             round
             type="info"
-            class="h-12 w-52 rounded-2xl text-lg"
+            class="h-12 w-full rounded-2xl px-3 text-lg md:w-52"
             :loading="isLoading"
             @click.prevent="handleSubmit"
           >
             Lưu
           </n-button>
-        </n-gi>
-      </n-grid>
+        </div>
+      </div>
     </n-form>
   </n-spin>
 </template>

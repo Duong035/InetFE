@@ -176,6 +176,7 @@ const handleSubmit = async (e) => {
               userStore.setPermissions(true, []);
             delete userInfo.permission_grp;
             userStore.login(userInfo);
+            sessionStorage.removeItem("loginfo");
             message.success("Đăng nhập thành công!");
           });
           return navigateTo("/dashboard");

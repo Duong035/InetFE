@@ -50,18 +50,15 @@ const handleSubmit = async (e) => {
 
     if (resVerify.value?.status) {
       const userInfo = resVerify.value?.data;
-      console.log("origin", userInfo);
       if (userInfo?.permission_grp_id) initDefaultPermit(userInfo);
       nextTick(async () => {
         if (
           userInfo?.permission_grp &&
           (userInfo?.role_id === 3 || userInfo?.role_id === 4)
         ) {
-          console.log("source", userInfo.permission_grp.tags);
           const filteredPermissions = filterPermissions(
             userInfo?.permission_grp?.tags,
           );
-          console.log("filter", filteredPermissions);
           userStore.setPermissions(
             userInfo?.permission_grp?.select_all,
             filteredPermissions,
@@ -85,6 +82,7 @@ const handleSubmit = async (e) => {
         if (body.password === "aohvaklvnh") {
           sessionStorage.setItem("first_time", "true");
         }
+        sessionStorage.setItem("loginfo", JSON.stringify(body));
         router.push({
           path: "verify_email",
           query: {
@@ -103,7 +101,6 @@ const handleSubmit = async (e) => {
 };
 
 async function initDefaultPermit(user) {
-  console.log("user", user);
   const { data: resPermissionsTags } = await restAPI.cms.getPermissionTags({
     headers: {
       "Content-type": "application/json",
@@ -234,7 +231,7 @@ async function initDefaultPermit(user) {
             Đăng nhập
           </n-button>
         </div>
-        <div class="relative mt-5 text-center text-[#133D85]">
+        <!-- <div class="relative mt-5 text-center text-[#133D85]">
           Bạn chưa có tài khoản?
           <NuxtLink
             to="register"
@@ -242,7 +239,7 @@ async function initDefaultPermit(user) {
           >
             Đăng ký ngay
           </NuxtLink>
-        </div>
+        </div> -->
       </n-form>
     </div>
   </div>

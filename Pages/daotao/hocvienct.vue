@@ -65,9 +65,10 @@ export default defineComponent({
         {
           title: "STT",
           key: "stt",
+          titleAlign: "center",
+          width: "80px",
           defaultSortOrder: "ascend",
           sorter: "default",
-          titleAlign: "center",
         },
         {
           title: "Thông tin học viên",
@@ -139,49 +140,79 @@ export default defineComponent({
           key: "actions",
           titleAlign: "center",
           render(row) {
-            return h("div", [
-              h(
-                NButton,
-                {
-                  size: "small",
-                  quaternary: true,
-                  style: { backgroundColor: "transparent", color: "green" },
-                  onClick: () => edit(row),
+            return h(
+              "div",
+              {
+                style: {
+                  padding: "0",
+                  display: "flex",
+                  gap: "8px",
+                  alignItems: "center",
+                  justifyContent: "center",
                 },
-                {
-                  default: () =>
-                    h("i", {
-                      class: "fa-regular fa-pen-to-square",
-                    }),
-                },
-              ),
-              h(
-                NButton,
-                {
-                  size: "small",
-                  quaternary: true,
-                  style: { backgroundColor: "transparent", color: "red" },
-                  onClick: () => openDeleteModal("single", row.id),
-                },
-                { default: () => h("i", { class: "fa-solid fa-trash" }) },
-              ),
-              h(
-                NDropdown,
-                {
-                  trigger: "click",
-                  options: actionMenu,
-                  quaternary: true,
-                  style: { color: "gray" },
-                  onSelect(key) {
-                    if (key === "Xếp lớp") {
-                      edit(row);
-                    } else if (key === "Dừng hoạt động") {
-                    }
+              },
+              [
+                h(
+                  NButton,
+                  {
+                    size: "small",
+                    quaternary: true,
+                    style: {
+                      padding: "0",
+                      backgroundColor: "transparent",
+                      color: "green",
+                    },
+                    onClick: () => edit(row),
                   },
-                },
-                { default: () => h("i", { class: "fa-solid fa-ellipsis-v" }) },
-              ),
-            ]);
+                  {
+                    default: () =>
+                      h("i", {
+                        class: "fa-regular fa-pen-to-square",
+                      }),
+                  },
+                ),
+                h(
+                  NButton,
+                  {
+                    size: "small",
+                    quaternary: true,
+                    style: {
+                      backgroundColor: "transparent",
+                      color: "red",
+                    },
+                    onClick: () => openDeleteModal("single", row.id),
+                  },
+                  {
+                    default: () =>
+                      h("i", {
+                        class: "fa-solid fa-trash",
+                      }),
+                  },
+                ),
+                h(
+                  NDropdown,
+                  {
+                    trigger: "click",
+                    options: actionMenu,
+                    quaternary: true,
+                    style: { color: "gray" },
+                    onSelect(key) {
+                      if (key === "Xếp lớp") {
+                        edit(row);
+                      } else if (key === "Dừng hoạt động") {
+                        // your logic
+                      }
+                    },
+                  },
+                  {
+                    default: () =>
+                      h("i", {
+                        class: "fa-solid fa-ellipsis-v",
+                      }),
+                  },
+                ),
+              ],
+            );
           },
         },
       ];
@@ -477,181 +508,91 @@ const actionMenu = [
 </script>
 
 <template>
-  <div class="flex h-full w-full overflow-auto rounded-2xl bg-gray-50">
+  <div class="flex h-full w-full overflow-auto rounded-2xl">
     <!-- Main Content -->
     <div class="flex-1">
       <!-- Content Area -->
       <div class="h-full text-black">
-        <n-card class="h-full bg-gray-50">
-          <div class="flex items-center justify-between text-[#133D85]">
-            <h1 class="text-4xl font-bold">Danh sách học viên chính thức</h1>
+        <n-card class="h-full bg-gray-50" :body-style="{ padding: '0' }">
+          <div class="text-[#133D85] md:flex md:justify-between">
+            <h1 class="text-3xl font-bold">Danh sách học viên</h1>
             <n-button
               type="info"
-              class="h-15 flex w-52 items-center justify-center text-center text-xl"
+              class="h-15 mt-2 flex w-52 items-center justify-center text-center text-xl md:mt-0"
               @click="$router.push('hocvieninfo')"
             >
               Thêm học viên
               <i class="fa-solid fa-plus ml-1 px-2"></i>
             </n-button>
           </div>
-          <!-- <div>
-            <nav>
-              <ul class="mt-5 flex flex-row gap-5 text-xl text-gray-400">
-                <li class="cursor-pointer duration-75 hover:text-blue-500">
-                  <NuxtLink
-                    to="#"
-                    @click="
-                      (() => {
-                        activeItem = 'Tất cả trạng thái';
-                        filterStatus();
-                      })()
-                    "
-                    :class="{
-                      'text-blue-500 underline underline-offset-8 duration-150':
-                        activeItem === 'Tất cả trạng thái',
-                    }"
-                  >
-                    Tất cả trạng thái
-                  </NuxtLink>
-                </li>
-                <li class="cursor-pointer duration-75 hover:text-blue-500">
-                  <NuxtLink
-                    to="#"
-                    @click="
-                      (() => {
-                        activeItem = 'Đang học';
-                        filterStatus();
-                      })()
-                    "
-                    :class="{
-                      'text-blue-500 underline underline-offset-8 duration-150':
-                        activeItem === 'Đang học',
-                    }"
-                  >
-                    Đang học
-                  </NuxtLink>
-                </li>
-                <li class="cursor-pointer duration-75 hover:text-blue-500">
-                  <NuxtLink
-                    to="#"
-                    @click="
-                      (() => {
-                        activeItem = 'Chưa xếp lớp';
-                        filterStatus();
-                      })()
-                    "
-                    :class="{
-                      'text-blue-500 underline underline-offset-8 duration-150':
-                        activeItem === 'Chưa xếp lớp',
-                    }"
-                  >
-                    Chưa xếp lớp
-                  </NuxtLink>
-                </li>
-                <li class="cursor-pointer duration-75 hover:text-blue-500">
-                  <NuxtLink
-                    to="#"
-                    @click="
-                      (() => {
-                        activeItem = 'Bảo lưu';
-                        filterStatus();
-                      })()
-                    "
-                    :class="{
-                      'text-blue-500 underline underline-offset-8 duration-150':
-                        activeItem === 'Bảo lưu',
-                    }"
-                  >
-                    Bảo lưu
-                  </NuxtLink>
-                </li>
-              </ul>
-            </nav>
-          </div> -->
+          <div class="mt-3 grid w-full grid-cols-1 gap-2.5 md:grid-cols-3">
+            <div>
+              <n-input
+                type="text"
+                placeholder="Tìm kiếm tên, số điện thoại, email học viên"
+              />
+            </div>
+            <div>
+              <n-select :options="options" placeholder="Tuần này" />
+            </div>
+            <div>
+              <n-select
+                v-model="accountStatus"
+                :options="statusoptions"
+                @update-value="
+                  (() => {
+                    accountStatus = $event;
+                    filterStatus();
+                  })()
+                "
+                placeholder="Trạng thái tài khoản"
+              />
+            </div>
 
-          <n-grid
-            class="min-h-fit w-full"
-            :x-gap="70"
-            cols="1 m:3"
-            responsive="screen"
-          >
-            <n-gi span="1">
-              <n-form-item>
-                <n-input
-                  type="text"
-                  placeholder="Tìm kiếm tên, số điện thoại, email học viên"
-                />
-              </n-form-item>
-            </n-gi>
-            <n-gi span="1">
-              <n-form-item>
-                <n-select :options="options" placeholder="Tuần này" />
-              </n-form-item>
-            </n-gi>
-            <n-gi span="1">
-              <n-form-item>
-                <n-select
-                  v-model="accountStatus"
-                  :options="statusoptions"
-                  @change="
-                    (() => {
-                      accountStatus = $event;
-                      filterStatus();
-                    })()
-                  "
-                  placeholder="Trạng thái tài khoản"
-                />
-              </n-form-item>
-            </n-gi>
-            <n-gi span="1 m:3">
-              <n-grid
-                class="-mt-8 w-full"
-                :x-gap="30"
-                cols="1 m:3"
-                responsive="screen"
+            <div
+              class="flex flex-col-reverse justify-between gap-3 md:col-span-3 md:flex-row"
+            >
+              <!-- Left Action Buttons -->
+              <div
+                class="flex flex-col gap-3 md:flex-row md:items-center md:gap-3"
               >
-                <n-gi span="1 m:2" class="flex-cols-3 flex gap-x-10">
-                  <n-form-item>
-                    <n-button type="info" @click="massEdit(1)">
-                      Dừng hoạt động
-                    </n-button>
-                  </n-form-item>
-                  <n-form-item>
-                    <n-button type="info" @click="massEdit(2)">
-                      Hoạt động
-                    </n-button>
-                  </n-form-item>
-                  <n-form-item>
-                    <n-button
-                      type="error"
-                      ghost
-                      @click="openDeleteModal('multiple')"
-                    >
-                      <i class="fa-solid fa-trash mr-1"></i>
-                      Xóa lựa chọn
-                    </n-button>
-                  </n-form-item>
-                </n-gi>
-                <n-gi
-                  span="1"
-                  class="flex-cols-3 flex gap-x-10 justify-self-end"
+                <div class="flex gap-3">
+                  <n-button type="info" class="max-w-full" @click="massEdit(1)">
+                    Dừng hoạt động
+                  </n-button>
+
+                  <n-button type="info" class="max-w-full" @click="massEdit(2)">
+                    Hoạt động
+                  </n-button>
+                </div>
+
+                <n-button
+                  type="error"
+                  ghost
+                  @click="openDeleteModal('multiple')"
+                  class="w-1/3 min-w-[128px] md:ml-auto"
                 >
-                  <n-form-item>
-                    <n-button type="info">
-                      Import học viên
-                      <i class="fa-solid fa-cloud-arrow-up ml-1"></i>
-                    </n-button>
-                  </n-form-item>
-                  <n-form-item>
-                    <n-button type="info">
-                      Xuất file
-                      <i class="fa-solid fa-file-export ml-1"></i>
-                    </n-button>
-                  </n-form-item>
-                </n-gi>
-              </n-grid>
-            </n-gi>
-            <n-gi span="1 m:3">
+                  <i class="fa-solid fa-trash mr-1"></i>
+                  Xóa lựa chọn
+                </n-button>
+              </div>
+
+              <!-- Right Action Buttons -->
+              <div class="flex gap-3">
+                <n-button type="info">
+                  Nhập file
+                  <i class="fa-solid fa-cloud-arrow-up ml-1"></i>
+                </n-button>
+
+                <n-button type="info" class="">
+                  Xuất file
+                  <i class="fa-solid fa-file-export ml-1"></i>
+                </n-button>
+              </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="col-span-1 md:col-span-3">
               <n-data-table
                 ref="dataTableInst"
                 :bordered="false"
@@ -663,8 +604,8 @@ const actionMenu = [
                 :row-key="rowKey"
                 @update:checked-row-keys="handleCheck"
               />
-            </n-gi>
-          </n-grid>
+            </div>
+          </div>
         </n-card>
       </div>
     </div>
@@ -672,7 +613,7 @@ const actionMenu = [
       <n-card
         title="Xác nhận xóa"
         @close="showDeleteModal = false"
-        style="width: 400px"
+        class="mx-24"
       >
         <p v-if="deleteType === 'single'">
           Bạn có chắc chắn muốn xóa học viên này không?
@@ -681,6 +622,7 @@ const actionMenu = [
         <template #footer>
           <n-space justify="end">
             <n-button @click="showDeleteModal = false">Hủy</n-button>
+            <!-- ### -->
             <n-button type="error" @click="confirmDelete" :loading="isDeleting">
               Xóa
             </n-button>

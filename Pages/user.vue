@@ -267,7 +267,7 @@ const handleSubmit = () => {
 </script>
 <template>
   <div
-    class="flex h-[calc(100vh-112px)] w-full overflow-auto rounded-2xl bg-gray-50"
+    class="scrollbar-hide flex h-[calc(100vh-112px)] w-full overflow-auto rounded-2xl bg-gray-50"
   >
     <!-- Main Content -->
     <div class="flex-1">
@@ -607,3 +607,13 @@ const handleSubmit = () => {
     </div>
   </div>
 </template>
+<style scoped>
+.scrollbar-hide::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+}
+.scrollbar-hide {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE 10+ */
+}
+</style>

@@ -176,21 +176,21 @@ onMounted(async () => {
 </script>
 <template>
   <div class="flex h-full w-full">
-    <div class="flex h-full w-1/6">
-      <nav>
+    <div class="min-w-1/5 hidden h-full w-1/5 min-w-[210px] md:block">
+      <nav class="mt-5">
         <ul class="flex flex-col">
           <li
             @click="toggleDropdown('canhan')"
             :class="[
-              'relative flex cursor-pointer items-center py-3 pl-3 pr-10',
+              'flex cursor-pointer items-center py-3',
               activeDropdown === 'canhan'
-                ? '-mr-10 bg-gray-50 pr-0 text-[#133D85]'
+                ? 'bg-gray-50 pr-0 text-[#133D85]'
                 : 'text-[#4D6FA8]',
             ]"
           >
             <i
               :class="[
-                'pr-3 text-[8px] text-[#133D85]',
+                'px-3 text-[8px] text-[#133D85]',
                 activeDropdown === 'canhan'
                   ? 'fa-solid fa-circle text-[#133D85]'
                   : 'fa-solid fa-circle-dot text-[#4D6FA8]',
@@ -201,15 +201,15 @@ onMounted(async () => {
           <li
             @click="toggleDropdown('nhucau')"
             :class="[
-              'relative flex cursor-pointer items-center py-3 pl-3 pr-10',
+              'flex cursor-pointer items-center py-3',
               activeDropdown.startsWith('nhucau')
-                ? '-mr-10 bg-gray-50 pr-0 text-[#133D85]'
+                ? 'bg-gray-50 pr-0 text-[#133D85]'
                 : 'text-[#4D6FA8]',
             ]"
           >
             <i
               :class="[
-                'pr-3 text-[8px] text-[#133D85]',
+                'px-3 text-[8px] text-[#133D85]',
                 activeDropdown.startsWith('nhucau')
                   ? 'fa-solid fa-circle text-[#133D85]'
                   : 'fa-solid fa-circle-dot text-[#4D6FA8]',
@@ -220,15 +220,15 @@ onMounted(async () => {
           <li
             @click="toggleDropdown('danhsach')"
             :class="[
-              'relative flex cursor-pointer items-center py-3 pl-3 pr-10',
+              'flex cursor-pointer items-center py-3',
               activeDropdown === 'danhsach'
-                ? '-mr-10 bg-gray-50 pr-0 text-[#133D85]'
+                ? 'bg-gray-50 pr-0 text-[#133D85]'
                 : 'text-[#4D6FA8]',
             ]"
           >
             <i
               :class="[
-                'pr-3 text-[8px] text-[#133D85]',
+                'px-3 text-[8px] text-[#133D85]',
                 activeDropdown === 'danhsach'
                   ? 'fa-solid fa-circle text-[#133D85]'
                   : 'fa-solid fa-circle-dot text-[#4D6FA8]',
@@ -239,15 +239,15 @@ onMounted(async () => {
           <li
             @click="toggleDropdown('phuhuynh')"
             :class="[
-              'relative flex cursor-pointer items-center py-3 pl-3 pr-10',
+              'flex cursor-pointer items-center py-3',
               activeDropdown === 'phuhuynh'
-                ? '-mr-10 bg-gray-50 pr-0 text-[#133D85]'
+                ? 'bg-gray-50 pr-0 text-[#133D85]'
                 : 'text-[#4D6FA8]',
             ]"
           >
             <i
               :class="[
-                'pr-3 text-[8px]',
+                'px-3 text-[8px]',
                 activeDropdown === 'phuhuynh'
                   ? 'fa-solid fa-circle text-[#133D85]'
                   : 'fa-solid fa-circle-dot text-[#4D6FA8]',
@@ -258,15 +258,15 @@ onMounted(async () => {
           <li
             @click="toggleDropdown('chamsoc')"
             :class="[
-              'relative flex cursor-pointer items-center py-3 pl-3 pr-10',
+              'flex cursor-pointer items-center py-3',
               activeDropdown === 'chamsoc'
-                ? '-mr-10 bg-gray-50 pr-0 text-[#133D85]'
+                ? 'bg-gray-50 pr-0 text-[#133D85]'
                 : 'text-[#4D6FA8]',
             ]"
           >
             <i
               :class="[
-                'pr-3 text-[8px] text-[#133D85]',
+                'px-3 text-[8px] text-[#133D85]',
                 activeDropdown === 'chamsoc'
                   ? 'fa-solid fa-circle text-[#133D85]'
                   : 'fa-solid fa-circle-dot text-[#4D6FA8]',
@@ -277,7 +277,9 @@ onMounted(async () => {
         </ul>
       </nav>
     </div>
-    <div class="flex h-full w-5/6 overflow-auto rounded-2xl bg-gray-50">
+    <div
+      class="flex h-full min-h-[calc(100vh-96px)] w-full overflow-auto rounded-2xl bg-gray-50"
+    >
       <!-- Main Content -->
       <div class="flex-1">
         <nav>

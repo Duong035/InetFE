@@ -2,6 +2,7 @@
 import AutoImport from 'unplugin-auto-import/vite'
 import { NaiveUiResolver } from 'unplugin-vue-components/resolvers'
 import Components from 'unplugin-vue-components/vite'
+import svgLoader from 'vite-svg-loader'
 
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
@@ -13,6 +14,7 @@ export default defineNuxtConfig({
     '@nuxtjs/tailwindcss',
     'nuxtjs-naive-ui',
     "dayjs-nuxt",
+    '@nuxtjs/i18n',
     [
       "@pinia/nuxt",
       {
@@ -26,7 +28,9 @@ export default defineNuxtConfig({
     ],
     '@pinia/nuxt',
   ],
-  
+  build: {
+    transpile: ['naive-ui', 'vueuc'],
+  },
   css: ["@/assets/index.css"],
   vite: {
     plugins: [
@@ -44,7 +48,8 @@ export default defineNuxtConfig({
       }),
       Components({
         resolvers: [NaiveUiResolver()]
-      })
+      }),
+      svgLoader()
     ],
   },
   dayjs: {
@@ -60,5 +65,27 @@ export default defineNuxtConfig({
   sourcemap: {
     server: true,
     client: false,
+  },
+  i18n: {
+    compilation: {
+      strictMessage: false,
+    },
+    locales: [
+      {
+        code: "vi",
+        name: "Tiếng Việt",
+        file: "vi.json",
+      },
+      {
+        code: "en",
+        name: "English",
+        file: "en.json",
+      },
+    ],
+    strategy: "no_prefix",
+    defaultLocale: 'vi',
+    lazy: true,
+    langDir: "../i18n",
+    detectBrowserLanguage: false
   },
 })

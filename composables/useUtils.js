@@ -374,13 +374,13 @@ export function useSubjectLoader() {
 export function createDaysOfWeek(t = null) {
   // if receive Error 'SyntaxError: Must be called at the top of a setup function' passing t as agrument
   return [
-    { label: "Thứ 2", value: 1, disabled: false, checked: false },
-    { label: "Thứ 3", value: 2, disabled: false, checked: false },
-    { label: "Thứ 4", value: 3, disabled: false, checked: false },
-    { label: "Thứ 5", value: 4, disabled: false, checked: false },
-    { label: "Thứ 6", value: 5, disabled: false, checked: false },
-    { label: "Thứ 7", value: 6, disabled: false, checked: false },
-    { label: "Chủ nhật", value: 0, disabled: false, checked: false },
+    { label: "Thứ 2", shortLabel: "2", value: 1, disabled: false, checked: false },
+    { label: "Thứ 3", shortLabel: "3", value: 2, disabled: false, checked: false },
+    { label: "Thứ 4", shortLabel: "4", value: 3, disabled: false, checked: false },
+    { label: "Thứ 5", shortLabel: "5", value: 4, disabled: false, checked: false },
+    { label: "Thứ 6", shortLabel: "6", value: 5, disabled: false, checked: false },
+    { label: "Thứ 7", shortLabel: "7", value: 6, disabled: false, checked: false },
+    { label: "Chủ nhật", shortLabel: "CN", value: 0, disabled: false, checked: false },
   ]
 }
 
