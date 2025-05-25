@@ -527,8 +527,9 @@ watchEffect(() => {
 </script>
 
 <template>
-  <n-grid :cols="11" :y-gap="16">
-    <n-gi :span="11">
+  <div class="grid grid-cols-1 gap-x-4 gap-y-4 md:grid-cols-11 md:gap-y-16">
+    <div class="md:col-span-11">
+      <!-- Form item -->
       <n-form-item
         label="Ngày mong muốn bắt đầu học:"
         label-placement="left"
@@ -543,18 +544,26 @@ watchEffect(() => {
           value-format="yyyy-MM-dd"
         />
       </n-form-item>
-    </n-gi>
+    </div>
 
-    <n-gi :span="4" class="font-500 mr-8 text-[#133D85]">Lịch trống:</n-gi>
-    <n-gi v-for="day in daysOfWeek" :key="day.value">
+    <div class="font-500 mr-8 text-[#133D85] md:col-span-4">Lịch trống:</div>
+
+    <div
+      v-for="day in daysOfWeek"
+      :key="day.value"
+      class="flex items-center space-x-2"
+    >
       <n-checkbox
-        :label="day.label"
         v-model:checked="listChecked[day.value]"
         @update:checked="(checked) => handleCheckedDay(day.value, checked)"
-      />
-    </n-gi>
-    <template v-for="s in shift" :key="s">
-      <n-gi span="4">
+      >
+        <span class="hidden lg:block">{{ day.label }}</span>
+        <span class="inline lg:hidden">{{ day.shortLabel }}</span>
+      </n-checkbox>
+    </div>
+
+    <template v-for="s in shift" :key="s.id">
+      <div class="md:col-span-4">
         <n-flex align="center" :wrap="false" justify="space-between">
           <n-ellipsis
             :tooltip="{
@@ -591,24 +600,25 @@ watchEffect(() => {
             />
           </n-input-group>
         </n-flex>
-      </n-gi>
-      <n-gi v-for="day in s.session" :key="day.value" class="flex items-center">
+      </div>
+
+      <div v-for="day in s.session" :key="day.value" class="flex items-center">
         <n-checkbox
           v-model:checked="day.checked"
           class="custom-checkbox-no-disabled"
           :disabled="
-            !listChecked[day.value] || // Day checkbox must be checked
-            !selectedTimes[s.id] || // Shift must exist
+            !listChecked[day.value] ||
+            !selectedTimes[s.id] ||
             selectedTimes[s.id].start === null ||
             selectedTimes[s.id].end === null ||
             selectedTimes[s.id].start === 'Invalid Date' ||
-            selectedTimes[s.id].end === 'Invalid Date' // Ensure shift time is valid
+            selectedTimes[s.id].end === 'Invalid Date'
           "
           @update:checked="
             (checked) => handleCheckedValue(day.value, checked, s.id)
           "
         />
-      </n-gi>
+      </div>
     </template>
-  </n-grid>
+  </div>
 </template>

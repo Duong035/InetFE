@@ -2,8 +2,12 @@
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 
+const message = useMessage();
+const { restAPI } = useApi();
+
 const activeTab = ref(""); // Options: "draw", "upload"
 const canvas = ref<HTMLCanvasElement | null>(null);
+const showSpin = ref(false);
 
 const switchToDraw = () => {
   activeTab.value = "draw";
@@ -12,6 +16,155 @@ const switchToDraw = () => {
 
 onMounted(() => {
   activeTab.value = "accountInfo";
+});
+
+const formValue = reactive({
+  id: computed(() => route.query.id || null),
+  name: null,
+  gender: "Nam",
+  type: 6,
+  dob: null,
+  email: null,
+  phone: null,
+  address: {
+    province: null,
+    district: null,
+    address: null,
+  },
+});
+
+const options = [
+  { label: "Nam", value: "Nam" },
+  { label: "Nữ", value: "Nữ" },
+];
+
+const optionsProvinces = reactive({
+  loading: false,
+  data: [],
+  default: {},
+});
+
+const optionsDistricts = reactive({
+  params: {
+    page: 1,
+    length: 20,
+    province: null,
+  },
+  loading: false,
+  data: [],
+  default: {},
+});
+
+const loadProvinces = async () => {
+  if (optionsProvinces.loading) return;
+
+  optionsProvinces.loading = true;
+
+  try {
+    const { data: resData, error } = await restAPI.cms.getProvinces({
+      cache: "force-cache",
+    });
+
+    if (resData.value?.status) {
+      const newProvinces = resData.value?.data?.data || [];
+
+      newProvinces.forEach((item) => {
+        const exists = optionsProvinces.data.some(
+          (province) => province.value === item.id,
+        );
+
+        if (!exists) {
+          optionsProvinces.data.push({
+            value: item.id,
+            label: item.name,
+          });
+        }
+      });
+
+      if (newProvinces.length === 0) {
+        message.info("All provinces loaded.");
+      }
+    } else {
+      message.error("Failed to load provinces!");
+    }
+  } catch (err) {
+    message.error("Error fetching provinces!");
+    console.error(err);
+  } finally {
+    optionsProvinces.loading = false;
+  }
+};
+
+const loadDistricts = async () => {
+  optionsDistricts.loading = true;
+  if (optionsDistricts.params.province) {
+    const {
+      data: resData,
+      pending: loading,
+      refresh,
+    } = await restAPI.cms.getDistricts({
+      params: optionsDistricts.params,
+      cache: "force-cache",
+    });
+    if (resData.value?.status) {
+      resData.value?.data?.data?.forEach((item) => {
+        if (
+          !optionsDistricts?.default?.id ||
+          (optionsDistricts?.default?.id !== item?.id &&
+            optionsDistricts.default?.name !== item?.name)
+        ) {
+          optionsDistricts.data.push({
+            value: item?.id,
+            label: item?.name,
+          });
+        }
+      });
+      optionsDistricts.params.page += 1;
+    }
+  } else {
+    optionsDistricts.params.page = 1;
+    optionsDistricts.data = [];
+  }
+  optionsDistricts.loading = false;
+};
+
+const handleUpdateProvince = async (value) => {
+  if (optionsDistricts.params.province !== value) {
+    formValue.address.district = null;
+    optionsDistricts.params.province = value;
+    optionsDistricts.params.page = 1;
+    optionsDistricts.data = [];
+    await loadDistricts();
+  }
+};
+
+const handleScrollProvinces = async (e) => {
+  const currentTarget = e.currentTarget;
+  if (
+    currentTarget.scrollTop + currentTarget.offsetHeight + 150 >=
+      currentTarget.scrollHeight &&
+    !optionsProvinces.loading
+  ) {
+    await loadProvinces();
+  }
+};
+
+const handleScrollDistricts = async (e) => {
+  const currentTarget = e.currentTarget;
+  if (
+    currentTarget.scrollTop + currentTarget.offsetHeight + 150 >=
+      currentTarget.scrollHeight &&
+    !optionsDistricts.loading
+  ) {
+    await loadDistricts();
+  }
+};
+
+onMounted(async () => {
+  await loadProvinces();
+  if (optionsDistricts.params.province) {
+    await loadDistricts();
+  }
 });
 
 const handleUpload = (event: Event) => {
@@ -113,13 +266,15 @@ const handleSubmit = () => {
 // Active tab
 </script>
 <template>
-  <div class="h-min-fit flex w-full overflow-auto rounded-2xl bg-gray-50">
+  <div
+    class="scrollbar-hide flex h-[calc(100vh-112px)] w-full overflow-auto rounded-2xl bg-gray-50"
+  >
     <!-- Main Content -->
     <div class="flex-1">
       <!-- Content Area -->
       <div class="text-black">
         <main class="pl4 box-border flex pr-4">
-          <div class="min-h-fit w-full bg-gray-50 p-8">
+          <div class="min-h-fit w-full bg-gray-50 p-5">
             <!-- Tabs -->
             <div class="mb-6 flex border-b">
               <button
@@ -147,7 +302,7 @@ const handleSubmit = () => {
             </div>
             <!-- Account Information -->
             <div v-if="activeTab === 'accountInfo'">
-              <div class="grid-cols- grid gap-6">
+              <div class="grid-cols- grid">
                 <!-- Profile Picture -->
                 <div>
                   <div class="mb-4">
@@ -238,99 +393,115 @@ const handleSubmit = () => {
 
                 <!-- Personal Information -->
                 <div class="col-span-2">
-                  <div class="grid grid-cols-2 gap-4">
-                    <div>
-                      <label
-                        for="name"
-                        class="block text-sm font-medium text-gray-700"
+                  <n-spin :show="showSpin" class="px-5">
+                    <n-form :model="formValue" :rules="rules" ref="formRef">
+                      <n-grid
+                        :x-gap="30"
+                        cols="1 m:2"
+                        responsive="screen"
+                        class="my-5"
                       >
-                        Họ và tên *
-                      </label>
-                      <input
-                        type="text"
-                        id="name"
-                        class="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                        placeholder=""
-                      />
-                    </div>
-                    <div>
-                      <label
-                        for="phone"
-                        class="block text-sm font-medium text-gray-700"
-                      >
-                        Số điện thoại *
-                      </label>
-                      <input
-                        type="text"
-                        id="phone"
-                        class="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                        placeholder="0123456789"
-                      />
-                    </div>
-                    <div>
-                      <label
-                        for="email"
-                        class="block text-sm font-medium text-gray-700"
-                      >
-                        Email *
-                      </label>
-                      <input
-                        type="email"
-                        id="email"
-                        class="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                        placeholder="abcxyz@gmail.com"
-                      />
-                    </div>
-                    <div>
-                      <label
-                        for="birthday"
-                        class="block text-sm font-medium text-gray-700"
-                      >
-                        Ngày sinh
-                      </label>
-                      <input
-                        type="date"
-                        id="birthday"
-                        class="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label
-                        for="gender"
-                        class="block text-sm font-medium text-gray-700"
-                      >
-                        Giới tính
-                      </label>
-                      <select
-                        id="gender"
-                        class="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                      >
-                        <option value="male">Nam</option>
-                        <option value="female">Nữ</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label
-                        for="city"
-                        class="block text-sm font-medium text-gray-700"
-                      >
-                        Địa chỉ
-                      </label>
-                    </div>
-                  </div>
+                        <n-gi>
+                          <n-form-item label="Họ và tên *" path="name">
+                            <n-input
+                              v-model:value="formValue.name"
+                              placeholder="Nhập họ và tên"
+                            />
+                          </n-form-item>
+                        </n-gi>
+                        <n-gi>
+                          <n-form-item label="Số điện thoại *" path="phone">
+                            <n-input
+                              type="tel"
+                              v-model:value="formValue.phone"
+                              placeholder="Nhập số điện thoại"
+                            />
+                          </n-form-item>
+                        </n-gi>
+                        <n-gi span="2">
+                          <n-form-item label="Email *" path="email">
+                            <n-input
+                              type="email"
+                              v-model:value="formValue.email"
+                              placeholder="Example@gmail.com"
+                            />
+                          </n-form-item>
+                        </n-gi>
+                        <n-gi>
+                          <n-form-item label="Giới tính">
+                            <n-select
+                              v-model:value="formValue.gender"
+                              :options="options"
+                              placeholder="Chọn giới tính"
+                            />
+                          </n-form-item>
+                        </n-gi>
+                        <n-gi>
+                          <n-form-item label="Ngày sinh">
+                            <n-date-picker
+                              class="w-full"
+                              v-model:value="formValue.dob"
+                              type="date"
+                              placeholder="Chọn ngày"
+                            />
+                          </n-form-item>
+                        </n-gi>
+
+                        <n-gi span="1 m:2">
+                          <n-form-item label="Địa chỉ" path="address">
+                            <n-grid
+                              :x-gap="30"
+                              cols="1 m:2"
+                              responsive="screen"
+                            >
+                              <n-gi>
+                                <n-select
+                                  v-model:value="formValue.address.province"
+                                  :loading="optionsProvinces.loading"
+                                  @scroll="handleScrollProvinces"
+                                  @update:value="handleUpdateProvince"
+                                  :options="optionsProvinces.data"
+                                  placeholder="Tỉnh/Thành phố"
+                                  class="custom-select-no-bg"
+                                />
+                              </n-gi>
+                              <n-gi>
+                                <n-select
+                                  v-model:value="formValue.address.district"
+                                  :loading="optionsDistricts.loading"
+                                  @scroll="handleScrollDistricts"
+                                  :options="optionsDistricts.data"
+                                  placeholder="Quận/Huyện"
+                                />
+                              </n-gi>
+                              <n-gi span="1 m:2" class="mt-2">
+                                <n-input
+                                  v-model:value="formValue.address.address"
+                                  placeholder="Địa chỉ cụ thế"
+                                />
+                              </n-gi>
+                            </n-grid>
+                          </n-form-item>
+                        </n-gi>
+                      </n-grid>
+                    </n-form>
+                  </n-spin>
                 </div>
               </div>
 
               <!-- Signature -->
 
               <!-- Save Button -->
-              <div class="mt-8 text-center">
-                <button
-                  type="button"
-                  class="mr-20 rounded bg-blue-500 px-6 py-2 text-white shadow hover:bg-blue-600"
+              <div class="text-center">
+                <n-button
+                  round
+                  type="info"
+                  class="h-12 w-52 rounded-2xl text-lg"
+                  :loading="isLoading"
+                  @click.prevent="handleSubmit"
                 >
                   Lưu
-                </button>
+                </n-button>
               </div>
             </div>
 
@@ -347,7 +518,7 @@ const handleSubmit = () => {
                       <input
                         type="email"
                         v-model="email"
-                        class="rounded-md0 w-full border p-3"
+                        class="focus:[#00A2EBFF] focus:[#00A2EBFF] w-full rounded-2xl border p-3 focus:outline-none focus:ring-2"
                       />
                     </div>
 
@@ -361,7 +532,7 @@ const handleSubmit = () => {
                           :type="showCurrentPassword ? 'text' : 'password'"
                           v-model="currentPassword"
                           placeholder="Nhập mật khẩu hiện tại"
-                          class="w-full rounded-md border p-3"
+                          class="focus:[#00A2EBFF] focus:[#00A2EBFF] w-full rounded-2xl border p-3 focus:outline-none focus:ring-2"
                         />
                         <button
                           type="button"
@@ -383,7 +554,7 @@ const handleSubmit = () => {
                           :type="showNewPassword ? 'text' : 'password'"
                           v-model="newPassword"
                           placeholder="Nhập mật khẩu mới"
-                          class="w-full rounded-md border p-3"
+                          class="focus:[#00A2EBFF] focus:[#00A2EBFF] w-full rounded-2xl border p-3 focus:outline-none focus:ring-2"
                         />
                         <button
                           type="button"
@@ -405,7 +576,7 @@ const handleSubmit = () => {
                           :type="showConfirmPassword ? 'text' : 'password'"
                           v-model="confirmPassword"
                           placeholder="Xác nhận mật khẩu mới"
-                          class="w-full rounded-md border p-3"
+                          class="focus:[#00A2EBFF] focus:[#00A2EBFF] w-full rounded-2xl border p-3 focus:outline-none focus:ring-2"
                         />
                         <button
                           type="button"
@@ -436,3 +607,13 @@ const handleSubmit = () => {
     </div>
   </div>
 </template>
+<style scoped>
+.scrollbar-hide::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+}
+.scrollbar-hide {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE 10+ */
+}
+</style>

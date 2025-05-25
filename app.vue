@@ -66,6 +66,7 @@ const getThemeOverrides = computed(() => {
       borderDisabled: "1px solid #E7EDFFFF",
       placeholderColor: "#8ba3cb",
       placeholderColorDisabled: "#8ba3cb",
+      borderHover: "#00A2EBFF",
     },
     Checkbox: {
       colorChecked: "#00A2EBFF",
@@ -122,7 +123,7 @@ const getThemeOverrides = computed(() => {
 });
 </script>
 <template>
-  <client-only>
+  <client-only class="scrollbar-hide">
     <n-config-provider :theme-overrides="getThemeOverrides">
       <n-message-provider>
         <n-dialog-provider>
@@ -134,3 +135,13 @@ const getThemeOverrides = computed(() => {
     </n-config-provider>
   </client-only>
 </template>
+<style scoped>
+.scrollbar-hide::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+}
+.scrollbar-hide {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE 10+ */
+}
+</style>

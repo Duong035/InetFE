@@ -8,7 +8,7 @@
     :mode="mode"
     :collapsed="collapsed"
     :collapsed-width="isMobile ? 40 : 64"
-    :width="3000"
+    :width="300"
     :collapsed-icon-size="isMobile ? 16 : 20"
     :indent="0"
     :root-indent="16"
@@ -33,6 +33,7 @@ import {
   unref,
 } from "vue";
 import { useProjectSettingStore } from "@/stores/projectSetting";
+import { usePageSetting } from "~/stores/pageSetting";
 
 export default defineComponent({
   name: "Menu",
@@ -55,6 +56,7 @@ export default defineComponent({
   },
   emits: ["update:collapsed", "clickMenuItem"],
   setup(props, { emit }) {
+    console.log(props.menus);
     const { locale } = useI18n();
     const currentLocale = locale?.value;
     const currentRoute = useRoute();
@@ -62,8 +64,9 @@ export default defineComponent({
     const key_menu = ref(0);
     const settingStore = useProjectSettingStore();
     const projectStore = useProjectSettingStore();
-
+    const pageSetting = usePageSetting();
     function renderMenuLabel(option) {
+      console.log(option);
       return h(
         "div",
         {
@@ -150,8 +153,8 @@ export default defineComponent({
       key_menu.value++;
     });
 
-    const getNavMode = computed(() => projectStore.navMode);
-    const isMobile = computed(() => projectStore.isMobile);
+    const getNavMode = computed(() => settingStore.navMode);
+    const isMobile = computed(() => settingStore.isMobile);
     const navMode = getNavMode;
     const matched = currentRoute.matched;
     const getOpenKeys =
@@ -210,6 +213,8 @@ export default defineComponent({
     }
 
     function clickMenuItem(key) {
+      pageSetting.setSetting(null);
+
       if (/http(s)?:/.test(key)) {
         window.open(key);
       } else {
@@ -269,7 +274,7 @@ export default defineComponent({
 }
 
 * :deep(.n-menu-item-content--child-active::before) {
-  background-color: #e6f7aa !important;
+  background-color: #e6f7ff !important;
 }
 </style>
 

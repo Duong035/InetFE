@@ -5,9 +5,10 @@
     </header>
     <div class="mt-3 flex w-[calc(100%)]">
       <!-- overflow-auto -->
-      <Sidebar />
+      <!-- <Sidebar /> -->
+      <Menu class="w-72" />
       <!-- <Test /> -->
-      <main class="mx-5 mb-5 mt-5 w-full rounded-2xl">
+      <main class="mx-3 my-3 w-full overflow-y-scroll rounded-2xl">
         <slot />
         <!-- <content /> -->
       </main>

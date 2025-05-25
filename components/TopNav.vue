@@ -22,10 +22,6 @@ const doLogout = () => {
     onNegativeClick: () => {},
   });
 };
-
-onMounted(() => {
-  console.log(userStore.userInfo);
-});
 </script>
 
 <template>

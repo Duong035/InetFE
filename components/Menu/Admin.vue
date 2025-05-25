@@ -1,53 +1,64 @@
 <template>
-  <MenuLayout :menus v-model:collapsed="collapsed" />
+  <MenuLayout :menus="menus" v-model:collapsed="collapsed" />
 </template>
 
 <script setup>
-import AdmissionIcon from "@/assets/icons/menu/admissions.svg"
-import DashboardIcon from "@/assets/icons/menu/dashboard.svg"
-import FinanceIcon from "@/assets/icons/menu/finance.svg"
-import QuestionMarkIcon from "@/assets/icons/menu/question-mark.svg"
-import SettingIcon from "@/assets/icons/menu/setting.svg"
-import StaffIcon from "@/assets/icons/menu/staff.svg"
-import StatisticIcon from "@/assets/icons/menu/statistic.svg"
-import TrainingIcon from "@/assets/icons/menu/training.svg"
+import AdmissionIcon from "@/assets/icons/menu/admissions.svg";
+import DashboardIcon from "@/assets/icons/menu/dashboard.svg";
+import FinanceIcon from "@/assets/icons/menu/finance.svg";
+import QuestionMarkIcon from "@/assets/icons/menu/question-mark.svg";
+import SettingIcon from "@/assets/icons/menu/setting.svg";
+import StaffIcon from "@/assets/icons/menu/staff.svg";
+import StatisticIcon from "@/assets/icons/menu/statistic.svg";
+import TrainingIcon from "@/assets/icons/menu/training.svg";
 
-import { renderIcon, renderIconChild, renderIconNoColor } from "./Render.js"
+import { renderIcon, renderIconChild, renderIconNoColor } from "./Render.js";
 
-const userStore = useUserStore()
+const userStore = useUserStore();
 
-const { t } = useI18n()
+const { t } = useI18n();
 
-const collapsed = defineModel("collapsed")
+const collapsed = defineModel("collapsed");
 
 const permissionMapping = {
-  "training/setting": ["training/setting/subject", "training/setting/classroom", "training/setting/program", "training/setting/category", "training/setting/certificate", "training/setting/other"],
-  "staff/setting": ["staff/setting/shift", "staff/setting/day-off", "staff/setting/formula"],
+  "training/setting": [
+    "training/setting/subject",
+    "training/setting/classroom",
+    "training/setting/program",
+    "training/setting/category",
+    "training/setting/certificate",
+    "training/setting/other",
+  ],
+  "staff/setting": [
+    "staff/setting/shift",
+    "staff/setting/day-off",
+    "staff/setting/formula",
+  ],
   "staff/list": ["staff/list/permissions", "staff/setting/permissions"],
-}
+};
 
 // return true
-const checkPermissionMenu = key => {
-  if (userStore.accessAll) return true
-  const path = key?.split("/")
-  return userStore.permissions?.some(per => {
+const checkPermissionMenu = (key) => {
+  if (userStore.accessAll) return true;
+  const path = key?.split("/");
+  return userStore.permissions?.some((per) => {
     if (per?.key === key || per?.key === path[0]) {
-      if (per?.checked) return true
+      if (per?.checked) return true;
 
-      return per?.listLevel1?.some(subP => {
-        const subKeys = permissionMapping[key]
+      return per?.listLevel1?.some((subP) => {
+        const subKeys = permissionMapping[key];
         if (subKeys && subKeys.includes(subP?.key)) {
-          if (subP?.checked) return true
-          return subP?.listLevel2?.some(pms => pms?.checked)
+          if (subP?.checked) return true;
+          return subP?.listLevel2?.some((pms) => pms?.checked);
         }
         if (per?.key === key || subP?.key === key) {
-          if (subP?.checked) return true
-          return subP?.listLevel2?.some(pms => pms?.checked)
+          if (subP?.checked) return true;
+          return subP?.listLevel2?.some((pms) => pms?.checked);
         }
-      })
+      });
     }
-  })
-}
+  });
+};
 
 const menus = ref([
   {
@@ -65,25 +76,25 @@ const menus = ref([
     children: [
       {
         label: t("admissions.plan"),
-        key: `admissions/plan`,
+        // key: `admissions/plan`,
         show: checkPermissionMenu("admissions/plan"),
         icon: renderIconChild("/admissions/plan"),
       },
       {
         label: t("admissions.potential-student"),
-        key: `admissions/potential-student`,
+        // key: `admissions/potential-student`,
         show: checkPermissionMenu("admissions/potential-student"),
         icon: renderIconChild("/admissions/potential-student"),
       },
       {
         label: t("admissions.trial-student"),
-        key: `admissions/trial-student`,
+        // key: `admissions/trial-student`,
         show: checkPermissionMenu("admissions/trial-student"),
         icon: renderIconChild("/admissions/trial-student"),
       },
       {
         label: t("admissions.setting"),
-        key: `admissions/setting`,
+        // key: `admissions/setting`,
         show: checkPermissionMenu("admissions/setting"),
         icon: renderIconChild("/admissions/setting"),
       },
@@ -104,72 +115,22 @@ const menus = ref([
       },
       {
         label: t("training.class"),
-        key: `training/class`,
+        key: `daotao/lophoc`,
         show: checkPermissionMenu("training/class"),
         icon: renderIconChild("/training/class"),
       },
       {
         label: t("training.schedule"),
-        key: `training/schedule`,
+        key: `daotao/lichhoc`,
         show: checkPermissionMenu("training/schedule"),
         icon: renderIconChild("/training/schedule"),
       },
       {
-        label: t("exam"),
-        key: `training/exam`,
-        icon: renderIconChild("/training/exam"),
-      },
-      {
-        label: t("training.document"),
-        key: `training/document`,
+        label: t("common.subject"),
+        key: `daotao/monhoc`,
         show: checkPermissionMenu("training/document"),
         icon: renderIconChild("/training/document"),
         // disabled: true,
-      },
-      {
-        label: t("training.setting"),
-        key: `training/setting`,
-        show: checkPermissionMenu("training/setting"),
-        icon: renderIconChild("/training/setting"),
-      },
-    ],
-  },
-  {
-    label: t("finance"),
-    key: `finance`,
-    show: checkPermissionMenu("finance"),
-    icon: renderIcon(FinanceIcon),
-    link_breadcrumb: false,
-    children: [
-      {
-        label: t("finance.tuition-fee"),
-        key: `finance/tuition-fee`,
-        show: checkPermissionMenu("finance/tuition-fee"),
-        icon: renderIconChild("/finance/tuition-fee"),
-      },
-      {
-        label: t("finance.discount"),
-        key: `finance/discount`,
-        show: checkPermissionMenu("finance/discount"),
-        icon: renderIconChild("/finance/discount"),
-      },
-      {
-        label: t("finance.receipt"),
-        key: `finance/receipt`,
-        show: checkPermissionMenu("finance/receipt"),
-        icon: renderIconChild("/finance/receipt"),
-      },
-      {
-        label: t("finance.payment-slip"),
-        key: `finance/payment-slip`,
-        show: checkPermissionMenu("finance/payment-slip"),
-        icon: renderIconChild("/finance/payment-slip"),
-      },
-      {
-        label: t("finance.setting"),
-        key: `finance/setting`,
-        show: checkPermissionMenu("finance/setting"),
-        icon: renderIconChild("/finance/setting"),
       },
     ],
   },
@@ -182,7 +143,7 @@ const menus = ref([
     children: [
       {
         label: t("staff.list"),
-        key: `staff/list`,
+        key: `daotao/giangvien`,
         show: checkPermissionMenu("staff/list"),
         icon: renderIconChild("/staff/list"),
       },
@@ -198,35 +159,6 @@ const menus = ref([
         key: `staff/setting`,
         show: checkPermissionMenu("staff/setting"),
         icon: renderIconChild("/staff/setting"),
-      },
-    ],
-  },
-  {
-    label: t("report"),
-    key: `report`,
-    show: checkPermissionMenu("report"),
-    icon: renderIcon(StatisticIcon),
-    link_breadcrumb: false,
-    children: [
-      {
-        label: t("report.admission"),
-        key: `report/admission`,
-        show: checkPermissionMenu("report/admission"),
-        icon: renderIconChild("/report/admission"),
-        // disabled: true,
-      },
-      {
-        label: t("report.financial"),
-        key: `report/finance`,
-        show: checkPermissionMenu("report/financial"),
-        icon: renderIconChild("/report/financial"),
-        // disabled: true,
-      },
-      {
-        label: t("report.training"),
-        key: `report/training`,
-        show: checkPermissionMenu("report/training"),
-        icon: renderIconChild("/report/training"),
       },
     ],
   },
@@ -277,5 +209,5 @@ const menus = ref([
     icon: renderIconNoColor(QuestionMarkIcon),
     link_breadcrumb: false,
   },
-])
+]);
 </script>

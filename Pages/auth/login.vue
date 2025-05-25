@@ -45,12 +45,12 @@ const handleSubmit = async (e) => {
   e.preventDefault();
   isLoading.value = true;
   const body = { email: email.value, password: password.value };
-  sessionStorage.setItem("loginfo", JSON.stringify(body));
   try {
     const { data: resVerify, error } = await restAPI.cms.login({ body });
 
     if (resVerify.value?.status) {
       const userInfo = resVerify.value?.data;
+      if (userInfo?.permission_grp_id) initDefaultPermit(userInfo);
       nextTick(async () => {
         if (
           userInfo?.permission_grp &&
@@ -80,9 +80,9 @@ const handleSubmit = async (e) => {
         "Đã xảy ra lỗi, vui lòng thử lại!";
       if (errorCode == 2008) {
         if (body.password === "aohvaklvnh") {
-          console.log(body.password);
           sessionStorage.setItem("first_time", "true");
         }
+        sessionStorage.setItem("loginfo", JSON.stringify(body));
         router.push({
           path: "verify_email",
           query: {
@@ -99,11 +99,75 @@ const handleSubmit = async (e) => {
     isLoading.value = false;
   }
 };
+
+async function initDefaultPermit(user) {
+  const { data: resPermissionsTags } = await restAPI.cms.getPermissionTags({
+    headers: {
+      "Content-type": "application/json",
+      Authorization: `Bearer ${user.token}`,
+    },
+  });
+  const listPer = resPermissionsTags.value?.data?.data || [];
+  const PermsList = ref([]);
+  listPer.forEach((level1) => {
+    const lv1 = {
+      id: level1.id,
+      name: level1.name,
+      key: level1?.key || null,
+      checked: true,
+      countSelected: 0,
+      listLevel1: level1.sub_tags?.map((level2) => {
+        const lv2 = {
+          id: level2.id,
+          name: level2.name,
+          key: level2?.key || null,
+          checked: true,
+          total: level2.permissions?.length || 0,
+          listLevel2: level2.permissions?.map((level3) => {
+            const lv3 = {
+              id: level3.id,
+              name: level3.name,
+              checked: true,
+              disabled: false,
+              action: level3.action,
+            };
+            return lv3;
+          }),
+        };
+        return lv2;
+      }),
+    };
+    const countSelected = lv1.listLevel1?.reduce((acc, curr) => {
+      const childCount = curr.listLevel2?.reduce(
+        (childAcc, childCurr) => (childAcc += childCurr.checked ? 1 : 0),
+        0,
+      );
+      return (acc += childCount);
+    }, 0);
+    lv1.countSelected = countSelected;
+    PermsList.value.push(lv1);
+  });
+
+  let idList = [];
+  PermsList.value.forEach((item) => {
+    if (item.listLevel1 && item.listLevel1.length > 0) {
+      item.listLevel1.forEach((level1) => {
+        if (level1.listLevel2 && level1.listLevel2.length > 0) {
+          level1.listLevel2.forEach((level2) => {
+            if (level2.checked === true) {
+              idList.push(level2.id);
+            }
+          });
+        }
+      });
+    }
+  });
+}
 </script>
 
 <template>
-  <div class="mx-auto my-auto h-2/3 w-1/4 rounded-2xl">
-    <div class="mx-auto rounded-3xl bg-white bg-opacity-60 shadow">
+  <div class="flex h-screen w-full items-center justify-center">
+    <div class="mx-3 max-w-[450px] rounded-3xl bg-white bg-opacity-60 shadow">
       <n-form
         :label-width="200"
         class="p-6"
@@ -167,7 +231,7 @@ const handleSubmit = async (e) => {
             Đăng nhập
           </n-button>
         </div>
-        <div class="relative mt-5 text-center text-[#133D85]">
+        <!-- <div class="relative mt-5 text-center text-[#133D85]">
           Bạn chưa có tài khoản?
           <NuxtLink
             to="register"
@@ -175,7 +239,7 @@ const handleSubmit = async (e) => {
           >
             Đăng ký ngay
           </NuxtLink>
-        </div>
+        </div> -->
       </n-form>
     </div>
   </div>
